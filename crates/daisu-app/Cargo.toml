@@ -26,6 +26,8 @@ tauri-build = { workspace = true }
 tauri = { workspace = true, features = ["devtools"] }
 tauri-plugin-dialog = { workspace = true }
 tauri-plugin-fs = { workspace = true }
+tauri-plugin-store = { workspace = true }
+tauri-plugin-window-state = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
