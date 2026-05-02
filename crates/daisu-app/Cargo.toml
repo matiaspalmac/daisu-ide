@@ -1,0 +1,32 @@
+[package]
+name = "daisu-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Daisu IDE — main Tauri binary"
+
+[lints]
+workspace = true
+
+[lib]
+name = "daisu_app"
+path = "src/lib.rs"
+
+[[bin]]
+name = "daisu"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+tauri = { workspace = true, features = ["devtools"] }
+tauri-plugin-dialog = { workspace = true }
+tauri-plugin-fs = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync"] }
