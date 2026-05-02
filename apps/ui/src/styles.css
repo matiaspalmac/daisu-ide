@@ -574,3 +574,33 @@ body,
   color: #888;
   gap: 4px;
 }
+
+.daisu-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--daisu-border, #2b2b2b);
+}
+.daisu-field-text { flex: 1; min-width: 0; }
+.daisu-field-label { font-size: 13px; font-weight: 500; color: var(--daisu-fg, #ccc); }
+.daisu-field-desc { font-size: 12px; color: #888; margin: 4px 0 0; }
+.daisu-toggle {
+  width: 36px; height: 20px; padding: 2px;
+  border-radius: 10px; border: 0; cursor: pointer;
+  background: #555; transition: background 120ms ease;
+}
+.daisu-toggle.is-on { background: #0078d4; }
+.daisu-toggle-thumb {
+  display: block; width: 16px; height: 16px;
+  background: #fff; border-radius: 50%;
+  transition: transform 120ms ease; transform: translateX(0);
+}
+.daisu-toggle.is-on .daisu-toggle-thumb { transform: translateX(16px); }
+.daisu-select, .daisu-input {
+  padding: 4px 8px; min-width: 200px;
+  background: var(--daisu-bg, #1f1f1f); color: var(--daisu-fg, #ccc);
+  border: 1px solid #3c3c3c; border-radius: 3px; font-size: 13px;
+}
+.daisu-input-number { width: 80px; min-width: 0; }
