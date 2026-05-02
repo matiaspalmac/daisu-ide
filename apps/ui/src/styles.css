@@ -645,3 +645,27 @@ body,
   cursor: pointer; font-size: 13px;
 }
 .daisu-btn-primary:hover { background: #1f8ad8; }
+
+.daisu-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+.daisu-theme-card {
+  position: relative;
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: 6px; padding: 12px;
+  background: #2d2d2d; border: 2px solid transparent; border-radius: 6px;
+  color: var(--daisu-fg, #ccc); cursor: pointer; text-align: left;
+}
+.daisu-theme-card:hover { background: #3a3a3a; }
+.daisu-theme-card.is-active { border-color: #0078d4; }
+.daisu-theme-swatch {
+  height: 60px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: Cascadia Code, Consolas, monospace; font-weight: 600;
+}
+.daisu-theme-name { font-size: 13px; font-weight: 500; }
+.daisu-theme-kind { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; }
+.daisu-theme-check { position: absolute; top: 8px; right: 8px; color: #0078d4; }
