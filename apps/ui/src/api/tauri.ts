@@ -40,3 +40,58 @@ export interface WebView2Status {
 export async function detectWebView2(): Promise<WebView2Status> {
   return invoke<WebView2Status>("detect_webview2");
 }
+
+export type FileKind = "file" | "dir";
+
+export interface FileEntry {
+  path: string;
+  name: string;
+  kind: FileKind;
+  size: number | null;
+  mtimeMs: number | null;
+}
+
+export interface WorkspaceInfo {
+  root_path: string;
+  batch_id: string;
+}
+
+export interface TrashRef {
+  original_path: string;
+}
+
+export async function openWorkspaceCmd(path: string): Promise<WorkspaceInfo> {
+  return invoke<WorkspaceInfo>("open_workspace", { path });
+}
+
+export async function closeWorkspaceCmd(): Promise<void> {
+  await invoke<void>("close_workspace");
+}
+
+export async function listDirCmd(path: string): Promise<FileEntry[]> {
+  return invoke<FileEntry[]>("list_dir", { path });
+}
+
+export async function createFileCmd(parent: string, name: string): Promise<string> {
+  return invoke<string>("create_file", { parent, name });
+}
+
+export async function createDirCmd(parent: string, name: string): Promise<string> {
+  return invoke<string>("create_dir", { parent, name });
+}
+
+export async function renamePathCmd(from: string, toName: string): Promise<string> {
+  return invoke<string>("rename_path", { from, toName });
+}
+
+export async function deleteToTrashCmd(paths: string[]): Promise<TrashRef[]> {
+  return invoke<TrashRef[]>("delete_to_trash", { paths });
+}
+
+export async function restoreFromTrashCmd(refs: TrashRef[]): Promise<void> {
+  await invoke<void>("restore_from_trash", { refs });
+}
+
+export async function copyPathCmd(from: string, toParent: string): Promise<string> {
+  return invoke<string>("copy_path", { from, toParent });
+}
