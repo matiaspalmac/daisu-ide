@@ -3,6 +3,10 @@ import { Editor as MonacoEditor, type Monaco, type OnMount } from "@monaco-edito
 import type * as monacoNs from "monaco-editor";
 import { useTabs } from "../../stores/tabsStore";
 import { getOrCreateModel } from "../../lib/monaco-models";
+import {
+  setActiveEditor,
+  setMonacoNamespace,
+} from "../../lib/monaco-editor-ref";
 
 type IStandaloneCodeEditor = monacoNs.editor.IStandaloneCodeEditor;
 
@@ -15,8 +19,17 @@ export function Editor(): JSX.Element {
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    setActiveEditor(editor);
+    setMonacoNamespace(monaco);
     syncActiveTab();
   };
+
+  useEffect(() => {
+    return () => {
+      setActiveEditor(null);
+      setMonacoNamespace(null);
+    };
+  }, []);
 
   function syncActiveTab(): void {
     const editor = editorRef.current;
