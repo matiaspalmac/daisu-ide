@@ -20,8 +20,31 @@ body,
 
 .daisu-shell {
   display: grid;
-  grid-template-rows: auto 36px 1fr;
+  grid-template-rows: auto auto 1fr auto;
   height: 100%;
+}
+
+.daisu-main-split {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.daisu-resize-handle {
+  width: 3px;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.daisu-resize-handle:hover,
+.daisu-resize-handle[data-resize-handle-state="drag"] {
+  background: var(--daisu-focusBorder, #007acc);
+}
+
+.daisu-resize-handle-horizontal {
+  width: auto;
+  height: 3px;
+  cursor: row-resize;
 }
 
 .daisu-toolbar {
@@ -87,3 +110,148 @@ body,
 .daisu-banner a {
   color: #ffeb95;
 }
+
+.daisu-toast-viewport {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  z-index: 1000;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.daisu-toast {
+  background: var(--daisu-notifications-background, #252526);
+  color: var(--daisu-notifications-foreground, #cccccc);
+  border: 1px solid var(--daisu-notifications-border, #333);
+  border-radius: 4px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  font-size: 12px;
+}
+
+.daisu-toast-info { border-left: 3px solid #3794ff; }
+.daisu-toast-success { border-left: 3px solid #608b4e; }
+.daisu-toast-warning { border-left: 3px solid #cc8a00; }
+.daisu-toast-error { border-left: 3px solid #f48771; }
+
+.daisu-toast-title { margin: 0; }
+
+.daisu-toast-close {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  opacity: 0.6;
+}
+
+.daisu-toast-close:hover { opacity: 1; }
+
+.daisu-icon-btn {
+  background: transparent;
+  border: 0;
+  color: var(--daisu-foreground, #cccccc);
+  cursor: pointer;
+  height: 26px;
+  width: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  opacity: 0.7;
+}
+
+.daisu-icon-btn:hover { opacity: 1; background: var(--daisu-toolbar-hoverBackground, #2a2d2e); }
+
+.daisu-toolbar-spacer { flex: 1; }
+
+.daisu-sidebar,
+.daisu-agents-panel,
+.daisu-search-panel {
+  background: var(--daisu-sideBar-background, #252526);
+  color: var(--daisu-sideBar-foreground, #cccccc);
+  border-right: 1px solid var(--daisu-sideBar-border, #1e1e1e);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.daisu-agents-panel { border-right: 0; border-left: 1px solid var(--daisu-sideBar-border, #1e1e1e); }
+.daisu-search-panel { border-top: 1px solid var(--daisu-sideBar-border, #1e1e1e); }
+
+.daisu-sidebar-header,
+.daisu-search-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--daisu-sideBar-section-header-foreground, #888);
+}
+
+.daisu-sidebar-body { flex: 1; overflow: auto; }
+
+.daisu-empty-state {
+  padding: 12px;
+  color: var(--daisu-descriptionForeground, #888);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.daisu-statusbar {
+  height: 22px;
+  background: var(--daisu-statusBar-background, #007acc);
+  color: var(--daisu-statusBar-foreground, #ffffff);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 11px;
+  gap: 12px;
+}
+
+.daisu-statusbar-left,
+.daisu-statusbar-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.daisu-statusbar-right { margin-left: auto; }
+
+.daisu-status-item { white-space: nowrap; }
+
+.daisu-editor-area {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.daisu-editor-area-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.daisu-welcome {
+  text-align: center;
+  color: var(--daisu-descriptionForeground, #888);
+}
+
+.daisu-welcome h2 { margin: 0 0 8px 0; font-size: 18px; }
+.daisu-welcome p { margin: 0; font-size: 13px; }

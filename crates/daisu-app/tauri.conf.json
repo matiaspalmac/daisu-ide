@@ -36,6 +36,8 @@
     "dialog": {},
     "fs": {
       "scope": ["$HOME/**", "$DOCUMENT/**", "$DESKTOP/**"]
-    }
+    },
+    "store": {},
+    "window-state": {}
   }
 }
