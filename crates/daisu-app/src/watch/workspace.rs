@@ -171,3 +171,132 @@ pub fn is_ignored(path: &Path, root: &Path) -> bool {
     }
     false
 }
+
+//
+// ── Watcher ────────────────────────────────────────────────────────────
+//
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+
+/// Handle returned from [`spawn_workspace_watcher`]. Dropping it cancels the
+/// watchers (the underlying `notify::Watcher` instances are dropped).
+pub struct WatchHandle {
+    _workspace: RecommendedWatcher,
+    _git_index: Option<RecommendedWatcher>,
+}
+
+/// Spawn the workspace + `.git/index` watchers.
+///
+/// Events are debounced per path over `debounce_window`, then forwarded as a
+/// `Vec<String>` over `fs_out`. Any event on `<root>/.git/index` (existing or
+/// not at start) emits a tick on `git_out`.
+///
+/// `cancel` is observed by the dispatcher loop; once cancelled the spawned
+/// task exits and the channels close.
+///
+/// # Errors
+/// Returns [`AppError::WatcherError`] if `notify` fails to construct or watch.
+#[allow(clippy::needless_pass_by_value)]
+pub fn spawn_workspace_watcher(
+    root: PathBuf,
+    fs_out: Sender<Vec<String>>,
+    git_out: Sender<()>,
+    cancel: CancellationToken,
+    debounce_window: Duration,
+) -> AppResult<WatchHandle> {
+    let pending: Arc<Mutex<HashMap<PathBuf, Instant>>> = Arc::new(Mutex::new(HashMap::new()));
+
+    let pending_for_ws = Arc::clone(&pending);
+    let root_for_ws = root.clone();
+    let mut ws_watcher: RecommendedWatcher =
+        notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
+            if let Ok(event) = res {
+                let interesting = matches!(
+                    event.kind,
+                    EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_)
+                );
+                if !interesting {
+                    return;
+                }
+                let Ok(mut guard) = pending_for_ws.lock() else {
+                    return;
+                };
+                let now = Instant::now();
+                for p in event.paths {
+                    if is_ignored(&p, &root_for_ws) {
+                        continue;
+                    }
+                    guard.insert(p, now);
+                }
+            }
+        })
+        .map_err(|e| AppError::watcher(format!("create workspace watcher: {e}")))?;
+
+    ws_watcher
+        .configure(Config::default())
+        .map_err(|e| AppError::watcher(format!("configure watcher: {e}")))?;
+    ws_watcher
+        .watch(&root, RecursiveMode::Recursive)
+        .map_err(|e| AppError::watcher(format!("watch root: {e}")))?;
+
+    let git_index = root.join(".git/index");
+    let git_watcher = if git_index.exists() {
+        let git_out_for_cb = git_out.clone();
+        let mut g: RecommendedWatcher =
+            notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
+                if res.is_ok() {
+                    let _ = git_out_for_cb.try_send(());
+                }
+            })
+            .map_err(|e| AppError::watcher(format!("create git watcher: {e}")))?;
+        g.watch(&git_index, RecursiveMode::NonRecursive)
+            .map_err(|e| AppError::watcher(format!("watch .git/index: {e}")))?;
+        Some(g)
+    } else {
+        None
+    };
+
+    let pending_for_loop = Arc::clone(&pending);
+    let cancel_for_loop = cancel.clone();
+    tokio::spawn(async move {
+        let tick = Duration::from_millis(50);
+        loop {
+            if cancel_for_loop.is_cancelled() {
+                return;
+            }
+            tokio::time::sleep(tick).await;
+            let now = Instant::now();
+            let drained: Vec<PathBuf> = {
+                let Ok(mut guard) = pending_for_loop.lock() else {
+                    return;
+                };
+                let due: Vec<PathBuf> = guard
+                    .iter()
+                    .filter(|(_, t)| now.duration_since(**t) >= debounce_window)
+                    .map(|(p, _)| p.clone())
+                    .collect();
+                for p in &due {
+                    guard.remove(p);
+                }
+                due
+            };
+            if !drained.is_empty() {
+                let paths: Vec<String> = drained
+                    .iter()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .collect();
+                if fs_out.send(paths).await.is_err() {
+                    return;
+                }
+            }
+        }
+    });
+
+    Ok(WatchHandle {
+        _workspace: ws_watcher,
+        _git_index: git_watcher,
+    })
+}
