@@ -633,3 +633,15 @@ body,
   border-radius: 3px;
 }
 .daisu-icon-btn-sm:hover { background: rgba(255,255,255,0.08); }
+
+.daisu-settings-panel { padding: 16px 24px; overflow-y: auto; flex: 1; }
+.daisu-settings-panel-title {
+  font-size: 18px; font-weight: 600; margin: 0 0 12px;
+  color: var(--daisu-fg, #ccc);
+}
+.daisu-btn-primary {
+  background: #0078d4; color: #fff;
+  border: 0; padding: 6px 14px; border-radius: 3px;
+  cursor: pointer; font-size: 13px;
+}
+.daisu-btn-primary:hover { background: #1f8ad8; }
