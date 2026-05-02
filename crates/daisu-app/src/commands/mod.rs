@@ -1,4 +1,5 @@
 pub mod file_ops;
+pub mod session;
 pub mod webview;
 pub mod workspace;
 
