@@ -68,6 +68,26 @@ export function App(): JSX.Element {
     };
   }, [saveTabsSession]);
 
+  useEffect(() => {
+    if (!workspaceHash) return;
+    const interval = window.setInterval(() => {
+      const dirty = useTabs
+        .getState()
+        .tabs.some((t) => t.content !== t.savedContent);
+      if (dirty) {
+        void saveTabsSession();
+      }
+    }, 5000);
+    const onBlur = (): void => {
+      void saveTabsSession();
+    };
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [workspaceHash, saveTabsSession]);
+
   const hydrate = useWorkspace((s) => s.hydrate);
   const applyBatch = useWorkspace((s) => s.applyBatch);
   const applyFsChange = useWorkspace((s) => s.applyFsChange);
