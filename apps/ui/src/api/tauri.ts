@@ -95,3 +95,24 @@ export async function restoreFromTrashCmd(refs: TrashRef[]): Promise<void> {
 export async function copyPathCmd(from: string, toParent: string): Promise<string> {
   return invoke<string>("copy_path", { from, toParent });
 }
+
+export async function openFile(path: string): Promise<OpenedFile> {
+  return invoke<OpenedFile>("open_file", { path });
+}
+
+export async function saveSessionCmd(
+  workspaceHash: string,
+  blob: unknown,
+): Promise<void> {
+  await invoke<void>("save_session", { workspaceHash, blob });
+}
+
+export async function loadSessionCmd(
+  workspaceHash: string,
+): Promise<unknown | null> {
+  return invoke<unknown | null>("load_session", { workspaceHash });
+}
+
+export async function deleteSessionCmd(workspaceHash: string): Promise<void> {
+  await invoke<void>("delete_session", { workspaceHash });
+}
