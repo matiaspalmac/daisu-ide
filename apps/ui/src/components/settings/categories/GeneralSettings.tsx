@@ -6,9 +6,10 @@ export function GeneralSettings(): JSX.Element {
     <div className="daisu-settings-panel">
       <h2 className="daisu-settings-panel-title">General</h2>
       <ToggleField
-        category="general"
-        field="autoSwitchSystemTheme"
+        category="themes"
+        field="autoSwitchOnSystem"
         label="Auto-switch theme based on OS preference"
+        description="Daisu will follow Windows light/dark preference."
       />
       <ToggleField
         category="general"

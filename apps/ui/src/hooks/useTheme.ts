@@ -7,18 +7,36 @@ import { toCssVars, toMonacoTheme } from "../lib/theme-loader";
 import { getMonacoNamespace } from "../lib/monaco-editor-ref";
 import { useSettings } from "../stores/settingsStore";
 
+let pendingThemeId: string | null = null;
+
 export async function applyTheme(id: string): Promise<void> {
-  const json = await readThemeJsonCmd(id);
-  const parsed = ThemeSchema.parse(json);
-  const cssVars = toCssVars(parsed.colors ?? {});
-  for (const [varName, value] of Object.entries(cssVars)) {
-    document.documentElement.style.setProperty(varName, value);
+  try {
+    const json = await readThemeJsonCmd(id);
+    const parsed = ThemeSchema.parse(json);
+    const cssVars = toCssVars(parsed.colors ?? {});
+    for (const [varName, value] of Object.entries(cssVars)) {
+      document.documentElement.style.setProperty(varName, value);
+    }
+    const monaco = getMonacoNamespace();
+    if (!monaco) {
+      // Editor not mounted yet. Remember the id so we can re-apply once
+      // <Editor>'s onMount calls setMonacoNamespace.
+      pendingThemeId = id;
+      return;
+    }
+    const monacoData = toMonacoTheme(parsed) as monacoNs.editor.IStandaloneThemeData;
+    monaco.editor.defineTheme(id, monacoData);
+    monaco.editor.setTheme(id);
+    pendingThemeId = null;
+  } catch {
+    // Best-effort: a failed theme load leaves the previous theme intact.
   }
-  const monaco = getMonacoNamespace();
-  if (!monaco) return;
-  const monacoData = toMonacoTheme(parsed) as monacoNs.editor.IStandaloneThemeData;
-  monaco.editor.defineTheme(id, monacoData);
-  monaco.editor.setTheme(id);
+}
+
+export function flushPendingTheme(): void {
+  if (pendingThemeId) {
+    void applyTheme(pendingThemeId);
+  }
 }
 
 export function useTheme(): void {
@@ -43,12 +61,20 @@ export function useTheme(): void {
     apply();
     mql.addEventListener("change", apply);
 
+    let cancelled = false;
     let unlistenTauri: (() => void) | null = null;
     void listen<"light" | "dark">("tauri://theme-changed", apply).then((fn) => {
+      if (cancelled) {
+        // Cleanup ran before the listen promise resolved — invoke fn immediately
+        // so the listener does not leak past the effect's lifetime.
+        fn();
+        return;
+      }
       unlistenTauri = fn;
     });
 
     return () => {
+      cancelled = true;
       mql.removeEventListener("change", apply);
       if (unlistenTauri) unlistenTauri();
     };

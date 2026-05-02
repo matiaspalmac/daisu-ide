@@ -17,15 +17,14 @@ export function KeybindingsList(): JSX.Element {
       </div>
       {visible.map((action) => {
         const isGoto = action.id === "tabs.goto1";
-        const label = isGoto ? "Go to tab 1–9" : action.label;
-        const defaultBinding = isGoto ? "$mod+1..9" : action.defaultBinding;
+        const label = isGoto ? "Go to tab 1 (1–9 series)" : action.label;
         return (
           <div className="daisu-keybindings-row-wrap" key={action.id}>
             <span className="daisu-keybindings-cat">{action.category}</span>
             <KeybindingField
               actionId={action.id}
               actionLabel={label}
-              defaultBinding={defaultBinding}
+              defaultBinding={action.defaultBinding}
             />
           </div>
         );

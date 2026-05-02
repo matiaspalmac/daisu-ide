@@ -67,6 +67,12 @@ export function KeybindingField(props: Props): JSX.Element {
   useEffect(() => {
     if (!recording) return;
     const onKey = (e: KeyboardEvent): void => {
+      // Explicit Esc cancels recording without saving.
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setRecording(false);
+        return;
+      }
       const combo = eventToCombo(e);
       if (!combo) return;
       e.preventDefault();

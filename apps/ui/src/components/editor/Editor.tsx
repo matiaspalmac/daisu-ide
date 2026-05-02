@@ -7,6 +7,7 @@ import {
   setActiveEditor,
   setMonacoNamespace,
 } from "../../lib/monaco-editor-ref";
+import { flushPendingTheme } from "../../hooks/useTheme";
 
 type IStandaloneCodeEditor = monacoNs.editor.IStandaloneCodeEditor;
 
@@ -21,6 +22,7 @@ export function Editor(): JSX.Element {
     monacoRef.current = monaco;
     setActiveEditor(editor);
     setMonacoNamespace(monaco);
+    flushPendingTheme();
     syncActiveTab();
   };
 
