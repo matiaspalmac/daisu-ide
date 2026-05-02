@@ -18,6 +18,20 @@ export function ToastViewport(): JSX.Element {
           duration={t.durationMs ?? 5000}
         >
           <RadixToast.Title className="daisu-toast-title">{t.message}</RadixToast.Title>
+          {t.action && (
+            <RadixToast.Action altText={t.action.label} asChild>
+              <button
+                type="button"
+                className="daisu-toast-action"
+                onClick={() => {
+                  const result = t.action?.onAction();
+                  Promise.resolve(result).finally(() => dismiss(t.id));
+                }}
+              >
+                {t.action.label}
+              </button>
+            </RadixToast.Action>
+          )}
           <RadixToast.Close className="daisu-toast-close" aria-label="Close">
             ×
           </RadixToast.Close>

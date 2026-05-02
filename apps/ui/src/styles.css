@@ -255,3 +255,13 @@ body,
 
 .daisu-welcome h2 { margin: 0 0 8px 0; font-size: 18px; }
 .daisu-welcome p { margin: 0; font-size: 13px; }
+
+.daisu-toast-action {
+  background: transparent;
+  color: #3794ff;
+  border: 0;
+  padding: 0 8px;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
