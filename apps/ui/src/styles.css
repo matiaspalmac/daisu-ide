@@ -694,3 +694,29 @@ body,
 }
 .daisu-keybindings-cat { font-size: 11px; color: #888; padding-left: 16px; }
 .daisu-keybindings-hint { font-size: 12px; color: #888; padding: 0 16px 12px; }
+
+.daisu-settings-modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 90vw; height: 85vh; max-width: 1100px;
+  background: var(--daisu-bg, #1f1f1f); color: var(--daisu-fg, #ccc);
+  border: 1px solid var(--daisu-border, #2b2b2b); border-radius: 6px;
+  display: flex; flex-direction: column; z-index: 90;
+}
+.daisu-settings-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid var(--daisu-border, #2b2b2b);
+}
+.daisu-settings-title { font-size: 14px; font-weight: 600; margin: 0; }
+.daisu-settings-body { display: flex; flex: 1; min-height: 0; }
+.daisu-settings-sidebar {
+  width: 160px; flex-shrink: 0; padding: 8px 0;
+  border-right: 1px solid var(--daisu-border, #2b2b2b);
+  display: flex; flex-direction: column;
+}
+.daisu-settings-nav-item {
+  background: transparent; border: 0; text-align: left;
+  padding: 8px 16px; cursor: pointer; color: var(--daisu-fg, #ccc); font-size: 13px;
+}
+.daisu-settings-nav-item:hover { background: rgba(255,255,255,0.05); }
+.daisu-settings-nav-item.is-active { background: #0078d4; color: #fff; }
+.daisu-settings-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
