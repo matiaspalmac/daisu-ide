@@ -604,3 +604,32 @@ body,
   border: 1px solid #3c3c3c; border-radius: 3px; font-size: 13px;
 }
 .daisu-input-number { width: 80px; min-width: 0; }
+
+.daisu-keybinding-row {
+  display: grid;
+  grid-template-columns: 1fr 200px auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #2b2b2b;
+  font-size: 13px;
+}
+.daisu-keybinding-label { color: var(--daisu-fg, #ccc); }
+.daisu-keybinding-combo {
+  font-family: Cascadia Code, Consolas, monospace;
+  font-size: 12px;
+  color: #aaa;
+  padding: 2px 6px;
+  background: #2d2d2d;
+  border-radius: 3px;
+  text-align: center;
+}
+.daisu-icon-btn-sm {
+  background: transparent;
+  border: 0;
+  color: #aaa;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.daisu-icon-btn-sm:hover { background: rgba(255,255,255,0.08); }
