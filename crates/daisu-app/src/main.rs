@@ -6,6 +6,7 @@ use daisu_app::{commands, AppState};
 use tauri::{Emitter, Manager, WebviewWindow};
 
 const DROPPED_PATH_EVENT: &str = "system:dropped-path";
+const BEFORE_CLOSE_EVENT: &str = "system:before-close";
 
 fn main() {
     tauri::Builder::default()
@@ -26,11 +27,15 @@ fn main() {
             commands::file_ops::copy_path,
             commands::workspace::open_workspace,
             commands::workspace::close_workspace,
+            commands::session::save_session,
+            commands::session::load_session,
+            commands::session::delete_session,
             commands::webview::detect_webview2
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 wire_drag_drop(&window, app.handle().clone());
+                wire_before_close(&window, app.handle().clone());
             }
             Ok(())
         })
@@ -45,6 +50,14 @@ fn wire_drag_drop(window: &WebviewWindow, handle: tauri::AppHandle) {
                 let path: PathBuf = first.clone();
                 let _ = handle.emit(DROPPED_PATH_EVENT, path.display().to_string());
             }
+        }
+    });
+}
+
+fn wire_before_close(window: &WebviewWindow, handle: tauri::AppHandle) {
+    window.on_window_event(move |event| {
+        if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+            let _ = handle.emit(BEFORE_CLOSE_EVENT, ());
         }
     });
 }

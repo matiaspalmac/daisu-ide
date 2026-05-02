@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -25,5 +26,10 @@ export default defineConfig(async () => ({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.ts"],
+    alias: {
+      "monaco-editor": fileURLToPath(
+        new URL("./tests/__mocks__/monaco-editor.ts", import.meta.url),
+      ),
+    },
   },
 }));

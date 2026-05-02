@@ -5,11 +5,6 @@ import { useUI } from "../../stores/uiStore";
 import { useTabs } from "../../stores/tabsStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { Icon } from "../ui/Icon";
-import {
-  openFileViaDialog,
-  saveFile,
-  saveFileAsViaDialog,
-} from "../../api/tauri";
 import { translateError } from "../../lib/error-translate";
 
 export function Toolbar(): JSX.Element {
@@ -18,27 +13,30 @@ export function Toolbar(): JSX.Element {
   const toggleSearch = useUI((s) => s.toggleSearchPanel);
   const openSettings = useUI((s) => s.openSettings);
   const pushToast = useUI((s) => s.pushToast);
+  const openTab = useTabs((s) => s.openTab);
+  const saveActive = useTabs((s) => s.saveActive);
+  const newTab = useTabs((s) => s.newTab);
+  const openWorkspace = useWorkspace((s) => s.openWorkspace);
+
+  const handleNew = useCallback((): void => {
+    newTab();
+  }, [newTab]);
 
   const handleOpen = useCallback(async (): Promise<void> => {
     try {
-      const opened = await openFileViaDialog();
-      if (opened === null) return;
-      const tabs = useTabs.getState();
-      tabs.addTab({
-        path: opened.path,
-        name: opened.path.split(/[\\/]/).pop() ?? opened.path,
-        language: opened.language,
-        content: opened.contents,
+      const selected = await openDialog({
+        multiple: false,
+        directory: false,
+        title: "Open file",
       });
+      if (typeof selected === "string") {
+        await openTab(selected);
+      }
     } catch (err) {
-      pushToast({
-        message: err instanceof Error ? err.message : String(err),
-        level: "error",
-      });
+      pushToast({ message: translateError(err), level: "error" });
     }
-  }, [pushToast]);
+  }, [openTab, pushToast]);
 
-  const openWorkspace = useWorkspace((s) => s.openWorkspace);
   const handleOpenFolder = useCallback(async (): Promise<void> => {
     try {
       const selected = await openDialog({ directory: true, multiple: false });
@@ -51,27 +49,13 @@ export function Toolbar(): JSX.Element {
   }, [openWorkspace, pushToast]);
 
   const handleSave = useCallback(async (): Promise<void> => {
-    const tabs = useTabs.getState();
-    const tab = tabs.activeTab();
-    if (!tab) return;
     try {
-      let path = tab.path;
-      if (path === null) {
-        const saved = await saveFileAsViaDialog(tab.content);
-        if (saved === null) return;
-        path = saved;
-      } else {
-        await saveFile(path, tab.content);
-      }
-      tabs.markSaved(tab.id);
-      pushToast({ message: `Saved ${path}`, level: "success" });
+      await saveActive();
+      pushToast({ message: "Saved", level: "success" });
     } catch (err) {
-      pushToast({
-        message: err instanceof Error ? err.message : String(err),
-        level: "error",
-      });
+      pushToast({ message: translateError(err), level: "error" });
     }
-  }, [pushToast]);
+  }, [saveActive, pushToast]);
 
   return (
     <header className="daisu-toolbar" role="toolbar">
@@ -86,6 +70,7 @@ export function Toolbar(): JSX.Element {
       <h1>Daisu IDE</h1>
       <button type="button" onClick={handleOpen} className="daisu-btn">Open…</button>
       <button type="button" onClick={handleOpenFolder} className="daisu-btn">Open Folder…</button>
+      <button type="button" onClick={handleNew} className="daisu-btn">+ New</button>
       <button type="button" onClick={handleSave} className="daisu-btn">Save</button>
       <span className="daisu-toolbar-spacer" />
       <button
