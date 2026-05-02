@@ -528,3 +528,20 @@ body,
   justify-content: flex-end;
   gap: 8px;
 }
+
+.daisu-tab-overflow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  background: #2d2d2d;
+  border: 0;
+  color: var(--daisu-fg, #cccccc);
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.daisu-tab-overflow:hover {
+  background: #3a3a3a;
+}
