@@ -135,3 +135,21 @@ body,
 }
 
 .daisu-toast-close:hover { opacity: 1; }
+
+.daisu-icon-btn {
+  background: transparent;
+  border: 0;
+  color: var(--daisu-foreground, #cccccc);
+  cursor: pointer;
+  height: 26px;
+  width: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  opacity: 0.7;
+}
+
+.daisu-icon-btn:hover { opacity: 1; background: var(--daisu-toolbar-hoverBackground, #2a2d2e); }
+
+.daisu-toolbar-spacer { flex: 1; }
