@@ -32,6 +32,15 @@ describe("joinPath", () => {
   it("trims trailing separator from base", () => {
     expect(joinPath("C:\\Users\\", "Matias")).toBe("C:\\Users\\Matias");
   });
+  it("strips leading forward-slash from child", () => {
+    expect(joinPath("C:\\Users", "/Matias")).toBe("C:\\Users\\Matias");
+  });
+  it("strips leading backslash from child", () => {
+    expect(joinPath("C:\\Users", "\\Matias")).toBe("C:\\Users\\Matias");
+  });
+  it("trims separators on both ends simultaneously", () => {
+    expect(joinPath("C:\\Users\\", "\\Matias")).toBe("C:\\Users\\Matias");
+  });
 });
 
 describe("displayName", () => {
