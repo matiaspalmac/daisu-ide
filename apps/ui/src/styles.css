@@ -42,3 +42,34 @@ body,
   position: relative;
   overflow: hidden;
 }
+
+.daisu-toolbar {
+  gap: 12px;
+}
+
+.daisu-btn {
+  background: #0e639c;
+  color: white;
+  border: 0;
+  height: 22px;
+  padding: 0 10px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.daisu-btn:hover {
+  background: #1177bb;
+}
+
+.daisu-path {
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+  color: #888;
+}
+
+.daisu-err {
+  margin-left: auto;
+  color: #f48771;
+  font-size: 11px;
+}
