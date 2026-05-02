@@ -31,7 +31,12 @@ tauri-plugin-window-state = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "fs"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "fs", "time"] }
+notify = { workspace = true }
+walkdir = { workspace = true }
+trash = { workspace = true }
+tokio-util = { workspace = true, features = ["rt"] }
+sha1 = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-registry = "0.6"

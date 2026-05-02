@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { useEffect } from "react";
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
+import { listen } from "@tauri-apps/api/event";
 import { TitleBar } from "./components/layout/TitleBar";
 import { Toolbar } from "./components/layout/Toolbar";
 import { Sidebar } from "./components/layout/Sidebar";
@@ -11,6 +12,8 @@ import { SearchPanel } from "./components/layout/SearchPanel";
 import { ToastViewport } from "./components/ui/Toast";
 import { useUI } from "./stores/uiStore";
 import { useSettings } from "./stores/settingsStore";
+import { useWorkspace } from "./stores/workspaceStore";
+import { copy } from "./lib/copy";
 
 // Note: react-resizable-panels v4 uses percentage-string sizing.
 // We use useDefaultLayout({ groupId, storage }) to persist sizes to
@@ -36,6 +39,70 @@ export function App(): JSX.Element {
   useEffect(() => {
     loadSettings().catch(() => undefined);
   }, [loadSettings]);
+
+  const hydrate = useWorkspace((s) => s.hydrate);
+  const applyBatch = useWorkspace((s) => s.applyBatch);
+  const applyFsChange = useWorkspace((s) => s.applyFsChange);
+  const openWorkspace = useWorkspace((s) => s.openWorkspace);
+  const pushToast = useUI((s) => s.pushToast);
+
+  useEffect(() => {
+    hydrate().catch(() => undefined);
+
+    const unlistenPromises: Promise<() => void>[] = [];
+
+    unlistenPromises.push(
+      listen<{
+        batch_id: string;
+        parent_path: string | null;
+        nodes: Array<{
+          path: string;
+          name: string;
+          kind: "file" | "dir";
+          size: number | null;
+          mtimeMs: number | null;
+        }>;
+        done: boolean;
+        error: string | null;
+      }>("workspace:tree-batch", (event) => {
+        applyBatch({
+          batchId: event.payload.batch_id,
+          parentPath: event.payload.parent_path,
+          nodes: event.payload.nodes,
+          done: event.payload.done,
+        });
+      })
+    );
+
+    unlistenPromises.push(
+      listen<{ paths: string[] }>("workspace:fs-changed", (event) => {
+        void applyFsChange(event.payload.paths);
+      })
+    );
+
+    unlistenPromises.push(
+      listen<void>("workspace:git-index", () => {
+        // Phase 5 wires gitStore.refresh() here.
+      })
+    );
+
+    unlistenPromises.push(
+      listen<string>("system:dropped-path", async (event) => {
+        const path = event.payload;
+        try {
+          await openWorkspace(path);
+        } catch {
+          pushToast({ message: copy.toasts.droppedNonDir, level: "warning" });
+        }
+      })
+    );
+
+    return () => {
+      for (const p of unlistenPromises) {
+        p.then((fn) => fn()).catch(() => undefined);
+      }
+    };
+  }, [hydrate, applyBatch, applyFsChange, openWorkspace, pushToast]);
 
   return (
     <main className="daisu-shell">

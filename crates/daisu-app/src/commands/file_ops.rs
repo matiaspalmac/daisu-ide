@@ -28,6 +28,377 @@ pub struct OpenedFile {
     pub language: String,
 }
 
+/// Names skipped at any depth. Hard-coded for Phase 2; Phase 4 will surface
+/// these as a user-configurable setting.
+const IGNORE_NAMES: &[&str] = &["target", "node_modules", "dist", ".git"];
+
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum FileKind {
+    File,
+    Dir,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct FileEntry {
+    pub path: String,
+    pub name: String,
+    pub kind: FileKind,
+    pub size: Option<u64>,
+    #[serde(rename = "mtimeMs")]
+    pub mtime_ms: Option<u64>,
+}
+
+/// List the immediate children of `path`, filtering ignored names.
+///
+/// Returns entries unsorted; callers (frontend) handle natural-order sorting
+/// because mixed file/dir ordering is a UI concern.
+///
+/// # Errors
+/// Returns [`AppError::NotFound`] / [`AppError::IoError`] on FS failures.
+pub async fn list_dir_at(path: &Path) -> AppResult<Vec<FileEntry>> {
+    let mut read = match tokio::fs::read_dir(path).await {
+        Ok(r) => r,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Err(AppError::not_found(path.display().to_string()));
+        }
+        Err(e) => return Err(e.into()),
+    };
+
+    let mut out: Vec<FileEntry> = Vec::new();
+    while let Some(entry) = read.next_entry().await? {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if IGNORE_NAMES.contains(&name.as_str()) {
+            continue;
+        }
+        let Ok(metadata) = entry.metadata().await else {
+            continue;
+        };
+        let kind = if metadata.is_dir() {
+            FileKind::Dir
+        } else {
+            FileKind::File
+        };
+        let size = metadata.is_file().then_some(metadata.len());
+        let mtime_ms = metadata
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
+        let path_str = entry.path().to_string_lossy().into_owned();
+        out.push(FileEntry {
+            path: path_str,
+            name,
+            kind,
+            size,
+            mtime_ms,
+        });
+    }
+    Ok(out)
+}
+
+/// Tauri command form of [`list_dir_at`].
+///
+/// # Errors
+/// Propagates errors from [`list_dir_at`].
+#[tauri::command]
+pub async fn list_dir(path: String) -> AppResult<Vec<FileEntry>> {
+    list_dir_at(Path::new(&path)).await
+}
+
+/// Create an empty file at `parent/name`. `name` must pass [`validate_filename`].
+///
+/// # Errors
+/// - [`AppError::InvalidName`] if `name` violates filename rules
+/// - [`AppError::AlreadyExists`] if the target already exists
+/// - [`AppError::IoError`] on other I/O failures (parent missing, permission, ...)
+pub async fn create_file_at(parent: &Path, name: &str) -> AppResult<String> {
+    crate::validation::validate_filename(name)?;
+    let new_path = parent.join(name);
+    if tokio::fs::try_exists(&new_path).await.unwrap_or(false) {
+        return Err(AppError::already_exists(new_path.display().to_string()));
+    }
+    let f = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&new_path)
+        .await;
+    match f {
+        Ok(_handle) => Ok(new_path.display().to_string()),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            Err(AppError::already_exists(new_path.display().to_string()))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Create a directory at `parent/name`. `name` must pass [`validate_filename`].
+///
+/// # Errors
+/// Same as [`create_file_at`] but for directories.
+pub async fn create_dir_at(parent: &Path, name: &str) -> AppResult<String> {
+    crate::validation::validate_filename(name)?;
+    let new_path = parent.join(name);
+    if tokio::fs::try_exists(&new_path).await.unwrap_or(false) {
+        return Err(AppError::already_exists(new_path.display().to_string()));
+    }
+    match tokio::fs::create_dir(&new_path).await {
+        Ok(()) => Ok(new_path.display().to_string()),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            Err(AppError::already_exists(new_path.display().to_string()))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Tauri command form of [`create_file_at`].
+///
+/// # Errors
+/// Propagates errors from [`create_file_at`].
+#[tauri::command]
+pub async fn create_file(parent: String, name: String) -> AppResult<String> {
+    create_file_at(Path::new(&parent), &name).await
+}
+
+/// Tauri command form of [`create_dir_at`].
+///
+/// # Errors
+/// Propagates errors from [`create_dir_at`].
+#[tauri::command]
+pub async fn create_dir(parent: String, name: String) -> AppResult<String> {
+    create_dir_at(Path::new(&parent), &name).await
+}
+
+/// Rename `from` to a sibling at `parent(from)/to_name`.
+///
+/// `to_name` must pass [`crate::validation::validate_filename`]. The destination must not exist.
+/// Operation is atomic on the same volume (Windows / NTFS).
+///
+/// # Errors
+/// - [`AppError::InvalidName`] if `to_name` violates rules
+/// - [`AppError::AlreadyExists`] if dest already exists
+/// - [`AppError::NotFound`] if source missing
+pub async fn rename_path_at(from: &Path, to_name: &str) -> AppResult<String> {
+    crate::validation::validate_filename(to_name)?;
+    let parent = from
+        .parent()
+        .ok_or_else(|| AppError::Internal(format!("path has no parent: {}", from.display())))?;
+    let dest = parent.join(to_name);
+    if !tokio::fs::try_exists(from).await.unwrap_or(false) {
+        return Err(AppError::not_found(from.display().to_string()));
+    }
+    if tokio::fs::try_exists(&dest).await.unwrap_or(false) {
+        return Err(AppError::already_exists(dest.display().to_string()));
+    }
+    tokio::fs::rename(from, &dest).await?;
+    Ok(dest.display().to_string())
+}
+
+/// Tauri command form of [`rename_path_at`].
+///
+/// # Errors
+/// Propagates errors from [`rename_path_at`].
+#[tauri::command]
+pub async fn rename_path(from: String, to_name: String) -> AppResult<String> {
+    rename_path_at(Path::new(&from), &to_name).await
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TrashRef {
+    /// Original path before deletion. The frontend uses this for the optimistic
+    /// undo flow even when the platform-specific trash handle isn't enough.
+    pub original_path: String,
+}
+
+/// Move each path to the OS trash. Returns refs the caller stores for undo.
+///
+/// Uses the `trash` crate which on Windows shells out to the recycle bin.
+///
+/// # Errors
+/// Returns [`AppError::IoError`] only when the `trash` crate failed for every
+/// path (none could be moved). Otherwise returns the refs for those that
+/// succeeded; partial failures are silently absorbed by design (Phase 2 prefers
+/// optimistic UX over halting on partial errors).
+pub async fn delete_to_trash_paths(paths: &[String]) -> AppResult<Vec<TrashRef>> {
+    let owned: Vec<String> = paths.to_vec();
+    let result = tokio::task::spawn_blocking(move || {
+        let mut refs: Vec<TrashRef> = Vec::with_capacity(owned.len());
+        let mut first_err: Option<String> = None;
+        for path in &owned {
+            match trash::delete(path) {
+                Ok(()) => refs.push(TrashRef {
+                    original_path: path.clone(),
+                }),
+                Err(e) => {
+                    if first_err.is_none() {
+                        first_err = Some(format!("trash error for {path}: {e}"));
+                    }
+                }
+            }
+        }
+        (refs, first_err)
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("blocking task panicked: {e}")))?;
+
+    if result.0.is_empty() {
+        if let Some(msg) = result.1 {
+            return Err(AppError::IoError {
+                kind: "Trash".into(),
+                message: msg,
+            });
+        }
+    }
+    Ok(result.0)
+}
+
+/// Best-effort restore of items previously sent to trash via
+/// [`delete_to_trash_paths`].
+///
+/// # Errors
+/// Returns [`AppError::Internal`] only if the blocking task itself panics.
+/// Trash crate failures during restore are absorbed silently (Phase 2 surfaces
+/// partial-success in the frontend Toast).
+pub async fn restore_from_trash_refs(refs: &[TrashRef]) -> AppResult<()> {
+    let owned: Vec<TrashRef> = refs.to_vec();
+    tokio::task::spawn_blocking(move || -> AppResult<()> {
+        #[cfg(windows)]
+        {
+            use trash::os_limited;
+            let Ok(items) = os_limited::list() else {
+                return Ok(());
+            };
+            for r in &owned {
+                let want = std::path::PathBuf::from(&r.original_path);
+                let matches: Vec<_> = items
+                    .iter()
+                    .filter(|it| it.original_path() == want)
+                    .cloned()
+                    .collect();
+                if !matches.is_empty() {
+                    let _ = os_limited::restore_all(matches);
+                }
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = owned;
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("blocking task panicked: {e}")))?
+}
+
+/// Tauri command form of [`delete_to_trash_paths`].
+///
+/// # Errors
+/// Propagates errors from [`delete_to_trash_paths`].
+#[tauri::command]
+pub async fn delete_to_trash(paths: Vec<String>) -> AppResult<Vec<TrashRef>> {
+    delete_to_trash_paths(&paths).await
+}
+
+/// Tauri command form of [`restore_from_trash_refs`].
+///
+/// # Errors
+/// Propagates errors from [`restore_from_trash_refs`].
+#[tauri::command]
+pub async fn restore_from_trash(refs: Vec<TrashRef>) -> AppResult<()> {
+    restore_from_trash_refs(&refs).await
+}
+
+/// Recursively copy `from` into `to_parent`, picking a unique target name.
+///
+/// Conflict resolution: append " (copy)" / " (copy N)" to the source name
+/// until unique, up to 99 attempts.
+///
+/// # Errors
+/// - [`AppError::AlreadyExists`] if no unique name is found within 99 attempts
+/// - I/O errors propagated as [`AppError::IoError`]
+pub async fn copy_path_at(from: &Path, to_parent: &Path) -> AppResult<String> {
+    let stem_full = from
+        .file_name()
+        .ok_or_else(|| AppError::Internal(format!("path has no name: {}", from.display())))?
+        .to_string_lossy()
+        .into_owned();
+
+    let dest = pick_unique_name(to_parent, &stem_full).await?;
+    let metadata = tokio::fs::metadata(from).await?;
+
+    if metadata.is_dir() {
+        copy_dir_recursive(from, &dest).await?;
+    } else {
+        tokio::fs::copy(from, &dest).await?;
+    }
+    Ok(dest.display().to_string())
+}
+
+async fn pick_unique_name(to_parent: &Path, original_name: &str) -> AppResult<std::path::PathBuf> {
+    let direct = to_parent.join(original_name);
+    if !tokio::fs::try_exists(&direct).await.unwrap_or(false) {
+        return Ok(direct);
+    }
+    let (stem, ext) = match original_name.rsplit_once('.') {
+        Some((s, e)) if !s.is_empty() => (s.to_string(), format!(".{e}")),
+        _ => (original_name.to_string(), String::new()),
+    };
+    for n in 1..=99u32 {
+        let candidate = if n == 1 {
+            format!("{stem} (copy){ext}")
+        } else {
+            format!("{stem} (copy {n}){ext}")
+        };
+        let p = to_parent.join(&candidate);
+        if !tokio::fs::try_exists(&p).await.unwrap_or(false) {
+            return Ok(p);
+        }
+    }
+    Err(AppError::already_exists(
+        to_parent.join(original_name).display().to_string(),
+    ))
+}
+
+async fn copy_dir_recursive(from: &Path, to: &Path) -> AppResult<()> {
+    let from_owned = from.to_path_buf();
+    let entries: Vec<(std::path::PathBuf, std::path::PathBuf, bool)> =
+        tokio::task::spawn_blocking(move || {
+            let mut out: Vec<(std::path::PathBuf, std::path::PathBuf, bool)> = Vec::new();
+            for entry in walkdir::WalkDir::new(&from_owned).into_iter().flatten() {
+                let rel = entry
+                    .path()
+                    .strip_prefix(&from_owned)
+                    .unwrap_or(entry.path())
+                    .to_path_buf();
+                out.push((entry.path().to_path_buf(), rel, entry.file_type().is_dir()));
+            }
+            out
+        })
+        .await
+        .map_err(|e| AppError::Internal(format!("walkdir spawn_blocking: {e}")))?;
+
+    tokio::fs::create_dir_all(to).await?;
+    for (src, rel, is_dir) in entries {
+        let dst = to.join(rel);
+        if is_dir {
+            tokio::fs::create_dir_all(&dst).await?;
+        } else if let Some(parent) = dst.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+            tokio::fs::copy(&src, &dst).await?;
+        }
+    }
+    Ok(())
+}
+
+/// Tauri command form of [`copy_path_at`].
+///
+/// # Errors
+/// Propagates errors from [`copy_path_at`].
+#[tauri::command]
+pub async fn copy_path(from: String, to_parent: String) -> AppResult<String> {
+    copy_path_at(Path::new(&from), Path::new(&to_parent)).await
+}
+
 #[must_use]
 pub fn detect_language(path: &Path) -> String {
     let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");

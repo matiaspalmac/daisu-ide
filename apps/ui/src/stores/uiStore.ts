@@ -3,11 +3,17 @@ import { nanoid } from "nanoid";
 
 export type ToastLevel = "info" | "success" | "warning" | "error";
 
+export interface ToastAction {
+  label: string;
+  onAction: () => void | Promise<void>;
+}
+
 export interface Toast {
   id: string;
   message: string;
   level: ToastLevel;
   durationMs?: number;
+  action?: ToastAction;
 }
 
 interface UIState {

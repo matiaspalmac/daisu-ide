@@ -1,5 +1,5 @@
-import { render } from "@testing-library/react";
-import { describe, expect, it, beforeEach } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { axe } from "vitest-axe";
 import { ToastViewport } from "../../src/components/ui/Toast";
 import { useUI } from "../../src/stores/uiStore";
@@ -30,5 +30,17 @@ describe("ToastViewport accessibility", () => {
     const { container } = render(<ToastViewport />);
     const results = await axe(container, AXE_OPTIONS);
     expect(results).toHaveNoViolations();
+  });
+
+  it("renders an action button and calls onAction when clicked", () => {
+    const onAction = vi.fn();
+    useUI.getState().pushToast({
+      message: "Moved 1 item to trash",
+      level: "info",
+      action: { label: "Undo", onAction },
+    });
+    render(<ToastViewport />);
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(onAction).toHaveBeenCalledTimes(1);
   });
 });

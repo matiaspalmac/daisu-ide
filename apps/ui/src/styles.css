@@ -255,3 +255,165 @@ body,
 
 .daisu-welcome h2 { margin: 0 0 8px 0; font-size: 18px; }
 .daisu-welcome p { margin: 0; font-size: 13px; }
+
+.daisu-toast-action {
+  background: transparent;
+  color: #3794ff;
+  border: 0;
+  padding: 0 8px;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+
+.daisu-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+  color: var(--daisu-fg, #cccccc);
+}
+.daisu-tree-row.is-selected {
+  background: #264f78;
+}
+.daisu-tree-row:hover:not(.is-selected) {
+  background: rgba(255, 255, 255, 0.05);
+}
+.daisu-tree-chevron {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  transition: transform 100ms ease;
+}
+.daisu-tree-chevron.is-open {
+  transform: rotate(90deg);
+}
+.daisu-tree-chevron-spacer {
+  display: inline-block;
+  width: 14px;
+}
+.daisu-tree-icon {
+  flex-shrink: 0;
+}
+.daisu-tree-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.daisu-tree-edit {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--daisu-fg, #cccccc);
+  border: 1px solid #3794ff;
+  border-radius: 2px;
+  padding: 0 4px;
+  font: inherit;
+}
+.daisu-tree-git-badge {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.daisu-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 16px;
+  gap: 8px;
+}
+.daisu-empty-actions {
+  display: flex;
+  gap: 8px;
+}
+.daisu-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #3794ff;
+  animation: daisu-spin 800ms linear infinite;
+}
+@keyframes daisu-spin {
+  to { transform: rotate(360deg); }
+}
+
+.daisu-dropdown {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  padding: 4px;
+  min-width: 200px;
+  z-index: 50;
+}
+.daisu-dropdown-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 13px;
+  color: var(--daisu-fg, #cccccc);
+}
+.daisu-dropdown-item[data-highlighted] {
+  background: #094771;
+  outline: none;
+}
+.daisu-dropdown-separator {
+  height: 1px;
+  background: #3c3c3c;
+  margin: 4px 0;
+}
+.daisu-dropdown-empty {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #888;
+}
+
+.daisu-cmenu {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  padding: 4px;
+  min-width: 200px;
+  z-index: 60;
+}
+.daisu-cmenu-item {
+  padding: 4px 8px;
+  border-radius: 2px;
+  font-size: 13px;
+  color: var(--daisu-fg, #cccccc);
+  cursor: pointer;
+}
+.daisu-cmenu-item[data-disabled] {
+  color: #666;
+  cursor: default;
+}
+.daisu-cmenu-item[data-highlighted] {
+  background: #094771;
+  outline: none;
+}
+.daisu-cmenu-separator {
+  height: 1px;
+  background: #3c3c3c;
+  margin: 4px 0;
+}
+
+.daisu-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #888;
+  border-bottom: 1px solid #2a2a2a;
+}
+.daisu-sidebar-treezone {
+  height: 100%;
+  overflow: hidden;
+}
