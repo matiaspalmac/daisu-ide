@@ -308,6 +308,97 @@ pub async fn restore_from_trash(refs: Vec<TrashRef>) -> AppResult<()> {
     restore_from_trash_refs(&refs).await
 }
 
+/// Recursively copy `from` into `to_parent`, picking a unique target name.
+///
+/// Conflict resolution: append " (copy)" / " (copy N)" to the source name
+/// until unique, up to 99 attempts.
+///
+/// # Errors
+/// - [`AppError::AlreadyExists`] if no unique name is found within 99 attempts
+/// - I/O errors propagated as [`AppError::IoError`]
+pub async fn copy_path_at(from: &Path, to_parent: &Path) -> AppResult<String> {
+    let stem_full = from
+        .file_name()
+        .ok_or_else(|| AppError::Internal(format!("path has no name: {}", from.display())))?
+        .to_string_lossy()
+        .into_owned();
+
+    let dest = pick_unique_name(to_parent, &stem_full).await?;
+    let metadata = tokio::fs::metadata(from).await?;
+
+    if metadata.is_dir() {
+        copy_dir_recursive(from, &dest).await?;
+    } else {
+        tokio::fs::copy(from, &dest).await?;
+    }
+    Ok(dest.display().to_string())
+}
+
+async fn pick_unique_name(to_parent: &Path, original_name: &str) -> AppResult<std::path::PathBuf> {
+    let direct = to_parent.join(original_name);
+    if !tokio::fs::try_exists(&direct).await.unwrap_or(false) {
+        return Ok(direct);
+    }
+    let (stem, ext) = match original_name.rsplit_once('.') {
+        Some((s, e)) if !s.is_empty() => (s.to_string(), format!(".{e}")),
+        _ => (original_name.to_string(), String::new()),
+    };
+    for n in 1..=99u32 {
+        let candidate = if n == 1 {
+            format!("{stem} (copy){ext}")
+        } else {
+            format!("{stem} (copy {n}){ext}")
+        };
+        let p = to_parent.join(&candidate);
+        if !tokio::fs::try_exists(&p).await.unwrap_or(false) {
+            return Ok(p);
+        }
+    }
+    Err(AppError::already_exists(
+        to_parent.join(original_name).display().to_string(),
+    ))
+}
+
+async fn copy_dir_recursive(from: &Path, to: &Path) -> AppResult<()> {
+    let from_owned = from.to_path_buf();
+    let entries: Vec<(std::path::PathBuf, std::path::PathBuf, bool)> =
+        tokio::task::spawn_blocking(move || {
+            let mut out: Vec<(std::path::PathBuf, std::path::PathBuf, bool)> = Vec::new();
+            for entry in walkdir::WalkDir::new(&from_owned).into_iter().flatten() {
+                let rel = entry
+                    .path()
+                    .strip_prefix(&from_owned)
+                    .unwrap_or(entry.path())
+                    .to_path_buf();
+                out.push((entry.path().to_path_buf(), rel, entry.file_type().is_dir()));
+            }
+            out
+        })
+        .await
+        .map_err(|e| AppError::Internal(format!("walkdir spawn_blocking: {e}")))?;
+
+    tokio::fs::create_dir_all(to).await?;
+    for (src, rel, is_dir) in entries {
+        let dst = to.join(rel);
+        if is_dir {
+            tokio::fs::create_dir_all(&dst).await?;
+        } else if let Some(parent) = dst.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+            tokio::fs::copy(&src, &dst).await?;
+        }
+    }
+    Ok(())
+}
+
+/// Tauri command form of [`copy_path_at`].
+///
+/// # Errors
+/// Propagates errors from [`copy_path_at`].
+#[tauri::command]
+pub async fn copy_path(from: String, to_parent: String) -> AppResult<String> {
+    copy_path_at(Path::new(&from), Path::new(&to_parent)).await
+}
+
 #[must_use]
 pub fn detect_language(path: &Path) -> String {
     let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
