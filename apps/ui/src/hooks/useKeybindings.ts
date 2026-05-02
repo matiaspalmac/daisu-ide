@@ -1,53 +1,25 @@
 import { useEffect } from "react";
-import { useTabs } from "../stores/tabsStore";
-
-const NUMERIC_KEYS = new Set(["1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+import { tinykeys } from "tinykeys";
+import { ACTIONS } from "../lib/keybinding-registry";
+import { ACTION_HANDLERS, getActionContext } from "../lib/action-handlers";
+import { useSettings } from "../stores/settingsStore";
 
 export function useKeybindings(): void {
+  const overrides = useSettings(
+    (s) => s.settings.keybindings as Record<string, string>,
+  );
   useEffect(() => {
-    const handler = (e: KeyboardEvent): void => {
-      if (!e.ctrlKey) return;
-      const tabs = useTabs.getState();
-      const key = e.key;
-
-      if ((key === "s" || key === "S") && !e.shiftKey) {
+    const bindings: Record<string, (e: KeyboardEvent) => void> = {};
+    for (const action of ACTIONS) {
+      const candidate = overrides[action.id];
+      const combo = candidate === undefined ? action.defaultBinding : candidate;
+      if (!combo) continue;
+      bindings[combo] = (e) => {
         e.preventDefault();
-        void tabs.saveActive();
-        return;
-      }
-      if ((key === "s" || key === "S") && e.shiftKey) {
-        e.preventDefault();
-        void tabs.saveActiveAs();
-        return;
-      }
-      if (key === "n" || key === "N") {
-        e.preventDefault();
-        tabs.newTab();
-        return;
-      }
-      if (key === "w" || key === "W") {
-        e.preventDefault();
-        void tabs.closeActive();
-        return;
-      }
-      if (key === "Tab") {
-        e.preventDefault();
-        tabs.cycleTabs(e.shiftKey ? -1 : 1);
-        return;
-      }
-      if ((key === "t" || key === "T") && e.shiftKey) {
-        e.preventDefault();
-        void tabs.reopenClosed();
-        return;
-      }
-      if (NUMERIC_KEYS.has(key)) {
-        e.preventDefault();
-        tabs.setActiveByIndex(Number(key) - 1);
-        return;
-      }
-    };
-
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+        const fn = ACTION_HANDLERS[action.id];
+        if (fn) fn(getActionContext());
+      };
+    }
+    return tinykeys(window, bindings);
+  }, [overrides]);
 }

@@ -1,110 +1,87 @@
 import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useKeybindings } from "../../src/hooks/useKeybindings";
 
-const saveActive = vi.fn();
-const saveActiveAs = vi.fn();
-const newTab = vi.fn();
-const closeActive = vi.fn();
-const cycle = vi.fn();
-const reopenClosed = vi.fn();
-const setActiveByIndex = vi.fn();
+const { tinykeysSpy, newTab, saveActive, closeActive } = vi.hoisted(() => ({
+  tinykeysSpy: vi.fn(() => () => undefined),
+  newTab: vi.fn(),
+  saveActive: vi.fn(),
+  closeActive: vi.fn(),
+}));
 
-vi.mock("../../src/stores/tabsStore", () => ({
-  useTabs: {
-    getState: () => ({
-      saveActive,
-      saveActiveAs,
-      newTab,
-      closeActive,
-      cycleTabs: cycle,
-      reopenClosed,
-      setActiveByIndex,
-    }),
+vi.mock("tinykeys", () => ({ default: tinykeysSpy, tinykeys: tinykeysSpy }));
+
+vi.mock("../../src/lib/action-handlers", () => ({
+  getActionContext: () => ({}),
+  ACTION_HANDLERS: {
+    "file.new": () => newTab(),
+    "file.save": () => saveActive(),
+    "tabs.close": () => closeActive(),
   },
 }));
 
+vi.mock("../../src/stores/settingsStore", () => {
+  const state = {
+    settings: { keybindings: {} as Record<string, string> },
+  };
+  return {
+    useSettings: Object.assign(
+      <T,>(sel: (s: typeof state) => T) => sel(state),
+      {
+        getState: () => state,
+        setState: (next: Partial<typeof state>) => Object.assign(state, next),
+      },
+    ),
+  };
+});
+
+import { useKeybindings } from "../../src/hooks/useKeybindings";
+import { useSettings } from "../../src/stores/settingsStore";
+
 beforeEach(() => {
-  saveActive.mockReset();
-  saveActiveAs.mockReset();
+  tinykeysSpy.mockClear();
   newTab.mockReset();
+  saveActive.mockReset();
   closeActive.mockReset();
-  cycle.mockReset();
-  reopenClosed.mockReset();
-  setActiveByIndex.mockReset();
+  (useSettings.getState() as unknown as { settings: { keybindings: Record<string, string> } })
+    .settings.keybindings = {};
 });
 afterEach(() => undefined);
 
-function press(key: string, opts: { ctrl?: boolean; shift?: boolean } = {}) {
-  const event = new KeyboardEvent("keydown", {
-    key,
-    ctrlKey: opts.ctrl ?? false,
-    shiftKey: opts.shift ?? false,
-    bubbles: true,
-    cancelable: true,
-  });
-  window.dispatchEvent(event);
-}
-
-describe("useKeybindings", () => {
-  it("Ctrl+S calls saveActive", () => {
+describe("useKeybindings (registry-driven)", () => {
+  it("calls tinykeys with default bindings on mount", () => {
     renderHook(() => useKeybindings());
-    press("s", { ctrl: true });
-    expect(saveActive).toHaveBeenCalledTimes(1);
+    expect(tinykeysSpy).toHaveBeenCalledTimes(1);
+    const [target, bindings] = (tinykeysSpy.mock.calls[0] as unknown as [Window, Record<string, (e: KeyboardEvent) => void>]);
+    expect(target).toBe(window);
+    expect(typeof bindings["$mod+s"]).toBe("function");
+    expect(typeof bindings["$mod+n"]).toBe("function");
+    expect(typeof bindings["$mod+w"]).toBe("function");
   });
 
-  it("Ctrl+Shift+S calls saveActiveAs", () => {
+  it("invokes the matching ACTION_HANDLERS entry", () => {
     renderHook(() => useKeybindings());
-    press("S", { ctrl: true, shift: true });
-    expect(saveActiveAs).toHaveBeenCalledTimes(1);
-  });
-
-  it("Ctrl+N calls newTab", () => {
-    renderHook(() => useKeybindings());
-    press("n", { ctrl: true });
+    const [, bindings] = (tinykeysSpy.mock.calls[0] as unknown as [Window, Record<string, (e: KeyboardEvent) => void>]);
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as KeyboardEvent;
+    bindings["$mod+n"]!(fakeEvent);
     expect(newTab).toHaveBeenCalledTimes(1);
+    expect(fakeEvent.preventDefault).toHaveBeenCalled();
   });
 
-  it("Ctrl+W calls closeActive", () => {
+  it("user override replaces the default combo", () => {
+    (useSettings.getState() as unknown as { settings: { keybindings: Record<string, string> } })
+      .settings.keybindings = { "tabs.close": "$mod+q" };
     renderHook(() => useKeybindings());
-    press("w", { ctrl: true });
-    expect(closeActive).toHaveBeenCalledTimes(1);
+    const [, bindings] = (tinykeysSpy.mock.calls[0] as unknown as [Window, Record<string, (e: KeyboardEvent) => void>]);
+    expect(bindings["$mod+q"]).toBeDefined();
+    expect(bindings["$mod+w"]).toBeUndefined();
   });
 
-  it("Ctrl+Tab cycles forward", () => {
+  it("blanked override removes the binding entirely", () => {
+    (useSettings.getState() as unknown as { settings: { keybindings: Record<string, string> } })
+      .settings.keybindings = { "tabs.close": "" };
     renderHook(() => useKeybindings());
-    press("Tab", { ctrl: true });
-    expect(cycle).toHaveBeenCalledWith(1);
-  });
-
-  it("Ctrl+Shift+Tab cycles backward", () => {
-    renderHook(() => useKeybindings());
-    press("Tab", { ctrl: true, shift: true });
-    expect(cycle).toHaveBeenCalledWith(-1);
-  });
-
-  it("Ctrl+Shift+T reopens closed", () => {
-    renderHook(() => useKeybindings());
-    press("T", { ctrl: true, shift: true });
-    expect(reopenClosed).toHaveBeenCalledTimes(1);
-  });
-
-  it("Ctrl+1 jumps to tab index 0", () => {
-    renderHook(() => useKeybindings());
-    press("1", { ctrl: true });
-    expect(setActiveByIndex).toHaveBeenCalledWith(0);
-  });
-
-  it("Ctrl+9 jumps to tab index 8", () => {
-    renderHook(() => useKeybindings());
-    press("9", { ctrl: true });
-    expect(setActiveByIndex).toHaveBeenCalledWith(8);
-  });
-
-  it("removes listener on unmount", () => {
-    const { unmount } = renderHook(() => useKeybindings());
-    unmount();
-    press("s", { ctrl: true });
-    expect(saveActive).not.toHaveBeenCalled();
+    const [, bindings] = (tinykeysSpy.mock.calls[0] as unknown as [Window, Record<string, (e: KeyboardEvent) => void>]);
+    expect(bindings["$mod+w"]).toBeUndefined();
+    expect(bindings[""]).toBeUndefined();
   });
 });

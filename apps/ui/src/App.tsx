@@ -11,11 +11,13 @@ import { StatusBar } from "./components/layout/StatusBar";
 import { SearchPanel } from "./components/layout/SearchPanel";
 import { ToastViewport } from "./components/ui/Toast";
 import { CloseConfirmModal } from "./components/tabs/CloseConfirmModal";
+import { SettingsModal } from "./components/settings/SettingsModal";
 import { useUI } from "./stores/uiStore";
 import { useSettings } from "./stores/settingsStore";
 import { useWorkspace } from "./stores/workspaceStore";
 import { useTabs } from "./stores/tabsStore";
 import { useKeybindings } from "./hooks/useKeybindings";
+import { useTheme } from "./hooks/useTheme";
 import { copy } from "./lib/copy";
 
 // Note: react-resizable-panels v4 uses percentage-string sizing.
@@ -26,6 +28,7 @@ import { copy } from "./lib/copy";
 
 export function App(): JSX.Element {
   useKeybindings();
+  useTheme();
   const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
   const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
   const searchOpen = useUI((s) => s.searchPanelOpen);
@@ -207,6 +210,7 @@ export function App(): JSX.Element {
       <StatusBar />
       <ToastViewport />
       <CloseConfirmModalConnected />
+      <SettingsModal />
     </main>
   );
 }

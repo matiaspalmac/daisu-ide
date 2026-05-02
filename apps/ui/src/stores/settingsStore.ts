@@ -68,10 +68,13 @@ export const useSettings = create<SettingsState>((set, get) => ({
     set({ settings: parsed.success ? parsed.data : DEFAULTS, loaded: true });
   },
   set: async (category, partial) => {
-    const next = {
-      ...get().settings,
-      [category]: { ...get().settings[category], ...partial },
-    } as Settings;
+    const current = get().settings[category] as Record<string, unknown>;
+    const merged: Record<string, unknown> = { ...current };
+    for (const [k, v] of Object.entries(partial as Record<string, unknown>)) {
+      if (v === undefined) delete merged[k];
+      else merged[k] = v;
+    }
+    const next = { ...get().settings, [category]: merged } as Settings;
     const validated = SettingsSchema.parse(next);
     set({ settings: validated });
     await persist(validated);

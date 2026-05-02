@@ -1,8 +1,8 @@
 :root {
   color-scheme: dark;
   font-family: "Segoe UI", system-ui, sans-serif;
-  background: #1e1e1e;
-  color: #e6e6e6;
+  background: var(--daisu-bg, #1e1e1e);
+  color: var(--daisu-fg, #e6e6e6);
 }
 
 * {
@@ -52,8 +52,8 @@ body,
   align-items: center;
   gap: 12px;
   padding: 0 12px;
-  background: #252526;
-  border-bottom: 1px solid #333;
+  background: var(--daisu-toolbar-bg, #252526);
+  border-bottom: 1px solid var(--daisu-border, #333);
 }
 
 .daisu-toolbar h1 {
@@ -180,7 +180,7 @@ body,
 .daisu-sidebar,
 .daisu-agents-panel,
 .daisu-search-panel {
-  background: var(--daisu-sideBar-background, #252526);
+  background: var(--daisu-sidebar-bg, var(--daisu-sideBar-background, #252526));
   color: var(--daisu-sideBar-foreground, #cccccc);
   border-right: 1px solid var(--daisu-sideBar-border, #1e1e1e);
   display: flex;
@@ -216,8 +216,8 @@ body,
 
 .daisu-statusbar {
   height: 22px;
-  background: var(--daisu-statusBar-background, #007acc);
-  color: var(--daisu-statusBar-foreground, #ffffff);
+  background: var(--daisu-statusbar-bg, var(--daisu-statusBar-background, #007acc));
+  color: var(--daisu-statusbar-fg, var(--daisu-statusBar-foreground, #ffffff));
   display: flex;
   align-items: center;
   padding: 0 10px;
@@ -574,3 +574,149 @@ body,
   color: #888;
   gap: 4px;
 }
+
+.daisu-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--daisu-border, #2b2b2b);
+}
+.daisu-field-text { flex: 1; min-width: 0; }
+.daisu-field-label { font-size: 13px; font-weight: 500; color: var(--daisu-fg, #ccc); }
+.daisu-field-desc { font-size: 12px; color: #888; margin: 4px 0 0; }
+.daisu-toggle {
+  width: 36px; height: 20px; padding: 2px;
+  border-radius: 10px; border: 0; cursor: pointer;
+  background: #555; transition: background 120ms ease;
+}
+.daisu-toggle.is-on { background: #0078d4; }
+.daisu-toggle-thumb {
+  display: block; width: 16px; height: 16px;
+  background: #fff; border-radius: 50%;
+  transition: transform 120ms ease; transform: translateX(0);
+}
+.daisu-toggle.is-on .daisu-toggle-thumb { transform: translateX(16px); }
+.daisu-select, .daisu-input {
+  padding: 4px 8px; min-width: 200px;
+  background: var(--daisu-bg, #1f1f1f); color: var(--daisu-fg, #ccc);
+  border: 1px solid #3c3c3c; border-radius: 3px; font-size: 13px;
+}
+.daisu-input-number { width: 80px; min-width: 0; }
+
+.daisu-keybinding-row {
+  display: grid;
+  grid-template-columns: 1fr 200px auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #2b2b2b;
+  font-size: 13px;
+}
+.daisu-keybinding-label { color: var(--daisu-fg, #ccc); }
+.daisu-keybinding-combo {
+  font-family: Cascadia Code, Consolas, monospace;
+  font-size: 12px;
+  color: #aaa;
+  padding: 2px 6px;
+  background: #2d2d2d;
+  border-radius: 3px;
+  text-align: center;
+}
+.daisu-icon-btn-sm {
+  background: transparent;
+  border: 0;
+  color: #aaa;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.daisu-icon-btn-sm:hover { background: rgba(255,255,255,0.08); }
+
+.daisu-settings-panel { padding: 16px 24px; overflow-y: auto; flex: 1; }
+.daisu-settings-panel-title {
+  font-size: 18px; font-weight: 600; margin: 0 0 12px;
+  color: var(--daisu-fg, #ccc);
+}
+.daisu-btn-primary {
+  background: #0078d4; color: #fff;
+  border: 0; padding: 6px 14px; border-radius: 3px;
+  cursor: pointer; font-size: 13px;
+}
+.daisu-btn-primary:hover { background: #1f8ad8; }
+
+.daisu-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+.daisu-theme-card {
+  position: relative;
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: 6px; padding: 12px;
+  background: #2d2d2d; border: 2px solid transparent; border-radius: 6px;
+  color: var(--daisu-fg, #ccc); cursor: pointer; text-align: left;
+}
+.daisu-theme-card:hover { background: #3a3a3a; }
+.daisu-theme-card.is-active { border-color: #0078d4; }
+.daisu-theme-swatch {
+  height: 60px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: Cascadia Code, Consolas, monospace; font-weight: 600;
+}
+.daisu-theme-name { font-size: 13px; font-weight: 500; }
+.daisu-theme-kind { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; }
+.daisu-theme-check { position: absolute; top: 8px; right: 8px; color: #0078d4; }
+
+.daisu-keybindings { display: flex; flex-direction: column; }
+.daisu-keybindings-header {
+  display: grid;
+  grid-template-columns: 80px 1fr 200px auto auto;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #888;
+  border-bottom: 1px solid #2b2b2b;
+}
+.daisu-keybindings-row-wrap {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  border-bottom: 1px solid #2b2b2b;
+}
+.daisu-keybindings-row-wrap .daisu-keybinding-row {
+  border-bottom: 0;
+  grid-template-columns: 1fr 200px auto auto;
+}
+.daisu-keybindings-cat { font-size: 11px; color: #888; padding-left: 16px; }
+.daisu-keybindings-hint { font-size: 12px; color: #888; padding: 0 16px 12px; }
+
+.daisu-settings-modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 90vw; height: 85vh; max-width: 1100px;
+  background: var(--daisu-bg, #1f1f1f); color: var(--daisu-fg, #ccc);
+  border: 1px solid var(--daisu-border, #2b2b2b); border-radius: 6px;
+  display: flex; flex-direction: column; z-index: 90;
+}
+.daisu-settings-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid var(--daisu-border, #2b2b2b);
+}
+.daisu-settings-title { font-size: 14px; font-weight: 600; margin: 0; }
+.daisu-settings-body { display: flex; flex: 1; min-height: 0; }
+.daisu-settings-sidebar {
+  width: 160px; flex-shrink: 0; padding: 8px 0;
+  border-right: 1px solid var(--daisu-border, #2b2b2b);
+  display: flex; flex-direction: column;
+}
+.daisu-settings-nav-item {
+  background: transparent; border: 0; text-align: left;
+  padding: 8px 16px; cursor: pointer; color: var(--daisu-fg, #ccc); font-size: 13px;
+}
+.daisu-settings-nav-item:hover { background: rgba(255,255,255,0.05); }
+.daisu-settings-nav-item.is-active { background: #0078d4; color: #fff; }
+.daisu-settings-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }

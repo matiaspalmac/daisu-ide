@@ -116,3 +116,25 @@ export async function loadSessionCmd(
 export async function deleteSessionCmd(workspaceHash: string): Promise<void> {
   await invoke<void>("delete_session", { workspaceHash });
 }
+
+export interface ThemeDescriptor {
+  id: string;
+  name: string;
+  kind: "dark" | "light";
+}
+
+export async function listBundledThemesCmd(): Promise<ThemeDescriptor[]> {
+  return invoke<ThemeDescriptor[]>("list_bundled_themes");
+}
+
+export async function readThemeJsonCmd(id: string): Promise<unknown> {
+  return invoke<unknown>("read_theme_json", { id });
+}
+
+export async function exportSettingsCmd(targetPath: string): Promise<void> {
+  await invoke<void>("export_settings", { targetPath });
+}
+
+export async function importSettingsCmd(sourcePath: string): Promise<unknown> {
+  return invoke<unknown>("import_settings", { sourcePath });
+}

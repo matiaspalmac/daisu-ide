@@ -30,6 +30,10 @@ fn main() {
             commands::session::save_session,
             commands::session::load_session,
             commands::session::delete_session,
+            commands::themes::list_bundled_themes,
+            commands::themes::read_theme_json,
+            commands::settings::export_settings,
+            commands::settings::import_settings,
             commands::webview::detect_webview2
         ])
         .setup(|app| {

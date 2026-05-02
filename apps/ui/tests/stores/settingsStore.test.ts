@@ -45,4 +45,12 @@ describe("settingsStore", () => {
     expect(s.settings.editor.fontSize).toBe(13);
     expect(s.settings.themes.activeThemeId).toBe("custom");
   });
+
+  it("setting a key to undefined removes it from the keybindings map", async () => {
+    const s = useSettings.getState();
+    await s.set("keybindings", { "tabs.close": "$mod+q" });
+    expect(useSettings.getState().settings.keybindings["tabs.close"]).toBe("$mod+q");
+    await useSettings.getState().set("keybindings", { "tabs.close": undefined as never });
+    expect(useSettings.getState().settings.keybindings["tabs.close"]).toBeUndefined();
+  });
 });

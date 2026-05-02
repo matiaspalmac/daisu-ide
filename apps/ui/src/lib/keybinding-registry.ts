@@ -1,0 +1,59 @@
+export const ACTION_CATEGORIES = [
+  "File",
+  "Tabs",
+  "Editor",
+  "View",
+  "Settings",
+  "Workspace",
+] as const;
+
+export type ActionCategory = (typeof ACTION_CATEGORIES)[number];
+
+export interface ActionDef {
+  id: string;
+  category: ActionCategory;
+  label: string;
+  /** tinykeys format. `$mod` resolves to Ctrl on Windows. */
+  defaultBinding: string;
+}
+
+const gotoTabs: ActionDef[] = Array.from({ length: 9 }, (_, i) => ({
+  id: `tabs.goto${i + 1}`,
+  category: "Tabs",
+  label: `Go to tab ${i + 1}`,
+  defaultBinding: `$mod+${i + 1}`,
+}));
+
+export const ACTIONS: ActionDef[] = [
+  // File
+  { id: "file.new", category: "File", label: "New untitled tab", defaultBinding: "$mod+n" },
+  { id: "file.open", category: "File", label: "Open file…", defaultBinding: "$mod+o" },
+  { id: "file.openFolder", category: "File", label: "Open folder…", defaultBinding: "$mod+Shift+o" },
+  { id: "file.save", category: "File", label: "Save", defaultBinding: "$mod+s" },
+  { id: "file.saveAs", category: "File", label: "Save as…", defaultBinding: "$mod+Shift+s" },
+  { id: "file.saveAll", category: "File", label: "Save all", defaultBinding: "$mod+Alt+s" },
+
+  // Tabs
+  { id: "tabs.close", category: "Tabs", label: "Close tab", defaultBinding: "$mod+w" },
+  { id: "tabs.closeOthers", category: "Tabs", label: "Close other tabs", defaultBinding: "$mod+Alt+t" },
+  { id: "tabs.closeAll", category: "Tabs", label: "Close all tabs", defaultBinding: "$mod+Shift+w" },
+  { id: "tabs.reopenClosed", category: "Tabs", label: "Reopen closed tab", defaultBinding: "$mod+Shift+t" },
+  { id: "tabs.next", category: "Tabs", label: "Next tab (MRU)", defaultBinding: "$mod+Tab" },
+  { id: "tabs.prev", category: "Tabs", label: "Previous tab (MRU)", defaultBinding: "$mod+Shift+Tab" },
+  ...gotoTabs,
+  { id: "tabs.pinToggle", category: "Tabs", label: "Pin/unpin active tab", defaultBinding: "$mod+Alt+p" },
+
+  // View
+  { id: "view.toggleSidebar", category: "View", label: "Toggle sidebar", defaultBinding: "$mod+b" },
+  { id: "view.toggleAgents", category: "View", label: "Toggle agents panel", defaultBinding: "$mod+j" },
+  { id: "view.toggleSearch", category: "View", label: "Toggle search panel", defaultBinding: "$mod+Shift+f" },
+
+  // Settings
+  { id: "settings.open", category: "Settings", label: "Open settings", defaultBinding: "$mod+," },
+
+  // Editor
+  { id: "editor.formatDocument", category: "Editor", label: "Format document", defaultBinding: "Shift+Alt+f" },
+
+  // Workspace
+  { id: "workspace.close", category: "Workspace", label: "Close workspace", defaultBinding: "$mod+Shift+k" },
+];
