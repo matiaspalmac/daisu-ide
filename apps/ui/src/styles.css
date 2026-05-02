@@ -153,3 +153,62 @@ body,
 .daisu-icon-btn:hover { opacity: 1; background: var(--daisu-toolbar-hoverBackground, #2a2d2e); }
 
 .daisu-toolbar-spacer { flex: 1; }
+
+.daisu-sidebar,
+.daisu-agents-panel,
+.daisu-search-panel {
+  background: var(--daisu-sideBar-background, #252526);
+  color: var(--daisu-sideBar-foreground, #cccccc);
+  border-right: 1px solid var(--daisu-sideBar-border, #1e1e1e);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.daisu-agents-panel { border-right: 0; border-left: 1px solid var(--daisu-sideBar-border, #1e1e1e); }
+.daisu-search-panel { border-top: 1px solid var(--daisu-sideBar-border, #1e1e1e); }
+
+.daisu-sidebar-header,
+.daisu-search-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--daisu-sideBar-section-header-foreground, #888);
+}
+
+.daisu-sidebar-body { flex: 1; overflow: auto; }
+
+.daisu-empty-state {
+  padding: 12px;
+  color: var(--daisu-descriptionForeground, #888);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.daisu-statusbar {
+  height: 22px;
+  background: var(--daisu-statusBar-background, #007acc);
+  color: var(--daisu-statusBar-foreground, #ffffff);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 11px;
+  gap: 12px;
+}
+
+.daisu-statusbar-left,
+.daisu-statusbar-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.daisu-statusbar-right { margin-left: auto; }
+
+.daisu-status-item { white-space: nowrap; }
