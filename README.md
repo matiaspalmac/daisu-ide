@@ -6,7 +6,7 @@
 
 ## Vision
 
-Multi-agent autonomous coding with persistent memory. Cloud + local LLM provider abstraction (Anthropic, OpenAI, Google, Ollama, llama.cpp). Open VSX extension marketplace via custom web-extension host. Native Tauri shell, no Electron.
+Multi-agent autonomous coding with persistent memory. Cloud + local LLM provider abstraction (multiple providers, including local runtimes). Open VSX extension marketplace via custom web-extension host. Native Tauri shell, no Electron.
 
 ## Build from source
 
