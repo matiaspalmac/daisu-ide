@@ -20,8 +20,31 @@ body,
 
 .daisu-shell {
   display: grid;
-  grid-template-rows: auto 36px 1fr;
+  grid-template-rows: auto auto 1fr auto;
   height: 100%;
+}
+
+.daisu-main-split {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.daisu-resize-handle {
+  width: 3px;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.daisu-resize-handle:hover,
+.daisu-resize-handle[data-resize-handle-state="drag"] {
+  background: var(--daisu-focusBorder, #007acc);
+}
+
+.daisu-resize-handle-horizontal {
+  width: auto;
+  height: 3px;
+  cursor: row-resize;
 }
 
 .daisu-toolbar {

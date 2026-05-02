@@ -1,117 +1,103 @@
 import type { JSX } from "react";
-import { useCallback, useEffect, useState } from "react";
-import { Editor } from "./components/editor/Editor";
-import {
-  detectWebView2,
-  openFileViaDialog,
-  saveFile,
-  saveFileAsViaDialog,
-} from "./api/tauri";
+import { useEffect } from "react";
+import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
+import { TitleBar } from "./components/layout/TitleBar";
+import { Toolbar } from "./components/layout/Toolbar";
+import { Sidebar } from "./components/layout/Sidebar";
+import { EditorArea } from "./components/layout/EditorArea";
+import { AgentsPanel } from "./components/layout/AgentsPanel";
+import { StatusBar } from "./components/layout/StatusBar";
+import { SearchPanel } from "./components/layout/SearchPanel";
+import { ToastViewport } from "./components/ui/Toast";
+import { useUI } from "./stores/uiStore";
+import { useSettings } from "./stores/settingsStore";
 
-const INITIAL_CONTENT = "// Welcome to Daisu IDE\n// Open or create a file. Ctrl+S to save.\n";
+// Note: react-resizable-panels v4 uses percentage-string sizing.
+// We use useDefaultLayout({ groupId, storage }) to persist sizes to
+// localStorage instead of syncing to Zustand on every drag (avoids
+// feedback loops). Approximate percent defaults assume a ~1280px window:
+//   240/1280 ≈ 19% sidebar, 320/1280 ≈ 25% agents.
 
 export function App(): JSX.Element {
-  const [path, setPath] = useState<string | null>(null);
-  const [language, setLanguage] = useState<string>("plaintext");
-  const [content, setContent] = useState<string>(INITIAL_CONTENT);
-  const [dirty, setDirty] = useState<boolean>(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [webview2Missing, setWebview2Missing] = useState<boolean>(false);
+  const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
+  const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
+  const searchOpen = useUI((s) => s.searchPanelOpen);
+  const loadSettings = useSettings((s) => s.load);
+
+  const mainSplit = useDefaultLayout({
+    groupId: "daisu-main-split",
+    storage: typeof window !== "undefined" ? window.localStorage : memoryStorage,
+  });
+  const centerSplit = useDefaultLayout({
+    groupId: "daisu-center-split",
+    storage: typeof window !== "undefined" ? window.localStorage : memoryStorage,
+  });
 
   useEffect(() => {
-    detectWebView2()
-      .then((status) => setWebview2Missing(!status.installed))
-      .catch(() => setWebview2Missing(false));
-  }, []);
-
-  const handleOpen = useCallback(async (): Promise<void> => {
-    setError(null);
-    try {
-      const opened = await openFileViaDialog();
-      if (opened === null) {
-        return;
-      }
-      setPath(opened.path);
-      setLanguage(opened.language);
-      setContent(opened.contents);
-      setDirty(false);
-      setStatus(`Opened ${opened.path}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, []);
-
-  const handleSave = useCallback(async (): Promise<void> => {
-    setError(null);
-    try {
-      if (path === null) {
-        const saved = await saveFileAsViaDialog(content);
-        if (saved === null) {
-          return;
-        }
-        setPath(saved);
-        setStatus(`Saved as ${saved}`);
-      } else {
-        await saveFile(path, content);
-        setStatus(`Saved ${path}`);
-      }
-      setDirty(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, [path, content]);
-
-  useEffect(() => {
-    function onKey(event: KeyboardEvent): void {
-      if (event.ctrlKey && event.key.toLowerCase() === "s") {
-        event.preventDefault();
-        void handleSave();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [handleSave]);
-
-  function handleChange(next: string): void {
-    setContent(next);
-    setDirty(true);
-  }
+    loadSettings().catch(() => undefined);
+  }, [loadSettings]);
 
   return (
     <main className="daisu-shell">
-      {webview2Missing ? (
-        <div className="daisu-banner">
-          WebView2 Runtime not detected. Download:{" "}
-          <a
-            href="https://developer.microsoft.com/en-us/microsoft-edge/webview2/"
-            target="_blank"
-            rel="noreferrer"
+      <TitleBar />
+      <Toolbar />
+      <Group
+        orientation="horizontal"
+        className="daisu-main-split"
+        id="daisu-main-split"
+        defaultLayout={mainSplit.defaultLayout}
+        onLayoutChange={mainSplit.onLayoutChange}
+      >
+        {!sidebarCollapsed && (
+          <>
+            <Panel id="sidebar" defaultSize="19%" minSize="10%" maxSize="45%">
+              <Sidebar />
+            </Panel>
+            <Separator className="daisu-resize-handle" />
+          </>
+        )}
+        <Panel id="center" minSize="30%">
+          <Group
+            orientation="vertical"
+            id="daisu-center-split"
+            defaultLayout={centerSplit.defaultLayout}
+            onLayoutChange={centerSplit.onLayoutChange}
           >
-            Microsoft Evergreen Bootstrapper
-          </a>
-        </div>
-      ) : null}
-      <header className="daisu-toolbar">
-        <h1>Daisu IDE</h1>
-        <button type="button" onClick={handleOpen} className="daisu-btn">
-          Open…
-        </button>
-        <button type="button" onClick={handleSave} className="daisu-btn">
-          Save
-        </button>
-        <span className="daisu-path">
-          {path ?? "(unsaved)"}
-          {dirty ? " ●" : ""}
-        </span>
-        {status !== null && error === null ? (
-          <span className="daisu-status">{status}</span>
-        ) : null}
-        {error !== null ? <span className="daisu-err">{error}</span> : null}
-      </header>
-      <section className="daisu-editor-host">
-        <Editor value={content} language={language} onChange={handleChange} />
-      </section>
+            <Panel id="editor" defaultSize={searchOpen ? "70%" : "100%"} minSize="20%">
+              <EditorArea />
+            </Panel>
+            {searchOpen && (
+              <>
+                <Separator className="daisu-resize-handle daisu-resize-handle-horizontal" />
+                <Panel id="search" defaultSize="30%" minSize="15%">
+                  <SearchPanel />
+                </Panel>
+              </>
+            )}
+          </Group>
+        </Panel>
+        {!agentsCollapsed && (
+          <>
+            <Separator className="daisu-resize-handle" />
+            <Panel id="agents" defaultSize="25%" minSize="15%" maxSize="50%">
+              <AgentsPanel />
+            </Panel>
+          </>
+        )}
+      </Group>
+      <StatusBar />
+      <ToastViewport />
     </main>
   );
 }
+
+// In-memory storage fallback for non-browser environments (SSR / tests).
+const memoryStorage: Pick<Storage, "getItem" | "setItem"> = (() => {
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      map.set(key, value);
+    },
+  };
+})();
