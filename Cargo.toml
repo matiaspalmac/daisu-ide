@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = ["crates/daisu-app"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.84"
+authors = ["Matias Palma <matiaspalma2594@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/matiaspalmac/daisu-ide"
+
+[workspace.dependencies]
+tauri = { version = "2.1", features = [] }
+tauri-build = { version = "2.0", features = [] }
+tauri-plugin-dialog = "2.0"
+tauri-plugin-fs = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+tokio = { version = "1", features = ["full"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true
