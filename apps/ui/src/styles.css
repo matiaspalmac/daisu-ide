@@ -20,7 +20,7 @@ body,
 
 .daisu-shell {
   display: grid;
-  grid-template-rows: 36px 1fr;
+  grid-template-rows: auto 36px 1fr;
   height: 100%;
 }
 
@@ -75,4 +75,15 @@ body,
   margin-left: auto;
   color: #f48771;
   font-size: 11px;
+}
+
+.daisu-banner {
+  background: #5a1d1d;
+  color: #ffd5d5;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.daisu-banner a {
+  color: #ffeb95;
 }

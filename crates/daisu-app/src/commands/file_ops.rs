@@ -76,20 +76,12 @@ pub async fn save_file(path: String, contents: String) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::io::AsyncWriteExt;
 
     #[tokio::test]
     async fn read_file_at_returns_contents() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let path = tmp.path().to_path_buf();
-        let mut f = tokio::fs::OpenOptions::new()
-            .write(true)
-            .open(&path)
-            .await
-            .unwrap();
-        f.write_all(b"hello daisu").await.unwrap();
-        f.flush().await.unwrap();
-        drop(f);
+        tokio::fs::write(&path, b"hello daisu").await.unwrap();
 
         let read = read_file_at(&path).await.unwrap();
         assert_eq!(read, "hello daisu");
@@ -99,14 +91,7 @@ mod tests {
     async fn read_file_at_rejects_invalid_utf8() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let path = tmp.path().to_path_buf();
-        let mut f = tokio::fs::OpenOptions::new()
-            .write(true)
-            .open(&path)
-            .await
-            .unwrap();
-        f.write_all(&[0xff, 0xfe, 0xfd]).await.unwrap();
-        f.flush().await.unwrap();
-        drop(f);
+        tokio::fs::write(&path, &[0xff, 0xfe, 0xfd][..]).await.unwrap();
 
         let err = read_file_at(&path).await.unwrap_err();
         assert!(matches!(err, AppError::InvalidUtf8));

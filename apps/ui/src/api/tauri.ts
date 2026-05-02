@@ -31,3 +31,12 @@ export async function saveFileAsViaDialog(contents: string): Promise<string | nu
   await saveFile(target, contents);
   return target;
 }
+
+export interface WebView2Status {
+  installed: boolean;
+  version: string | null;
+}
+
+export async function detectWebView2(): Promise<WebView2Status> {
+  return invoke<WebView2Status>("detect_webview2");
+}

@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { Editor } from "./components/Editor";
 import {
+  detectWebView2,
   openFileViaDialog,
   saveFile,
   saveFileAsViaDialog,
@@ -16,6 +17,13 @@ export function App(): JSX.Element {
   const [dirty, setDirty] = useState<boolean>(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [webview2Missing, setWebview2Missing] = useState<boolean>(false);
+
+  useEffect(() => {
+    detectWebView2()
+      .then((status) => setWebview2Missing(!status.installed))
+      .catch(() => setWebview2Missing(false));
+  }, []);
 
   const handleOpen = useCallback(async (): Promise<void> => {
     setError(null);
@@ -72,6 +80,18 @@ export function App(): JSX.Element {
 
   return (
     <main className="daisu-shell">
+      {webview2Missing ? (
+        <div className="daisu-banner">
+          WebView2 Runtime not detected. Download:{" "}
+          <a
+            href="https://developer.microsoft.com/en-us/microsoft-edge/webview2/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Microsoft Evergreen Bootstrapper
+          </a>
+        </div>
+      ) : null}
       <header className="daisu-toolbar">
         <h1>Daisu IDE</h1>
         <button type="button" onClick={handleOpen} className="daisu-btn">
