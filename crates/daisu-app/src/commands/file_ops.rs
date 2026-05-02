@@ -106,6 +106,69 @@ pub async fn list_dir(path: String) -> AppResult<Vec<FileEntry>> {
     list_dir_at(Path::new(&path)).await
 }
 
+/// Create an empty file at `parent/name`. `name` must pass [`validate_filename`].
+///
+/// # Errors
+/// - [`AppError::InvalidName`] if `name` violates filename rules
+/// - [`AppError::AlreadyExists`] if the target already exists
+/// - [`AppError::IoError`] on other I/O failures (parent missing, permission, ...)
+pub async fn create_file_at(parent: &Path, name: &str) -> AppResult<String> {
+    crate::validation::validate_filename(name)?;
+    let new_path = parent.join(name);
+    if tokio::fs::try_exists(&new_path).await.unwrap_or(false) {
+        return Err(AppError::already_exists(new_path.display().to_string()));
+    }
+    let f = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&new_path)
+        .await;
+    match f {
+        Ok(_handle) => Ok(new_path.display().to_string()),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            Err(AppError::already_exists(new_path.display().to_string()))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Create a directory at `parent/name`. `name` must pass [`validate_filename`].
+///
+/// # Errors
+/// Same as [`create_file_at`] but for directories.
+pub async fn create_dir_at(parent: &Path, name: &str) -> AppResult<String> {
+    crate::validation::validate_filename(name)?;
+    let new_path = parent.join(name);
+    if tokio::fs::try_exists(&new_path).await.unwrap_or(false) {
+        return Err(AppError::already_exists(new_path.display().to_string()));
+    }
+    match tokio::fs::create_dir(&new_path).await {
+        Ok(()) => Ok(new_path.display().to_string()),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            Err(AppError::already_exists(new_path.display().to_string()))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Tauri command form of [`create_file_at`].
+///
+/// # Errors
+/// Propagates errors from [`create_file_at`].
+#[tauri::command]
+pub async fn create_file(parent: String, name: String) -> AppResult<String> {
+    create_file_at(Path::new(&parent), &name).await
+}
+
+/// Tauri command form of [`create_dir_at`].
+///
+/// # Errors
+/// Propagates errors from [`create_dir_at`].
+#[tauri::command]
+pub async fn create_dir(parent: String, name: String) -> AppResult<String> {
+    create_dir_at(Path::new(&parent), &name).await
+}
+
 #[must_use]
 pub fn detect_language(path: &Path) -> String {
     let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
