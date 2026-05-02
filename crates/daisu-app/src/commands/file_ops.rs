@@ -2,15 +2,23 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{AppError, AppResult};
 
-/// Read a UTF-8 file from disk. Pure function; no Tauri dependency.
+/// Read a UTF-8 file from disk.
 ///
 /// # Errors
-///
-/// Returns [`AppError::Io`] if the file cannot be read, or [`AppError::InvalidUtf8`] if
-/// the file contents are not valid UTF-8.
-pub fn read_file_at(path: &Path) -> AppResult<String> {
-    let bytes = std::fs::read(path)?;
+/// Returns `AppError::Io` if the file cannot be read, or `AppError::InvalidUtf8`
+/// if the bytes are not valid UTF-8.
+pub async fn read_file_at(path: &Path) -> AppResult<String> {
+    let bytes = tokio::fs::read(path).await?;
     String::from_utf8(bytes).map_err(|_| AppError::InvalidUtf8)
+}
+
+/// Write a UTF-8 string to disk, replacing any existing contents.
+///
+/// # Errors
+/// Returns `AppError::Io` if the file cannot be written.
+pub async fn write_file_at(path: &Path, contents: &str) -> AppResult<()> {
+    tokio::fs::write(path, contents.as_bytes()).await?;
+    Ok(())
 }
 
 #[derive(serde::Serialize)]
@@ -40,16 +48,14 @@ pub fn detect_language(path: &Path) -> String {
     .to_string()
 }
 
-/// Open a file at the given path and return its contents with language detection.
+/// Open a file via Tauri command. Returns its contents and detected language.
 ///
 /// # Errors
-///
-/// Returns [`AppError::Io`] if the file cannot be read, or [`AppError::InvalidUtf8`] if
-/// the file contents are not valid UTF-8.
+/// Propagates errors from `read_file_at`.
 #[tauri::command]
 pub async fn open_file(path: String) -> AppResult<OpenedFile> {
     let pb = PathBuf::from(&path);
-    let contents = read_file_at(&pb)?;
+    let contents = read_file_at(&pb).await?;
     let language = detect_language(&pb);
     Ok(OpenedFile {
         path,
@@ -58,31 +64,101 @@ pub async fn open_file(path: String) -> AppResult<OpenedFile> {
     })
 }
 
+/// Save UTF-8 contents to a file path via Tauri command.
+///
+/// # Errors
+/// Propagates errors from `write_file_at`.
+#[tauri::command]
+pub async fn save_file(path: String, contents: String) -> AppResult<()> {
+    write_file_at(&PathBuf::from(path), &contents).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    use tokio::io::AsyncWriteExt;
 
-    #[test]
-    fn read_file_at_returns_contents() {
-        let mut tmp = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp, "hello daisu").unwrap();
-        let read = read_file_at(tmp.path()).unwrap();
+    #[tokio::test]
+    async fn read_file_at_returns_contents() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path().to_path_buf();
+        let mut f = tokio::fs::OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .await
+            .unwrap();
+        f.write_all(b"hello daisu").await.unwrap();
+        f.flush().await.unwrap();
+        drop(f);
+
+        let read = read_file_at(&path).await.unwrap();
         assert_eq!(read, "hello daisu");
     }
 
-    #[test]
-    fn read_file_at_rejects_invalid_utf8() {
-        let mut tmp = tempfile::NamedTempFile::new().unwrap();
-        tmp.write_all(&[0xff, 0xfe, 0xfd]).unwrap();
-        let err = read_file_at(tmp.path()).unwrap_err();
+    #[tokio::test]
+    async fn read_file_at_rejects_invalid_utf8() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path().to_path_buf();
+        let mut f = tokio::fs::OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .await
+            .unwrap();
+        f.write_all(&[0xff, 0xfe, 0xfd]).await.unwrap();
+        f.flush().await.unwrap();
+        drop(f);
+
+        let err = read_file_at(&path).await.unwrap_err();
         assert!(matches!(err, AppError::InvalidUtf8));
     }
 
+    #[tokio::test]
+    async fn write_file_at_persists_contents() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path().to_path_buf();
+        write_file_at(&path, "saved by daisu").await.unwrap();
+        let read = read_file_at(&path).await.unwrap();
+        assert_eq!(read, "saved by daisu");
+    }
+
+    #[tokio::test]
+    async fn write_file_at_overwrites_existing_contents() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path().to_path_buf();
+        write_file_at(&path, "first").await.unwrap();
+        write_file_at(&path, "second").await.unwrap();
+        assert_eq!(read_file_at(&path).await.unwrap(), "second");
+    }
+
     #[test]
-    fn detect_language_known_extensions() {
-        assert_eq!(detect_language(Path::new("a.rs")), "rust");
-        assert_eq!(detect_language(Path::new("a.tsx")), "typescript");
-        assert_eq!(detect_language(Path::new("a.unknown")), "plaintext");
+    fn detect_language_all_extensions() {
+        let cases: &[(&str, &str)] = &[
+            ("a.rs", "rust"),
+            ("a.ts", "typescript"),
+            ("a.tsx", "typescript"),
+            ("a.js", "javascript"),
+            ("a.jsx", "javascript"),
+            ("a.mjs", "javascript"),
+            ("a.cjs", "javascript"),
+            ("a.json", "json"),
+            ("a.md", "markdown"),
+            ("a.markdown", "markdown"),
+            ("a.toml", "toml"),
+            ("a.yml", "yaml"),
+            ("a.yaml", "yaml"),
+            ("a.html", "html"),
+            ("a.htm", "html"),
+            ("a.css", "css"),
+            ("a.py", "python"),
+            ("a.go", "go"),
+            ("a.unknown", "plaintext"),
+        ];
+        for (file, expected) in cases {
+            assert_eq!(
+                detect_language(Path::new(file)),
+                *expected,
+                "ext for {file}"
+            );
+        }
     }
 }

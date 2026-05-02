@@ -27,6 +27,7 @@ body,
 .daisu-toolbar {
   display: flex;
   align-items: center;
+  gap: 12px;
   padding: 0 12px;
   background: #252526;
   border-bottom: 1px solid #333;
@@ -41,10 +42,6 @@ body,
 .daisu-editor-host {
   position: relative;
   overflow: hidden;
-}
-
-.daisu-toolbar {
-  gap: 12px;
 }
 
 .daisu-btn {
@@ -66,6 +63,12 @@ body,
   font-family: "Cascadia Code", Consolas, monospace;
   font-size: 11px;
   color: #888;
+}
+
+.daisu-status {
+  margin-left: auto;
+  color: #608b4e;
+  font-size: 11px;
 }
 
 .daisu-err {

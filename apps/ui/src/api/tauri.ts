@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 
 export interface OpenedFile {
   path: string;
@@ -17,4 +17,17 @@ export async function openFileViaDialog(): Promise<OpenedFile | null> {
     return null;
   }
   return invoke<OpenedFile>("open_file", { path: selected });
+}
+
+export async function saveFile(path: string, contents: string): Promise<void> {
+  await invoke<void>("save_file", { path, contents });
+}
+
+export async function saveFileAsViaDialog(contents: string): Promise<string | null> {
+  const target = await saveDialog({ title: "Save file as…" });
+  if (target === null) {
+    return null;
+  }
+  await saveFile(target, contents);
+  return target;
 }

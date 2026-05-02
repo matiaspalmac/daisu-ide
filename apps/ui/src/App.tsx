@@ -1,17 +1,23 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Editor } from "./components/Editor";
-import { openFileViaDialog } from "./api/tauri";
+import {
+  openFileViaDialog,
+  saveFile,
+  saveFileAsViaDialog,
+} from "./api/tauri";
 
-const INITIAL_CONTENT = "// Welcome to Daisu IDE\n// Click Open to load a file.\n";
+const INITIAL_CONTENT = "// Welcome to Daisu IDE\n// Open or create a file. Ctrl+S to save.\n";
 
 export function App(): JSX.Element {
   const [path, setPath] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>("plaintext");
   const [content, setContent] = useState<string>(INITIAL_CONTENT);
+  const [dirty, setDirty] = useState<boolean>(false);
+  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleOpen(): Promise<void> {
+  const handleOpen = useCallback(async (): Promise<void> => {
     setError(null);
     try {
       const opened = await openFileViaDialog();
@@ -21,9 +27,47 @@ export function App(): JSX.Element {
       setPath(opened.path);
       setLanguage(opened.language);
       setContent(opened.contents);
+      setDirty(false);
+      setStatus(`Opened ${opened.path}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
+  }, []);
+
+  const handleSave = useCallback(async (): Promise<void> => {
+    setError(null);
+    try {
+      if (path === null) {
+        const saved = await saveFileAsViaDialog(content);
+        if (saved === null) {
+          return;
+        }
+        setPath(saved);
+        setStatus(`Saved as ${saved}`);
+      } else {
+        await saveFile(path, content);
+        setStatus(`Saved ${path}`);
+      }
+      setDirty(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [path, content]);
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent): void {
+      if (event.ctrlKey && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        void handleSave();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleSave]);
+
+  function handleChange(next: string): void {
+    setContent(next);
+    setDirty(true);
   }
 
   return (
@@ -33,11 +77,20 @@ export function App(): JSX.Element {
         <button type="button" onClick={handleOpen} className="daisu-btn">
           Open…
         </button>
-        <span className="daisu-path">{path ?? "(no file)"}</span>
+        <button type="button" onClick={handleSave} className="daisu-btn">
+          Save
+        </button>
+        <span className="daisu-path">
+          {path ?? "(unsaved)"}
+          {dirty ? " ●" : ""}
+        </span>
+        {status !== null && error === null ? (
+          <span className="daisu-status">{status}</span>
+        ) : null}
         {error !== null ? <span className="daisu-err">{error}</span> : null}
       </header>
       <section className="daisu-editor-host">
-        <Editor value={content} language={language} onChange={setContent} />
+        <Editor value={content} language={language} onChange={handleChange} />
       </section>
     </main>
   );

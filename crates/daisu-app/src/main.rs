@@ -8,7 +8,8 @@ fn main() {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             commands::webview_stub::ping,
-            commands::file_ops::open_file
+            commands::file_ops::open_file,
+            commands::file_ops::save_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running daisu app");
