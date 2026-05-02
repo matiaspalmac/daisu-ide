@@ -545,3 +545,13 @@ body,
 .daisu-tab-overflow:hover {
   background: #3a3a3a;
 }
+
+.daisu-tabbar {
+  display: flex;
+  align-items: stretch;
+  height: 32px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #2a2a2a;
+  overflow: hidden;
+  flex-wrap: nowrap;
+}
