@@ -1,0 +1,46 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.bak
+
+# Node
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+
+# Build outputs
+/dist
+/apps/ui/dist
+/crates/daisu-app/dist
+*.tsbuildinfo
+
+# Tauri
+/crates/daisu-app/gen
+/src-tauri/target
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Env / secrets
+.env
+.env.local
+*.pem
+*.key
+
+# AI tooling — local only, never push
+.claude/
+.agents/
+CLAUDE.md
+skills-lock.json
+
+# Private design docs and implementation plans — never push to remote
+docs/
