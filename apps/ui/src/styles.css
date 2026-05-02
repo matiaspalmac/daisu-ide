@@ -265,3 +265,56 @@ body,
   font: inherit;
   text-decoration: underline;
 }
+
+.daisu-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+  color: var(--daisu-fg, #cccccc);
+}
+.daisu-tree-row.is-selected {
+  background: #264f78;
+}
+.daisu-tree-row:hover:not(.is-selected) {
+  background: rgba(255, 255, 255, 0.05);
+}
+.daisu-tree-chevron {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  transition: transform 100ms ease;
+}
+.daisu-tree-chevron.is-open {
+  transform: rotate(90deg);
+}
+.daisu-tree-chevron-spacer {
+  display: inline-block;
+  width: 14px;
+}
+.daisu-tree-icon {
+  flex-shrink: 0;
+}
+.daisu-tree-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.daisu-tree-edit {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--daisu-fg, #cccccc);
+  border: 1px solid #3794ff;
+  border-radius: 2px;
+  padding: 0 4px;
+  font: inherit;
+}
+.daisu-tree-git-badge {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
