@@ -15,7 +15,12 @@ export function Toolbar(): JSX.Element {
   const pushToast = useUI((s) => s.pushToast);
   const openTab = useTabs((s) => s.openTab);
   const saveActive = useTabs((s) => s.saveActive);
+  const newTab = useTabs((s) => s.newTab);
   const openWorkspace = useWorkspace((s) => s.openWorkspace);
+
+  const handleNew = useCallback((): void => {
+    newTab();
+  }, [newTab]);
 
   const handleOpen = useCallback(async (): Promise<void> => {
     try {
@@ -65,6 +70,7 @@ export function Toolbar(): JSX.Element {
       <h1>Daisu IDE</h1>
       <button type="button" onClick={handleOpen} className="daisu-btn">Open…</button>
       <button type="button" onClick={handleOpenFolder} className="daisu-btn">Open Folder…</button>
+      <button type="button" onClick={handleNew} className="daisu-btn">+ New</button>
       <button type="button" onClick={handleSave} className="daisu-btn">Save</button>
       <span className="daisu-toolbar-spacer" />
       <button
