@@ -91,7 +91,9 @@ mod tests {
     async fn read_file_at_rejects_invalid_utf8() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let path = tmp.path().to_path_buf();
-        tokio::fs::write(&path, &[0xff, 0xfe, 0xfd][..]).await.unwrap();
+        tokio::fs::write(&path, &[0xff, 0xfe, 0xfd][..])
+            .await
+            .unwrap();
 
         let err = read_file_at(&path).await.unwrap_err();
         assert!(matches!(err, AppError::InvalidUtf8));

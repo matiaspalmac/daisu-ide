@@ -32,7 +32,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "fs"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows-registry = "0.2"
+windows-registry = "0.6"
 
 [dev-dependencies]
 tempfile = "3.13"
