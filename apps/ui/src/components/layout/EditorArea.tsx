@@ -1,30 +1,24 @@
 import type { JSX } from "react";
-import { useTabs } from "../../stores/tabsStore";
 import { Editor } from "../editor/Editor";
+import { TabBar } from "../tabs/TabBar";
+import { useTabs } from "../../stores/tabsStore";
 
 export function EditorArea(): JSX.Element {
-  const activeTabId = useTabs((s) => s.activeTabId);
-  const tab = useTabs((s) => s.tabs.find((t) => t.id === activeTabId) ?? null);
-  const updateContent = useTabs((s) => s.updateContent);
-
-  if (!tab) {
-    return (
-      <section className="daisu-editor-area daisu-editor-area-empty" aria-label="Editor area">
-        <div className="daisu-welcome">
-          <h2>Daisu IDE</h2>
-          <p>Open a file or folder to begin.</p>
-        </div>
-      </section>
-    );
-  }
+  const tabs = useTabs((s) => s.tabs);
 
   return (
-    <section className="daisu-editor-area" aria-label="Editor area">
-      <Editor
-        value={tab.content}
-        language={tab.language}
-        onChange={(next) => updateContent(tab.id, next)}
-      />
+    <section className="daisu-editor-region" aria-label="Editor area">
+      <TabBar />
+      {tabs.length === 0 ? (
+        <div className="daisu-empty-state">
+          <h3>No file open</h3>
+          <p>Open a file from the sidebar or Ctrl+N for an untitled tab.</p>
+        </div>
+      ) : (
+        <div className="daisu-editor-host">
+          <Editor />
+        </div>
+      )}
     </section>
   );
 }

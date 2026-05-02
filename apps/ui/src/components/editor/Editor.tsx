@@ -1,21 +1,60 @@
-import type { JSX } from "react";
-import MonacoEditor from "@monaco-editor/react";
+import { useEffect, useRef, type JSX } from "react";
+import { Editor as MonacoEditor, type Monaco, type OnMount } from "@monaco-editor/react";
+import type * as monacoNs from "monaco-editor";
+import { useTabs } from "../../stores/tabsStore";
+import { getOrCreateModel } from "../../lib/monaco-models";
 
-export interface EditorProps {
-  value: string;
-  language: string;
-  onChange: (value: string) => void;
-}
+type IStandaloneCodeEditor = monacoNs.editor.IStandaloneCodeEditor;
 
-export function Editor({ value, language, onChange }: EditorProps): JSX.Element {
+export function Editor(): JSX.Element {
+  const editorRef = useRef<IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<Monaco | null>(null);
+  const prevActiveRef = useRef<string | null>(null);
+  const activeTabId = useTabs((s) => s.activeTabId);
+
+  const handleMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    syncActiveTab();
+  };
+
+  function syncActiveTab(): void {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const state = useTabs.getState();
+    const newId = state.activeTabId;
+    const prev = prevActiveRef.current;
+    if (prev && prev !== newId) {
+      const view = editor.saveViewState();
+      state._setCursorState(prev, view);
+    }
+    if (!newId) {
+      editor.setModel(null);
+      prevActiveRef.current = null;
+      return;
+    }
+    const tab = state.tabs.find((t) => t.id === newId);
+    if (!tab) return;
+    const model = getOrCreateModel(tab) as monacoNs.editor.ITextModel;
+    editor.setModel(model);
+    if (tab.cursorState) {
+      editor.restoreViewState(tab.cursorState);
+    }
+    editor.focus();
+    prevActiveRef.current = newId;
+  }
+
+  useEffect(() => {
+    syncActiveTab();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTabId]);
+
   return (
     <MonacoEditor
       height="100%"
       width="100%"
       theme="vs-dark"
-      language={language}
-      value={value}
-      onChange={(next) => onChange(next ?? "")}
+      onMount={handleMount}
       options={{
         minimap: { enabled: false },
         fontSize: 13,

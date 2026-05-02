@@ -555,3 +555,22 @@ body,
   overflow: hidden;
   flex-wrap: nowrap;
 }
+
+.daisu-editor-region {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.daisu-editor-host {
+  flex: 1;
+  min-height: 0;
+}
+.daisu-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: #888;
+  gap: 4px;
+}
