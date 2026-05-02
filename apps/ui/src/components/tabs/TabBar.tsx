@@ -54,8 +54,17 @@ export function TabBar(): JSX.Element | null {
     const root = containerRef.current;
     if (!root) return;
     const recompute = (): void => {
+      // Skip overflow math when the container has no measurable width yet
+      // (initial paint, jsdom). Without this, available becomes negative and
+      // every tab gets flagged as hidden.
+      if (root.clientWidth === 0) {
+        setHiddenIds([]);
+        return;
+      }
       const available = root.clientWidth - OVERFLOW_BUDGET_PX;
-      const tabEls = Array.from(root.querySelectorAll<HTMLElement>(".daisu-tab"));
+      const tabEls = Array.from(
+        root.querySelectorAll<HTMLElement>("[data-tab-id]"),
+      );
       let used = 0;
       const hidden: string[] = [];
       tabEls.forEach((el) => {

@@ -52,6 +52,10 @@ export function App(): JSX.Element {
     if (workspaceHash) {
       void restoreTabs(workspaceHash);
     } else {
+      // Detach the previous workspace hash BEFORE closing tabs, otherwise
+      // every closeTab → saveSession() call will overwrite the prior
+      // workspace's session file with an empty-tabs blob.
+      useTabs.getState()._setWorkspaceHash(null);
       void closeAllTabs(true);
     }
   }, [workspaceHash, restoreTabs, closeAllTabs]);

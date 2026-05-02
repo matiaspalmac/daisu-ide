@@ -142,7 +142,7 @@ function snapshotForSession(state: TabsState): SessionBlob {
       language: t.language,
       content: t.content,
       savedContent: t.savedContent,
-      cursorState: t.cursorState as unknown as null,
+      cursorState: t.cursorState as unknown as SessionBlob["tabs"][number]["cursorState"],
       pinned: t.pinned,
       untitledIndex: t.untitledIndex,
     })),
@@ -473,6 +473,10 @@ export const useTabs = create<TabsState>((set, get) => ({
         const tab = get().tabs.find((t) => t.id === id);
         if (!tab) continue;
         if (tab.path === null) {
+          // Untitled buffer in batch close. Activate the specific tab so
+          // saveActiveAs() prompts for THIS tab's path, not whatever was
+          // active before the modal opened.
+          get().setActive(id);
           await get().saveActiveAs();
         } else {
           await saveFile(tab.path, tab.content);

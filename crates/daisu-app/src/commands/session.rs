@@ -1,10 +1,11 @@
 //! Per-workspace session blob persistence.
 //!
 //! The frontend owns the schema; this module reads/writes opaque JSON. Atomic
-//! write protocol: write to `session.json.tmp`, fsync, rename to
-//! `session.json`. NTFS rename is atomic on the same volume so a power loss
-//! either leaves the previous good file untouched or applies the new one
-//! cleanly.
+//! write protocol: write to `session.json.tmp`, then rename to `session.json`.
+//! NTFS rename is atomic on the same volume so a partial overwrite cannot
+//! produce a half-written `session.json`. We do not call `fsync` after the
+//! write, so a hard crash within the OS write-back window may discard the
+//! new bytes; the previously committed file remains intact in that case.
 
 use std::path::{Path, PathBuf};
 
