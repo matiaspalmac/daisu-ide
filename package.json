@@ -13,10 +13,23 @@
     "build": "cargo tauri build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
     "@tauri-apps/cli": "^2.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "typescript": "^5.6.3"
+  },
+  "lint-staged": {
+    "apps/ui/**/*.{ts,tsx}": [
+      "pnpm --filter @daisu/ui exec tsc --noEmit"
+    ],
+    "crates/**/*.rs": [
+      "cargo fmt --"
+    ]
   }
 }
