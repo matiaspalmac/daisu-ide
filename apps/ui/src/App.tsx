@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { Editor } from "./components/Editor";
+import { Editor } from "./components/editor/Editor";
 import {
   detectWebView2,
   openFileViaDialog,

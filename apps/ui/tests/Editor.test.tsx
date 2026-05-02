@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { Editor } from "../src/components/Editor";
+import { Editor } from "../src/components/editor/Editor";
 
 vi.mock("@monaco-editor/react", () => ({
   default: ({ value, onChange, language }: { value: string; onChange?: (v: string | undefined) => void; language: string }) => (

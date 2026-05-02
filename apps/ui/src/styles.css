@@ -212,3 +212,23 @@ body,
 .daisu-statusbar-right { margin-left: auto; }
 
 .daisu-status-item { white-space: nowrap; }
+
+.daisu-editor-area {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.daisu-editor-area-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.daisu-welcome {
+  text-align: center;
+  color: var(--daisu-descriptionForeground, #888);
+}
+
+.daisu-welcome h2 { margin: 0 0 8px 0; font-size: 18px; }
+.daisu-welcome p { margin: 0; font-size: 13px; }
