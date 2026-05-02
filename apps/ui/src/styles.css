@@ -87,3 +87,51 @@ body,
 .daisu-banner a {
   color: #ffeb95;
 }
+
+.daisu-toast-viewport {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  z-index: 1000;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.daisu-toast {
+  background: var(--daisu-notifications-background, #252526);
+  color: var(--daisu-notifications-foreground, #cccccc);
+  border: 1px solid var(--daisu-notifications-border, #333);
+  border-radius: 4px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  font-size: 12px;
+}
+
+.daisu-toast-info { border-left: 3px solid #3794ff; }
+.daisu-toast-success { border-left: 3px solid #608b4e; }
+.daisu-toast-warning { border-left: 3px solid #cc8a00; }
+.daisu-toast-error { border-left: 3px solid #f48771; }
+
+.daisu-toast-title { margin: 0; }
+
+.daisu-toast-close {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  opacity: 0.6;
+}
+
+.daisu-toast-close:hover { opacity: 1; }
