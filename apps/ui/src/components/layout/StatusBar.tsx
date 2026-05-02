@@ -3,7 +3,8 @@ import { useTabs } from "../../stores/tabsStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 
 export function StatusBar(): JSX.Element {
-  const tab = useTabs((s) => s.activeTab());
+  const activeTabId = useTabs((s) => s.activeTabId);
+  const tab = useTabs((s) => s.tabs.find((t) => t.id === activeTabId) ?? null);
   const rootPath = useWorkspace((s) => s.rootPath);
 
   return (

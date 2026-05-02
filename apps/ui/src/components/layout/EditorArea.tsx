@@ -3,7 +3,8 @@ import { useTabs } from "../../stores/tabsStore";
 import { Editor } from "../editor/Editor";
 
 export function EditorArea(): JSX.Element {
-  const tab = useTabs((s) => s.activeTab());
+  const activeTabId = useTabs((s) => s.activeTabId);
+  const tab = useTabs((s) => s.tabs.find((t) => t.id === activeTabId) ?? null);
   const updateContent = useTabs((s) => s.updateContent);
 
   if (!tab) {
