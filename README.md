@@ -6,7 +6,7 @@
 
 ## Vision
 
-See `docs/superpowers/specs/2026-05-02-daisu-ide-design.md` for the full design specification.
+Multi-agent autonomous coding with persistent memory. Cloud + local LLM provider abstraction (Anthropic, OpenAI, Google, Ollama, llama.cpp). Open VSX extension marketplace via custom web-extension host. Native Tauri shell, no Electron.
 
 ## Build from source
 
