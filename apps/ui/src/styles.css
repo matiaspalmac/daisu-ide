@@ -343,3 +343,33 @@ body,
 @keyframes daisu-spin {
   to { transform: rotate(360deg); }
 }
+
+.daisu-dropdown {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  padding: 4px;
+  min-width: 200px;
+  z-index: 50;
+}
+.daisu-dropdown-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 13px;
+  color: var(--daisu-fg, #cccccc);
+}
+.daisu-dropdown-item[data-highlighted] {
+  background: #094771;
+  outline: none;
+}
+.daisu-dropdown-separator {
+  height: 1px;
+  background: #3c3c3c;
+  margin: 4px 0;
+}
+.daisu-dropdown-empty {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #888;
+}
