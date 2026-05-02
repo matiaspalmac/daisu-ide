@@ -417,3 +417,68 @@ body,
   height: 100%;
   overflow: hidden;
 }
+
+.daisu-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 10px;
+  height: 32px;
+  border-right: 1px solid #2a2a2a;
+  background: #2d2d2d;
+  color: var(--daisu-fg, #cccccc);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  max-width: 200px;
+  white-space: nowrap;
+}
+.daisu-tab.is-active {
+  background: #1e1e1e;
+  border-top: 2px solid #3794ff;
+  padding-top: 0;
+}
+.daisu-tab:hover:not(.is-active) {
+  background: #3a3a3a;
+}
+.daisu-tab-pin {
+  flex-shrink: 0;
+  color: #cccccc;
+}
+.daisu-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.daisu-tab-dirty {
+  color: #cccccc;
+  font-size: 14px;
+  line-height: 1;
+}
+.daisu-tab-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: 0;
+  padding: 2px;
+  color: #cccccc;
+  cursor: pointer;
+  border-radius: 2px;
+  visibility: hidden;
+}
+.daisu-tab.is-active .daisu-tab-close,
+.daisu-tab:hover .daisu-tab-close {
+  visibility: visible;
+}
+.daisu-tab-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.daisu-tab-edge-left,
+.daisu-tab-edge-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #3794ff;
+}
+.daisu-tab-edge-left { left: -1px; }
+.daisu-tab-edge-right { right: -1px; }
