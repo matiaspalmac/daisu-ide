@@ -20,7 +20,8 @@ export function Editor(): JSX.Element {
 
   function syncActiveTab(): void {
     const editor = editorRef.current;
-    if (!editor) return;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
     const state = useTabs.getState();
     const newId = state.activeTabId;
     const prev = prevActiveRef.current;
@@ -35,7 +36,7 @@ export function Editor(): JSX.Element {
     }
     const tab = state.tabs.find((t) => t.id === newId);
     if (!tab) return;
-    const model = getOrCreateModel(tab) as monacoNs.editor.ITextModel;
+    const model = getOrCreateModel(monaco, tab) as monacoNs.editor.ITextModel;
     editor.setModel(model);
     if (tab.cursorState) {
       editor.restoreViewState(tab.cursorState);

@@ -20,9 +20,9 @@ interface FakeModel {
 
 const createdModels: FakeModel[] = [];
 
-vi.mock("monaco-editor", () => ({
+const fakeMonaco = {
   editor: {
-    createModel: vi.fn((value: string, language: string, uri: { toString(): string }) => {
+    createModel: (value: string, language: string, uri: { toString(): string }) => {
       const m: FakeModel = {
         uri: uri.toString(),
         language,
@@ -43,12 +43,13 @@ vi.mock("monaco-editor", () => ({
       };
       createdModels.push(m);
       return m;
-    }),
+    },
   },
   Uri: {
     parse: (s: string) => ({ toString: () => s }),
   },
-}));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any;
 
 vi.mock("../../src/stores/tabsStore", () => ({
   useTabs: {
@@ -76,27 +77,27 @@ afterEach(() => disposeAllModels());
 
 describe("monaco-models registry", () => {
   it("createOrGet creates a model on first call", () => {
-    const m = getOrCreateModel(tab("a"));
+    const m = getOrCreateModel(fakeMonaco, tab("a"));
     expect(m).toBeDefined();
     expect(hasModel("a")).toBe(true);
   });
 
   it("createOrGet returns the same instance on second call", () => {
-    const first = getOrCreateModel(tab("a"));
-    const second = getOrCreateModel(tab("a"));
+    const first = getOrCreateModel(fakeMonaco, tab("a"));
+    const second = getOrCreateModel(fakeMonaco, tab("a"));
     expect(first).toBe(second);
   });
 
   it("disposeModel removes from registry and disposes Monaco model", () => {
-    getOrCreateModel(tab("a"));
+    getOrCreateModel(fakeMonaco, tab("a"));
     disposeModel("a");
     expect(hasModel("a")).toBe(false);
     expect(createdModels[0]?.disposed).toBe(true);
   });
 
   it("disposeAllModels disposes all and clears", () => {
-    getOrCreateModel(tab("a"));
-    getOrCreateModel(tab("b"));
+    getOrCreateModel(fakeMonaco, tab("a"));
+    getOrCreateModel(fakeMonaco, tab("b"));
     expect(hasModel("a") && hasModel("b")).toBe(true);
     disposeAllModels();
     expect(hasModel("a") || hasModel("b")).toBe(false);
