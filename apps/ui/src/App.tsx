@@ -10,9 +10,12 @@ import { AgentsPanel } from "./components/layout/AgentsPanel";
 import { StatusBar } from "./components/layout/StatusBar";
 import { SearchPanel } from "./components/layout/SearchPanel";
 import { ToastViewport } from "./components/ui/Toast";
+import { CloseConfirmModal } from "./components/tabs/CloseConfirmModal";
 import { useUI } from "./stores/uiStore";
 import { useSettings } from "./stores/settingsStore";
 import { useWorkspace } from "./stores/workspaceStore";
+import { useTabs } from "./stores/tabsStore";
+import { useKeybindings } from "./hooks/useKeybindings";
 import { copy } from "./lib/copy";
 
 // Note: react-resizable-panels v4 uses percentage-string sizing.
@@ -22,10 +25,15 @@ import { copy } from "./lib/copy";
 //   240/1280 ≈ 19% sidebar, 320/1280 ≈ 25% agents.
 
 export function App(): JSX.Element {
+  useKeybindings();
   const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
   const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
   const searchOpen = useUI((s) => s.searchPanelOpen);
   const loadSettings = useSettings((s) => s.load);
+  const restoreTabs = useTabs((s) => s.restoreSession);
+  const saveTabsSession = useTabs((s) => s.saveSession);
+  const closeAllTabs = useTabs((s) => s.closeAll);
+  const workspaceHash = useWorkspace((s) => s.workspaceHash);
 
   const mainSplit = useDefaultLayout({
     groupId: "daisu-main-split",
@@ -39,6 +47,26 @@ export function App(): JSX.Element {
   useEffect(() => {
     loadSettings().catch(() => undefined);
   }, [loadSettings]);
+
+  useEffect(() => {
+    if (workspaceHash) {
+      void restoreTabs(workspaceHash);
+    } else {
+      void closeAllTabs(true);
+    }
+  }, [workspaceHash, restoreTabs, closeAllTabs]);
+
+  useEffect(() => {
+    let unlistenBeforeClose: (() => void) | null = null;
+    void listen<void>("system:before-close", () => {
+      void saveTabsSession();
+    }).then((fn) => {
+      unlistenBeforeClose = fn;
+    });
+    return () => {
+      if (unlistenBeforeClose) unlistenBeforeClose();
+    };
+  }, [saveTabsSession]);
 
   const hydrate = useWorkspace((s) => s.hydrate);
   const applyBatch = useWorkspace((s) => s.applyBatch);
@@ -154,7 +182,22 @@ export function App(): JSX.Element {
       </Group>
       <StatusBar />
       <ToastViewport />
+      <CloseConfirmModalConnected />
     </main>
+  );
+}
+
+function CloseConfirmModalConnected(): JSX.Element | null {
+  const pending = useTabs((s) => s.pendingClose);
+  const tabs = useTabs((s) => s.tabs);
+  const resolve = useTabs((s) => s.resolvePendingClose);
+  const tabsByName = new Map(tabs.map((t) => [t.id, t.name]));
+  return (
+    <CloseConfirmModal
+      pending={pending}
+      tabsByName={tabsByName}
+      onResolve={(action) => void resolve(action)}
+    />
   );
 }
 
