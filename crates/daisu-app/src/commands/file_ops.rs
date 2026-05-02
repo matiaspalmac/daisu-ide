@@ -203,6 +203,111 @@ pub async fn rename_path(from: String, to_name: String) -> AppResult<String> {
     rename_path_at(Path::new(&from), &to_name).await
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TrashRef {
+    /// Original path before deletion. The frontend uses this for the optimistic
+    /// undo flow even when the platform-specific trash handle isn't enough.
+    pub original_path: String,
+}
+
+/// Move each path to the OS trash. Returns refs the caller stores for undo.
+///
+/// Uses the `trash` crate which on Windows shells out to the recycle bin.
+///
+/// # Errors
+/// Returns [`AppError::IoError`] only when the `trash` crate failed for every
+/// path (none could be moved). Otherwise returns the refs for those that
+/// succeeded; partial failures are silently absorbed by design (Phase 2 prefers
+/// optimistic UX over halting on partial errors).
+pub async fn delete_to_trash_paths(paths: &[String]) -> AppResult<Vec<TrashRef>> {
+    let owned: Vec<String> = paths.to_vec();
+    let result = tokio::task::spawn_blocking(move || {
+        let mut refs: Vec<TrashRef> = Vec::with_capacity(owned.len());
+        let mut first_err: Option<String> = None;
+        for path in &owned {
+            match trash::delete(path) {
+                Ok(()) => refs.push(TrashRef {
+                    original_path: path.clone(),
+                }),
+                Err(e) => {
+                    if first_err.is_none() {
+                        first_err = Some(format!("trash error for {path}: {e}"));
+                    }
+                }
+            }
+        }
+        (refs, first_err)
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("blocking task panicked: {e}")))?;
+
+    if result.0.is_empty() {
+        if let Some(msg) = result.1 {
+            return Err(AppError::IoError {
+                kind: "Trash".into(),
+                message: msg,
+            });
+        }
+    }
+    Ok(result.0)
+}
+
+/// Best-effort restore of items previously sent to trash via
+/// [`delete_to_trash_paths`].
+///
+/// # Errors
+/// Returns [`AppError::Internal`] only if the blocking task itself panics.
+/// Trash crate failures during restore are absorbed silently (Phase 2 surfaces
+/// partial-success in the frontend Toast).
+pub async fn restore_from_trash_refs(refs: &[TrashRef]) -> AppResult<()> {
+    let owned: Vec<TrashRef> = refs.to_vec();
+    tokio::task::spawn_blocking(move || -> AppResult<()> {
+        #[cfg(windows)]
+        {
+            use trash::os_limited;
+            let Ok(items) = os_limited::list() else {
+                return Ok(());
+            };
+            for r in &owned {
+                let want = std::path::PathBuf::from(&r.original_path);
+                let matches: Vec<_> = items
+                    .iter()
+                    .filter(|it| it.original_path() == want)
+                    .cloned()
+                    .collect();
+                if !matches.is_empty() {
+                    let _ = os_limited::restore_all(matches);
+                }
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = owned;
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("blocking task panicked: {e}")))?
+}
+
+/// Tauri command form of [`delete_to_trash_paths`].
+///
+/// # Errors
+/// Propagates errors from [`delete_to_trash_paths`].
+#[tauri::command]
+pub async fn delete_to_trash(paths: Vec<String>) -> AppResult<Vec<TrashRef>> {
+    delete_to_trash_paths(&paths).await
+}
+
+/// Tauri command form of [`restore_from_trash_refs`].
+///
+/// # Errors
+/// Propagates errors from [`restore_from_trash_refs`].
+#[tauri::command]
+pub async fn restore_from_trash(refs: Vec<TrashRef>) -> AppResult<()> {
+    restore_from_trash_refs(&refs).await
+}
+
 #[must_use]
 pub fn detect_language(path: &Path) -> String {
     let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
