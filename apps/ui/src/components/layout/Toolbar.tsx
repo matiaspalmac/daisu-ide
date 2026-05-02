@@ -1,13 +1,16 @@
 import type { JSX } from "react";
 import { useCallback } from "react";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useUI } from "../../stores/uiStore";
 import { useTabs } from "../../stores/tabsStore";
+import { useWorkspace } from "../../stores/workspaceStore";
 import { Icon } from "../ui/Icon";
 import {
   openFileViaDialog,
   saveFile,
   saveFileAsViaDialog,
 } from "../../api/tauri";
+import { translateError } from "../../lib/error-translate";
 
 export function Toolbar(): JSX.Element {
   const toggleSidebar = useUI((s) => s.toggleSidebar);
@@ -34,6 +37,18 @@ export function Toolbar(): JSX.Element {
       });
     }
   }, [pushToast]);
+
+  const openWorkspace = useWorkspace((s) => s.openWorkspace);
+  const handleOpenFolder = useCallback(async (): Promise<void> => {
+    try {
+      const selected = await openDialog({ directory: true, multiple: false });
+      if (typeof selected === "string") {
+        await openWorkspace(selected);
+      }
+    } catch (err) {
+      pushToast({ message: translateError(err), level: "error" });
+    }
+  }, [openWorkspace, pushToast]);
 
   const handleSave = useCallback(async (): Promise<void> => {
     const tabs = useTabs.getState();
@@ -70,6 +85,7 @@ export function Toolbar(): JSX.Element {
       </button>
       <h1>Daisu IDE</h1>
       <button type="button" onClick={handleOpen} className="daisu-btn">Open…</button>
+      <button type="button" onClick={handleOpenFolder} className="daisu-btn">Open Folder…</button>
       <button type="button" onClick={handleSave} className="daisu-btn">Save</button>
       <span className="daisu-toolbar-spacer" />
       <button

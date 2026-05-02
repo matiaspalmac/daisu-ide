@@ -5,12 +5,12 @@ type Variant = "no-folder" | "walking" | "empty-folder" | "read-error";
 
 interface Props {
   variant: Variant;
-  message?: string;
-  onOpenFolder?: () => void;
-  onNewFile?: () => void;
-  onNewFolder?: () => void;
-  onRetry?: () => void;
-  onOpenDifferent?: () => void;
+  message?: string | undefined;
+  onOpenFolder?: (() => void) | undefined;
+  onNewFile?: (() => void) | undefined;
+  onNewFolder?: (() => void) | undefined;
+  onRetry?: (() => void) | undefined;
+  onOpenDifferent?: (() => void) | undefined;
 }
 
 export function EmptyState(props: Props): JSX.Element {
