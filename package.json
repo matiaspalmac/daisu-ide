@@ -14,14 +14,17 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
+    "size": "size-limit",
     "prepare": "husky"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
+    "@size-limit/file": "11.0.0",
     "@tauri-apps/cli": "^2.1.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
+    "size-limit": "11.0.0",
     "typescript": "^5.6.3"
   },
   "lint-staged": {

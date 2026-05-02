@@ -1,0 +1,8 @@
+[
+  {
+    "name": "Frontend bundle (JS gzipped)",
+    "path": "apps/ui/dist/assets/*.js",
+    "limit": "800 KB",
+    "gzip": true
+  }
+]

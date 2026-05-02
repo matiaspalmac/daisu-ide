@@ -63,6 +63,9 @@ jobs:
       - name: Vite build (smoke)
         run: pnpm --filter @daisu/ui build
 
+      - name: Bundle size
+        run: pnpm size
+
   tauri-build-smoke:
     name: Tauri build smoke (windows)
     needs: [rust, frontend]
