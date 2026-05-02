@@ -169,6 +169,40 @@ pub async fn create_dir(parent: String, name: String) -> AppResult<String> {
     create_dir_at(Path::new(&parent), &name).await
 }
 
+/// Rename `from` to a sibling at `parent(from)/to_name`.
+///
+/// `to_name` must pass [`crate::validation::validate_filename`]. The destination must not exist.
+/// Operation is atomic on the same volume (Windows / NTFS).
+///
+/// # Errors
+/// - [`AppError::InvalidName`] if `to_name` violates rules
+/// - [`AppError::AlreadyExists`] if dest already exists
+/// - [`AppError::NotFound`] if source missing
+pub async fn rename_path_at(from: &Path, to_name: &str) -> AppResult<String> {
+    crate::validation::validate_filename(to_name)?;
+    let parent = from
+        .parent()
+        .ok_or_else(|| AppError::Internal(format!("path has no parent: {}", from.display())))?;
+    let dest = parent.join(to_name);
+    if !tokio::fs::try_exists(from).await.unwrap_or(false) {
+        return Err(AppError::not_found(from.display().to_string()));
+    }
+    if tokio::fs::try_exists(&dest).await.unwrap_or(false) {
+        return Err(AppError::already_exists(dest.display().to_string()));
+    }
+    tokio::fs::rename(from, &dest).await?;
+    Ok(dest.display().to_string())
+}
+
+/// Tauri command form of [`rename_path_at`].
+///
+/// # Errors
+/// Propagates errors from [`rename_path_at`].
+#[tauri::command]
+pub async fn rename_path(from: String, to_name: String) -> AppResult<String> {
+    rename_path_at(Path::new(&from), &to_name).await
+}
+
 #[must_use]
 pub fn detect_language(path: &Path) -> String {
     let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
