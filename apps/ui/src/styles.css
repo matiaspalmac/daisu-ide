@@ -1,8 +1,8 @@
 :root {
   color-scheme: dark;
   font-family: "Segoe UI", system-ui, sans-serif;
-  background: #1e1e1e;
-  color: #e6e6e6;
+  background: var(--daisu-bg, #1e1e1e);
+  color: var(--daisu-fg, #e6e6e6);
 }
 
 * {
@@ -52,8 +52,8 @@ body,
   align-items: center;
   gap: 12px;
   padding: 0 12px;
-  background: #252526;
-  border-bottom: 1px solid #333;
+  background: var(--daisu-toolbar-bg, #252526);
+  border-bottom: 1px solid var(--daisu-border, #333);
 }
 
 .daisu-toolbar h1 {
@@ -180,7 +180,7 @@ body,
 .daisu-sidebar,
 .daisu-agents-panel,
 .daisu-search-panel {
-  background: var(--daisu-sideBar-background, #252526);
+  background: var(--daisu-sidebar-bg, var(--daisu-sideBar-background, #252526));
   color: var(--daisu-sideBar-foreground, #cccccc);
   border-right: 1px solid var(--daisu-sideBar-border, #1e1e1e);
   display: flex;
@@ -216,7 +216,8 @@ body,
 
 .daisu-statusbar {
   height: 22px;
-  background: var(--daisu-statusBar-background, #007acc);
+  background: var(--daisu-statusbar-bg, var(--daisu-statusBar-background, #007acc));
+  color: var(--daisu-statusbar-fg, inherit);
   color: var(--daisu-statusBar-foreground, #ffffff);
   display: flex;
   align-items: center;
