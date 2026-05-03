@@ -123,6 +123,13 @@ export function App(): JSX.Element {
         done: boolean;
         error: string | null;
       }>("workspace:tree-batch", (event) => {
+        // Diagnostic until walker stuck-state issue is resolved.
+        // eslint-disable-next-line no-console
+        console.log("[walker]", {
+          nodes: event.payload.nodes.length,
+          done: event.payload.done,
+          batch_id: event.payload.batch_id,
+        });
         applyBatch({
           batchId: event.payload.batch_id,
           parentPath: event.payload.parent_path,

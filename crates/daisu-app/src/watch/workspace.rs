@@ -160,6 +160,7 @@ fn run_walk_blocking(
         }
     }
 
+    let nodes_in_final = buf.len();
     let final_batch = TreeBatch {
         batch_id,
         parent_path: None,
@@ -167,7 +168,11 @@ fn run_walk_blocking(
         done: true,
         error: None,
     };
-    let _ = blocking_send(&out, final_batch);
+    let send_result = blocking_send(&out, final_batch);
+    eprintln!(
+        "daisu walker finished: final_nodes={nodes_in_final} send_ok={}",
+        send_result.is_ok()
+    );
     Ok(())
 }
 

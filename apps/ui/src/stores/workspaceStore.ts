@@ -167,38 +167,78 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   },
 
   async openWorkspace(path) {
-    const info = await openWorkspaceCmd(path);
-    const hash = cheapHash(info.root_path);
-    const next = INITIAL_RUNTIME();
-    next.rootPath = info.root_path;
-    next.workspaceHash = hash;
-    next.walkSessionId = info.batch_id;
-
-    const recents = [
-      { path: info.root_path, name: basenameOf(info.root_path), openedAt: Date.now() },
-      ...get().recents.filter((r) => r.path !== info.root_path),
-    ].slice(0, RECENTS_CAP);
-
-    const expandedPersisted = get().expandedPersisted;
-    const restored = expandedPersisted[hash] ?? [];
-
+    // Pre-populate runtime BEFORE invoking the backend so the walker's tree
+    // batches (which can arrive synchronously from the awaited command on
+    // fast disks) accumulate against this session rather than being wiped
+    // by a post-await `set({...INITIAL_RUNTIME})` race.
     set({
-      ...next,
+      ...INITIAL_RUNTIME(),
+      rootPath: path,
       tree: new Map([
         [
-          info.root_path,
+          path,
           {
-            path: info.root_path,
-            name: basenameOf(info.root_path),
+            path,
+            name: basenameOf(path),
             kind: "dir",
             size: null,
             mtimeMs: null,
           },
         ],
       ]),
-      childrenIndex: new Map([[info.root_path, []]]),
-      expanded: new Set(restored),
-      recents,
+      childrenIndex: new Map([[path, []]]),
+    });
+
+    const info = await openWorkspaceCmd(path);
+    const hash = cheapHash(info.root_path);
+    const recents = [
+      { path: info.root_path, name: basenameOf(info.root_path), openedAt: Date.now() },
+      ...get().recents.filter((r) => r.path !== info.root_path),
+    ].slice(0, RECENTS_CAP);
+    const expandedPersisted = get().expandedPersisted;
+    const restored = expandedPersisted[hash] ?? [];
+
+    // Surgical merge: keep walker-populated tree/childrenIndex/walkDone but
+    // patch in canonical root path and the backend-issued walkSessionId so
+    // applyBatch can validate subsequent batches.
+    set((state) => {
+      const tree = new Map(state.tree);
+      const childrenIndex = new Map(state.childrenIndex);
+      if (path !== info.root_path) {
+        // Rare: backend canonicalised the path. Re-key the root entry so the
+        // sidebar selectors find children under the canonical key.
+        const stubEntries = tree.get(path);
+        if (stubEntries) {
+          tree.delete(path);
+          tree.set(info.root_path, { ...stubEntries, path: info.root_path });
+        }
+        const stubChildren = childrenIndex.get(path);
+        if (stubChildren !== undefined) {
+          childrenIndex.delete(path);
+          childrenIndex.set(info.root_path, stubChildren);
+        }
+      }
+      if (!tree.has(info.root_path)) {
+        tree.set(info.root_path, {
+          path: info.root_path,
+          name: basenameOf(info.root_path),
+          kind: "dir",
+          size: null,
+          mtimeMs: null,
+        });
+      }
+      if (!childrenIndex.has(info.root_path)) {
+        childrenIndex.set(info.root_path, []);
+      }
+      return {
+        rootPath: info.root_path,
+        workspaceHash: hash,
+        walkSessionId: info.batch_id,
+        tree,
+        childrenIndex,
+        expanded: new Set(restored),
+        recents,
+      };
     });
     void saveWorkspacePersistence(persistSnapshot(get()));
   },
