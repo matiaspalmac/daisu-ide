@@ -60,7 +60,16 @@ export function TitleBar(): JSX.Element {
     }
   }, [saveActive, pushToast]);
 
-  const win = useMemo(() => getCurrentWindow(), []);
+  // getCurrentWindow throws when running in a plain browser (vite dev opened
+  // outside Tauri webview). Guard so the titlebar still renders for designers
+  // previewing the UI in Chrome.
+  const win = useMemo(() => {
+    try {
+      return getCurrentWindow();
+    } catch {
+      return null;
+    }
+  }, []);
 
   return (
     <header
@@ -107,7 +116,7 @@ export function TitleBar(): JSX.Element {
               <DropdownMenuShortcut>Ctrl+S</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => void win.close()}>
+            <DropdownMenuItem onSelect={() => void win?.close()}>
               Salir
               <DropdownMenuShortcut>Alt+F4</DropdownMenuShortcut>
             </DropdownMenuItem>
@@ -226,7 +235,7 @@ export function TitleBar(): JSX.Element {
       <button
         type="button"
         className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--accent-soft)]"
-        onClick={() => void win.minimize()}
+        onClick={() => void win?.minimize()}
         aria-label="Minimizar"
       >
         <Minus size={14} />
@@ -234,7 +243,7 @@ export function TitleBar(): JSX.Element {
       <button
         type="button"
         className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--accent-soft)]"
-        onClick={() => void win.toggleMaximize()}
+        onClick={() => void win?.toggleMaximize()}
         aria-label="Maximizar"
       >
         <Square size={12} />
@@ -242,7 +251,7 @@ export function TitleBar(): JSX.Element {
       <button
         type="button"
         className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--fg-inverse)] hover:bg-[var(--danger)]"
-        onClick={() => void win.close()}
+        onClick={() => void win?.close()}
         aria-label="Cerrar"
       >
         <X size={14} />
