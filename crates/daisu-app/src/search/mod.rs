@@ -2,6 +2,7 @@
 //! pipeline: ignore-aware walking, regex matching, per-file streaming with
 //! cancellation tokens, and atomic bulk-replace.
 
+pub mod matcher;
 pub mod walker;
 
 #[allow(clippy::struct_excessive_bools)]

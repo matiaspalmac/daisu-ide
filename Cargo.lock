@@ -498,6 +498,7 @@ dependencies = [
  "notify",
  "once_cell",
  "parking_lot",
+ "regex",
  "serde",
  "serde_json",
  "sha1",
