@@ -11,8 +11,14 @@ export function SearchInput(): JSX.Element {
   const query = useSearch((s) => s.query);
   const options = useSearch((s) => s.options);
   const setQuery = useSearch((s) => s.setQuery);
-  const toggle = useSearch((s) => s.toggleOption);
+  const toggleStore = useSearch((s) => s.toggleOption);
   const search = useSearch((s) => s.search);
+  const toggle = (
+    field: "caseSensitive" | "regex" | "wholeWord" | "multiline",
+  ): void => {
+    toggleStore(field);
+    void search();
+  };
 
   return (
     <div className="daisu-search-row">

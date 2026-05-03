@@ -14,7 +14,7 @@ async fn watcher_emits_on_index_change() {
 
     let (tx, mut rx) = mpsc::channel::<()>(8);
     let cancel = CancellationToken::new();
-    let _handle = watch_git_dir(tmp.path(), tx, &cancel, Duration::from_millis(150)).unwrap();
+    let _handle = watch_git_dir(&git_dir, tx, &cancel, Duration::from_millis(150)).unwrap();
 
     tokio::time::sleep(Duration::from_millis(300)).await;
     std::fs::write(git_dir.join("index"), b"v2").unwrap();
@@ -34,7 +34,7 @@ async fn watcher_emits_on_head_change() {
 
     let (tx, mut rx) = mpsc::channel::<()>(8);
     let cancel = CancellationToken::new();
-    let _handle = watch_git_dir(tmp.path(), tx, &cancel, Duration::from_millis(150)).unwrap();
+    let _handle = watch_git_dir(&git_dir, tx, &cancel, Duration::from_millis(150)).unwrap();
 
     tokio::time::sleep(Duration::from_millis(300)).await;
     std::fs::write(git_dir.join("HEAD"), "ref: refs/heads/feature\n").unwrap();
@@ -54,7 +54,7 @@ async fn watcher_ignores_unrelated_git_files() {
 
     let (tx, mut rx) = mpsc::channel::<()>(8);
     let cancel = CancellationToken::new();
-    let _handle = watch_git_dir(tmp.path(), tx, &cancel, Duration::from_millis(150)).unwrap();
+    let _handle = watch_git_dir(&git_dir, tx, &cancel, Duration::from_millis(150)).unwrap();
 
     tokio::time::sleep(Duration::from_millis(300)).await;
     std::fs::write(git_dir.join("config"), "[core]").unwrap();

@@ -123,14 +123,17 @@ pub fn open_workspace(
         }
     });
 
-    // Phase 5: dedicated git watcher on .git/index + .git/HEAD.
-    let git_dir = root.join(".git");
-    if git_dir.exists() {
+    // Phase 5: dedicated git watcher on the repo's actual git dir (handles
+    // subdirectories of a repo and `.git` worktree pointer files via git2's
+    // discovery). Rotate the cancellation token so the previous workspace's
+    // debounce loop exits cleanly.
+    if let Ok(handle) = crate::git::repo_handle::get_repo(&root) {
+        let git_dir = handle.lock().path().to_path_buf();
+        let gw_cancel = state.replace_git_cancel();
         let (gw_tx, mut gw_rx) = mpsc::channel::<()>(8);
-        let gw_cancel = state.git_cancel().clone();
-        match watch_git_dir(&root, gw_tx, &gw_cancel, Duration::from_millis(500)) {
-            Ok(handle) => {
-                state.set_git_watcher(handle);
+        match watch_git_dir(&git_dir, gw_tx, &gw_cancel, Duration::from_millis(500)) {
+            Ok(watcher) => {
+                state.set_git_watcher(watcher);
                 let app_clone = app.clone();
                 tokio::spawn(async move {
                     while gw_rx.recv().await.is_some() {
@@ -164,6 +167,7 @@ pub fn close_workspace(state: State<'_, AppState>) -> AppResult<()> {
     if let Some(prev) = state.take_walker_token() {
         prev.cancel();
     }
+    state.cancel_git();
     state.drop_git_watcher();
     if let Some(root) = state.root() {
         crate::git::repo_handle::invalidate(&root);

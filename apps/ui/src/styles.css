@@ -912,3 +912,9 @@ body,
   margin-left: auto;
   padding-right: 6px;
 }
+
+.daisu-branch-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}

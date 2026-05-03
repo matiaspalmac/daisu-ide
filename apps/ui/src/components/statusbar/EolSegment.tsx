@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useTabs } from "../../stores/tabsStore";
 import { useUI } from "../../stores/uiStore";
-import { convertEolCmd } from "../../api/tauri";
+import { convertEolCmd, openFile } from "../../api/tauri";
 import { translateError } from "../../lib/error-translate";
 
 export function EolSegment(): JSX.Element | null {
@@ -15,8 +15,21 @@ export function EolSegment(): JSX.Element | null {
     if (target === tab.eol) return;
     try {
       await convertEolCmd(path, target);
+      // Re-read the file from disk so the in-memory editor buffer matches
+      // the converted line endings; otherwise the next save would silently
+      // restore the previous EOL style from the stale buffer.
+      const opened = await openFile(path);
       useTabs.setState((s) => ({
-        tabs: s.tabs.map((t) => (t.id === tab.id ? { ...t, eol: target } : t)),
+        tabs: s.tabs.map((t) =>
+          t.id === tab.id
+            ? {
+                ...t,
+                content: opened.contents,
+                savedContent: opened.contents,
+                eol: opened.eol ?? target,
+              }
+            : t,
+        ),
       }));
       pushToast({ message: `EOL converted to ${target}`, level: "success" });
     } catch (err) {

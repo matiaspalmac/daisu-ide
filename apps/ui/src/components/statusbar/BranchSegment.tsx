@@ -25,6 +25,9 @@ export function BranchSegment(): JSX.Element | null {
     }
   };
 
+  // Fetch button is a sibling of the picker trigger, not nested inside it.
+  // Nested interactive elements are invalid HTML and break keyboard / screen
+  // reader navigation.
   const trigger = (
     <button
       type="button"
@@ -35,21 +38,21 @@ export function BranchSegment(): JSX.Element | null {
       {info.branch}
       {info.ahead > 0 && <span title="Ahead">↑{info.ahead}</span>}
       {info.behind > 0 && <span title="Behind">↓{info.behind}</span>}
-      <span
-        role="button"
-        tabIndex={0}
+    </button>
+  );
+
+  return (
+    <span className="daisu-branch-group">
+      <BranchPicker trigger={trigger} />
+      <button
+        type="button"
         className="daisu-icon-btn-sm"
         onClick={(e) => void handleFetch(e)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") void handleFetch(e as unknown as MouseEvent);
-        }}
         aria-label="Fetch from origin"
         title="Fetch from origin"
       >
         <RefreshCw size={10} />
-      </span>
-    </button>
+      </button>
+    </span>
   );
-
-  return <BranchPicker trigger={trigger} />;
 }

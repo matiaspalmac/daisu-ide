@@ -48,9 +48,19 @@ export function SearchPanel(): JSX.Element {
       unlisteners.push(fn);
     };
 
+    // Only ingest events whose requestId matches the store's activeRequestId.
+    // A late event from a previous (still-flushing) search would otherwise
+    // mix stale hits into the new result set or prematurely clear
+    // activeRequestId on a `done` / `cancelled` event from the old request.
+    const sameRequest = (rid: unknown): boolean => {
+      const active = useSearch.getState().activeRequestId;
+      return typeof rid === "string" && rid === active;
+    };
+
     void subscribe<SearchHitEvent>("search-hit", (e) => {
-      const raw = (e as unknown as { request_id?: string; hits?: unknown }).hits
-        ?? e.hits;
+      const rid = (e as unknown as { request_id?: string }).request_id ?? e.requestId;
+      if (!sameRequest(rid)) return;
+      const raw = (e as unknown as { hits?: unknown }).hits ?? e.hits;
       const hits = (raw as Array<{
         id: string;
         path: string;
@@ -69,15 +79,20 @@ export function SearchPanel(): JSX.Element {
       ingestHits(hits);
     });
     void subscribe<SearchProgressEvent>("search-progress", (e) => {
+      const rid = (e as unknown as { request_id?: string }).request_id ?? e.requestId;
+      if (!sameRequest(rid)) return;
       const filesSearched = (e as unknown as { files_searched?: number })
         .files_searched ?? e.filesSearched;
       ingestProgress(filesSearched);
     });
     void subscribe<SearchSummary>("search-done", (e) => {
+      const rid = (e as unknown as { request_id?: string }).request_id ?? e.requestId;
+      if (!sameRequest(rid)) return;
       const truncated = (e as unknown as { truncated?: boolean }).truncated ?? false;
       markDone(truncated);
     });
-    void subscribe<unknown>("search-cancelled", () => {
+    void subscribe<string>("search-cancelled", (rid) => {
+      if (!sameRequest(rid)) return;
       markDone(false);
     });
 

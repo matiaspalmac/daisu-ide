@@ -25,6 +25,7 @@ export function EncodingSegment(): JSX.Element | null {
                 content: opened.contents,
                 savedContent: opened.contents,
                 encoding: opened.encoding,
+                eol: opened.eol ?? t.eol,
               }
             : t,
         ),

@@ -22,12 +22,11 @@ use crate::error::{AppError, AppResult};
 /// watcher or watch the directory. Returns [`AppError::NotFound`] if the
 /// `.git` directory does not exist.
 pub fn watch_git_dir(
-    workspace_path: &std::path::Path,
+    git_dir: &std::path::Path,
     out: Sender<()>,
     cancel: &CancellationToken,
     debounce_window: Duration,
 ) -> AppResult<RecommendedWatcher> {
-    let git_dir = workspace_path.join(".git");
     if !git_dir.exists() {
         return Err(AppError::not_found(git_dir.display().to_string()));
     }
@@ -50,7 +49,7 @@ pub fn watch_git_dir(
         .map_err(|e| AppError::watcher(format!("git watcher create: {e}")))?;
 
     watcher
-        .watch(&git_dir, RecursiveMode::NonRecursive)
+        .watch(git_dir, RecursiveMode::NonRecursive)
         .map_err(|e| AppError::watcher(format!("git watcher watch: {e}")))?;
 
     let pending_for_loop = Arc::clone(&pending);

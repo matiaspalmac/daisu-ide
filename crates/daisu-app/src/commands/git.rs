@@ -48,11 +48,19 @@ pub async fn git_workspace_info(workspace_path: String) -> AppResult<GitWorkspac
 
 #[allow(clippy::cast_possible_truncation)]
 fn compute_ahead_behind(repo: &git2::Repository, local_branch: &str) -> (u32, u32) {
-    let upstream_name = format!("origin/{local_branch}");
-    let Ok(local_oid) = repo.refname_to_id(&format!("refs/heads/{local_branch}")) else {
+    // Honor the branch's configured upstream (`branch.<name>.remote` +
+    // `branch.<name>.merge`) instead of assuming `origin/<branch>`. Falls
+    // back to (0, 0) if the branch has no upstream or refs cannot resolve.
+    let Ok(local) = repo.find_branch(local_branch, git2::BranchType::Local) else {
         return (0, 0);
     };
-    let Ok(upstream_oid) = repo.refname_to_id(&format!("refs/remotes/{upstream_name}")) else {
+    let Ok(upstream) = local.upstream() else {
+        return (0, 0);
+    };
+    let Some(local_oid) = local.get().target() else {
+        return (0, 0);
+    };
+    let Some(upstream_oid) = upstream.get().target() else {
         return (0, 0);
     };
     repo.graph_ahead_behind(local_oid, upstream_oid)

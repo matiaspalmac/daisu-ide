@@ -87,9 +87,13 @@ export const useGit = create<GitState>((set, get) => ({
   },
 
   hasDirtyTree() {
+    // Untracked files don't conflict with `safe()` checkout. Mirror the
+    // backend's safe-checkout policy so the BranchPicker only triggers the
+    // force-checkout dialog when the working tree actually has tracked
+    // modifications/staged changes/conflicts.
     const info = get().info;
     if (!info) return false;
-    return Object.keys(info.statuses).length > 0;
+    return Object.values(info.statuses).some((s) => s !== "Untracked");
   },
 
   reset() {

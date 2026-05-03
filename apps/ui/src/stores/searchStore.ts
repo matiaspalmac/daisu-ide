@@ -126,7 +126,20 @@ export const useSearch = create<SearchState>((set, get) => ({
   async search() {
     const state = get();
     if (!state.workspacePath) return;
-    if (state.query.trim().length === 0) return;
+    if (state.query.trim().length === 0) {
+      if (state.activeRequestId) {
+        await cancelSearchCmd(state.activeRequestId).catch(() => undefined);
+      }
+      set({
+        activeRequestId: null,
+        hits: [],
+        filesSearched: 0,
+        done: false,
+        truncated: false,
+        excludedHitIds: new Set<string>(),
+      });
+      return;
+    }
     if (state.activeRequestId) {
       await cancelSearchCmd(state.activeRequestId).catch(() => undefined);
     }

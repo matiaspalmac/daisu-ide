@@ -5,7 +5,7 @@
 //! Phase 5 adds the dedicated git watcher handle and its cancellation token.
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use notify::RecommendedWatcher;
 use tokio_util::sync::CancellationToken;
@@ -13,7 +13,7 @@ use tokio_util::sync::CancellationToken;
 pub struct AppState {
     pub workspace_root: Mutex<Option<PathBuf>>,
     pub walker_token: Mutex<Option<CancellationToken>>,
-    git_cancel: Arc<CancellationToken>,
+    git_cancel: parking_lot::Mutex<Option<CancellationToken>>,
     git_watcher: parking_lot::Mutex<Option<RecommendedWatcher>>,
 }
 
@@ -22,7 +22,7 @@ impl Default for AppState {
         Self {
             workspace_root: Mutex::new(None),
             walker_token: Mutex::new(None),
-            git_cancel: Arc::new(CancellationToken::new()),
+            git_cancel: parking_lot::Mutex::new(None),
             git_watcher: parking_lot::Mutex::new(None),
         }
     }
@@ -83,11 +83,26 @@ impl AppState {
             .clone()
     }
 
-    /// Borrow the shared git cancellation token. Phase 5 git watcher checks
-    /// this on every tick to know when the workspace is closing.
-    #[must_use]
-    pub fn git_cancel(&self) -> &CancellationToken {
-        &self.git_cancel
+    /// Replace the active git cancellation token. Cancels the previous token
+    /// (if any) so the prior debounce loop exits cleanly. Returns the freshly
+    /// installed token for the caller to hand to the watcher.
+    pub fn replace_git_cancel(&self) -> CancellationToken {
+        let mut guard = self.git_cancel.lock();
+        if let Some(prev) = guard.take() {
+            prev.cancel();
+        }
+        let token = CancellationToken::new();
+        *guard = Some(token.clone());
+        token
+    }
+
+    /// Cancel the active git cancellation token (stops the debounce loop) and
+    /// clear it. Idempotent.
+    pub fn cancel_git(&self) {
+        let mut guard = self.git_cancel.lock();
+        if let Some(prev) = guard.take() {
+            prev.cancel();
+        }
     }
 
     /// Store the active git watcher handle. Dropping the handle stops the
