@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { TitleBar } from "./components/layout/TitleBar";
 import { WebView2Banner } from "./components/layout/WebView2Banner";
 import { ResizeHandles } from "./components/layout/ResizeHandles";
+import { ActivityBar } from "./components/layout/ActivityBar";
 import { Sidebar } from "./components/layout/Sidebar";
 import { EditorArea } from "./components/layout/EditorArea";
 import { AgentsPanel } from "./components/layout/AgentsPanel";
@@ -165,11 +166,13 @@ export function App(): JSX.Element {
     <main className="daisu-shell grid grid-rows-[var(--titlebar-h)_auto_1fr_var(--statusbar-h)] h-screen overflow-hidden">
       <TitleBar />
       <WebView2Banner />
-      <Group
-        orientation="horizontal"
-        className="daisu-main-split"
-        id="daisu-main-split"
-      >
+      <div className="grid grid-cols-[var(--activitybar-w)_1fr] min-h-0">
+        <ActivityBar />
+        <Group
+          orientation="horizontal"
+          className="daisu-main-split"
+          id="daisu-main-split"
+        >
         {!sidebarCollapsed && (
           <>
             <Panel id="sidebar" defaultSize="19%" minSize="10%" maxSize="45%">
@@ -204,7 +207,8 @@ export function App(): JSX.Element {
             </Panel>
           </>
         )}
-      </Group>
+        </Group>
+      </div>
       <StatusBar />
       <ToastViewport />
       <CloseConfirmModalConnected />
