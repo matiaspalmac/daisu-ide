@@ -2,6 +2,7 @@ import type { JSX, MouseEvent } from "react";
 import clsx from "clsx";
 import { Pin, X } from "lucide-react";
 import type { OpenTab } from "../../stores/tabsStore";
+import { useGit } from "../../stores/gitStore";
 import type { Edge } from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
 
 interface Props {
@@ -16,6 +17,8 @@ interface Props {
 export function Tab(props: Props): JSX.Element {
   const { tab, active, onActivate, onClose, closestEdge, dragHandleRef } = props;
   const dirty = tab.content !== tab.savedContent;
+  const gitStatus = useGit((s) => (tab.path ? s.status(tab.path) : null));
+  const gitClass = gitStatus ? ` daisu-git-${gitStatus.toLowerCase()}` : "";
 
   const handleMouseDown = (e: MouseEvent<HTMLDivElement>): void => {
     if (e.button === 1) {
@@ -42,7 +45,7 @@ export function Tab(props: Props): JSX.Element {
           style={{ transform: "rotate(-45deg)" }}
         />
       )}
-      <span className="daisu-tab-name">{tab.name}</span>
+      <span className={`daisu-tab-name${gitClass}`}>{tab.name}</span>
       {dirty && <span aria-hidden="true" className="daisu-tab-dirty">●</span>}
       <button
         type="button"

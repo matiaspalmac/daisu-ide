@@ -3,6 +3,7 @@ import type { NodeApi, TreeApi } from "react-arborist";
 import { ChevronRight, File, Folder, FolderOpen } from "lucide-react";
 import clsx from "clsx";
 import type { FileEntry } from "../../api/tauri";
+import { useGit } from "../../stores/gitStore";
 
 interface Props {
   node: NodeApi<FileEntry>;
@@ -11,11 +12,19 @@ interface Props {
   dragHandle?: ((el: HTMLDivElement | null) => void) | undefined;
 }
 
-const STATUS_COLOR = "transparent"; // Phase 5 wires gitStore.
+const STATUS_BADGE: Record<string, string> = {
+  Modified: "M",
+  Untracked: "U",
+  Conflict: "C",
+  Staged: "S",
+};
 
 export function Node({ node, style, dragHandle }: Props): JSX.Element {
   const Icon = node.isLeaf ? File : node.isOpen ? FolderOpen : Folder;
   const iconLabel = node.isLeaf ? "File" : "Folder";
+  const status = useGit((s) => s.status(node.data.path));
+  const tintClass = status ? `daisu-git-${status.toLowerCase()}` : "";
+  const badge = status ? STATUS_BADGE[status] : null;
 
   return (
     <div
@@ -23,8 +32,9 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
       style={style}
       className={clsx(
         "daisu-tree-row",
+        tintClass,
         node.isSelected && "is-selected",
-        node.isEditing && "is-editing"
+        node.isEditing && "is-editing",
       )}
       onDoubleClick={() => {
         if (!node.isLeaf) node.toggle();
@@ -57,11 +67,14 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
       ) : (
         <span className="daisu-tree-name">{node.data.name}</span>
       )}
-      <span
-        aria-hidden="true"
-        className="daisu-tree-git-badge"
-        style={{ background: STATUS_COLOR }}
-      />
+      {badge && (
+        <span
+          className="daisu-git-badge"
+          aria-label={`Git status ${status}`}
+        >
+          {badge}
+        </span>
+      )}
     </div>
   );
 }
