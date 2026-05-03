@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::process::Command;
 
+use daisu_app::git::branch::{checkout_branch, list_branches};
 use daisu_app::git::repo_handle::{get_repo, invalidate};
 use daisu_app::git::status::workspace_status;
 use daisu_app::git::GitFileStatus;
@@ -75,6 +76,64 @@ fn status_conflict_takes_precedence() {
     let handle = get_repo(tmp.path()).unwrap();
     let repo = handle.lock();
     let _ = workspace_status(&repo).unwrap();
+    drop(repo);
+    invalidate(tmp.path());
+}
+
+#[test]
+fn list_branches_marks_head_local() {
+    let tmp = init_repo();
+    let handle = get_repo(tmp.path()).unwrap();
+    let repo = handle.lock();
+    let branches = list_branches(&repo).unwrap();
+    let head = branches.iter().find(|b| b.is_head).unwrap();
+    assert_eq!(head.name, "main");
+    assert!(!head.is_remote);
+    drop(repo);
+    invalidate(tmp.path());
+}
+
+#[test]
+fn checkout_succeeds_on_clean_tree() {
+    let tmp = init_repo();
+    run_git(tmp.path(), &["checkout", "-b", "feature"]);
+    run_git(tmp.path(), &["checkout", "main"]);
+    let handle = get_repo(tmp.path()).unwrap();
+    let repo = handle.lock();
+    checkout_branch(&repo, "feature", false).unwrap();
+    let branches = list_branches(&repo).unwrap();
+    let head = branches.iter().find(|b| b.is_head).unwrap();
+    assert_eq!(head.name, "feature");
+    drop(repo);
+    invalidate(tmp.path());
+}
+
+#[test]
+fn checkout_safe_fails_on_dirty_tree() {
+    let tmp = init_repo();
+    run_git(tmp.path(), &["checkout", "-b", "feature"]);
+    run_git(tmp.path(), &["checkout", "main"]);
+    std::fs::write(tmp.path().join("README.md"), "dirty\n").unwrap();
+    let handle = get_repo(tmp.path()).unwrap();
+    let repo = handle.lock();
+    let result = checkout_branch(&repo, "feature", false);
+    assert!(result.is_err(), "safe checkout must fail on dirty tree");
+    drop(repo);
+    invalidate(tmp.path());
+}
+
+#[test]
+fn checkout_force_succeeds_on_dirty_tree() {
+    let tmp = init_repo();
+    run_git(tmp.path(), &["checkout", "-b", "feature"]);
+    run_git(tmp.path(), &["checkout", "main"]);
+    std::fs::write(tmp.path().join("README.md"), "dirty\n").unwrap();
+    let handle = get_repo(tmp.path()).unwrap();
+    let repo = handle.lock();
+    checkout_branch(&repo, "feature", true).unwrap();
+    let branches = list_branches(&repo).unwrap();
+    let head = branches.iter().find(|b| b.is_head).unwrap();
+    assert_eq!(head.name, "feature");
     drop(repo);
     invalidate(tmp.path());
 }
