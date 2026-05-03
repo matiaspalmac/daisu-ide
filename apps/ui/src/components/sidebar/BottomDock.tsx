@@ -55,21 +55,23 @@ export function BottomDock(): JSX.Element {
   };
 
   return (
-    <div className="px-3 py-3 flex justify-center">
-      <div className="inline-flex items-center gap-1 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-md px-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
-        {ICONS.map(({ Icon, label }, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={handle}
-            className="w-7 h-7 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-[var(--radius-sm)] transition-colors"
-            aria-label={label}
-            title={label}
-          >
-            <Icon size={14} strokeWidth={1.5} />
-          </button>
-        ))}
-      </div>
+    <div
+      className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 inline-flex items-center gap-0.5 bg-[var(--bg-elevated)]/95 backdrop-blur-md rounded-full px-1.5 py-1 shadow-[0_4px_14px_rgba(0,0,0,0.55)]"
+      role="toolbar"
+      aria-label="Integraciones"
+    >
+      {ICONS.map(({ Icon, label }, i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={handle}
+          className="w-6 h-6 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-full transition-colors"
+          aria-label={label}
+          title={label}
+        >
+          <Icon size={13} strokeWidth={1.5} />
+        </button>
+      ))}
     </div>
   );
 }

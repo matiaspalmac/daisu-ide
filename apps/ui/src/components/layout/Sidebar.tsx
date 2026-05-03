@@ -159,7 +159,7 @@ export function Sidebar(): JSX.Element {
 
   return (
     <aside
-      className="daisu-sidebar h-full flex flex-col min-w-0 bg-[var(--bg-panel)]"
+      className="daisu-sidebar relative h-full flex flex-col min-w-0 bg-[var(--bg-panel)]"
       aria-label="Workspace explorer"
     >
       <div className="daisu-sidebar-header h-9 px-3 flex items-center justify-between border-b border-[var(--border-subtle)] text-[11px] uppercase tracking-[0.08em] text-[var(--fg-secondary)]">

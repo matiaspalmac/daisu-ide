@@ -38,7 +38,7 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
           ? "is-selected bg-[var(--accent-soft)] text-[var(--accent)] border-l-2 border-[var(--accent)]"
           : "hover:bg-[var(--accent-soft)]/40",
       )}
-      onDoubleClick={() => {
+      onClick={() => {
         if (!node.isLeaf) node.toggle();
       }}
     >

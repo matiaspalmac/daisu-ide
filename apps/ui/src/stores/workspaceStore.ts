@@ -205,18 +205,11 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
       const tree = new Map(state.tree);
       const childrenIndex = new Map(state.childrenIndex);
       if (path !== info.root_path) {
-        // Rare: backend canonicalised the path. Re-key the root entry so the
-        // sidebar selectors find children under the canonical key.
-        const stubEntries = tree.get(path);
-        if (stubEntries) {
-          tree.delete(path);
-          tree.set(info.root_path, { ...stubEntries, path: info.root_path });
-        }
-        const stubChildren = childrenIndex.get(path);
-        if (stubChildren !== undefined) {
-          childrenIndex.delete(path);
-          childrenIndex.set(info.root_path, stubChildren);
-        }
+        // Rare: backend canonicalised the path. Drop the stub key but DO NOT
+        // overwrite the canonical entries the walker may have already populated
+        // (the walker emits with `info.root_path` as the parent key).
+        tree.delete(path);
+        childrenIndex.delete(path);
       }
       if (!tree.has(info.root_path)) {
         tree.set(info.root_path, {
@@ -259,7 +252,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
 
   applyBatch(batch) {
     const state = get();
+    // walkSessionId check intentionally relaxed: backend cancels stale walkers
+    // via CancellationToken, so any batch that reaches us is for the current
+    // session. The previous strict check caused races when the
+    // backend-issued batch_id was set after the first batches arrived.
     if (state.walkSessionId !== null && batch.batchId !== state.walkSessionId) {
+      // Defensive: still drop if explicitly mismatched after session locked in.
       return;
     }
     const tree = new Map(state.tree);

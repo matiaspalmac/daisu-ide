@@ -182,7 +182,7 @@ export function App(): JSX.Element {
         >
         {!sidebarCollapsed && (
           <>
-            <Panel id="sidebar" defaultSize="19%" minSize="10%" maxSize="45%">
+            <Panel id="sidebar" defaultSize="15%" minSize="10%" maxSize="40%">
               <Sidebar />
             </Panel>
             <Separator className="daisu-resize-handle" />
