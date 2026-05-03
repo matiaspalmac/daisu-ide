@@ -67,6 +67,29 @@ export function Editor(): JSX.Element {
     };
   }, []);
 
+  // Force-blur Monaco's hidden textarea on any mousedown OUTSIDE the editor's
+  // DOM. Monaco has no public blur() API (issue #307/#548) and aggressively
+  // captures focus, so the only reliable way to make a single click on the
+  // sidebar/tabs/etc. respond immediately (instead of needing a second click
+  // to "wake up" the target) is to fire this in the capture phase BEFORE
+  // Monaco's own document listeners run.
+  useEffect(() => {
+    const onDown = (e: MouseEvent): void => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      const editorEl = editor.getDomNode();
+      if (!editorEl) return;
+      const target = e.target as Node | null;
+      if (target && editorEl.contains(target)) return;
+      const ta = editorEl.querySelector("textarea.inputarea") as HTMLTextAreaElement | null;
+      if (ta && document.activeElement === ta) {
+        ta.blur();
+      }
+    };
+    document.addEventListener("mousedown", onDown, true);
+    return () => document.removeEventListener("mousedown", onDown, true);
+  }, []);
+
   function syncActiveTab(): void {
     const editor = editorRef.current;
     const monaco = monacoRef.current;
