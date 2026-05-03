@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { useCallback, useMemo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { Menu, Minus, Search, Square, User, X } from "lucide-react";
+import { Menu, Minus, Square, User, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -209,29 +209,7 @@ export function TitleBar(): JSX.Element {
         </DropdownMenu>
       </nav>
 
-      {/* Spacer */}
-      <div className="flex-1" data-tauri-drag-region />
-
-      {/* Command palette pill — wide centered */}
-      <button
-        type="button"
-        className="self-center inline-flex items-center gap-2 h-7 w-[480px] max-w-[40vw] px-4 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--fg-muted)] hover:border-[var(--border-strong)] hover:text-[var(--fg-secondary)]"
-        onClick={() =>
-          pushToast({
-            message: "Paleta de comandos disponible en M3",
-            level: "info",
-          })
-        }
-        title="Paleta de comandos"
-      >
-        <Search size={12} />
-        <span className="flex-1 text-left">Barra de comandos</span>
-        <span className="font-mono text-[10px] px-1 py-px bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-[2px]">
-          Ctrl+Shift+P
-        </span>
-      </button>
-
-      {/* Spacer right */}
+      {/* Spacer (drag region) */}
       <div className="flex-1" data-tauri-drag-region />
 
       {/* User avatar — placeholder */}
