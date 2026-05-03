@@ -18,6 +18,7 @@ export function EmptyState(props: Props): JSX.Element {
     case "no-folder":
       return (
         <div className="daisu-empty-state" role="status">
+          <span className="daisu-glyph daisu-glyph-xl" aria-hidden="true">空</span>
           <h3 className="text-sm text-[var(--fg-secondary)]">{copy.sidebar.noFolderTitle}</h3>
           <p className="text-xs text-[var(--fg-muted)]">{copy.sidebar.noFolderBody}</p>
           <button
@@ -39,6 +40,7 @@ export function EmptyState(props: Props): JSX.Element {
     case "empty-folder":
       return (
         <div className="daisu-empty-state" role="status">
+          <span className="daisu-glyph daisu-glyph-xl" aria-hidden="true">無</span>
           <p>{copy.sidebar.emptyFolderTitle}</p>
           <div className="daisu-empty-actions">
             <button type="button" className="daisu-btn" onClick={props.onNewFile}>
