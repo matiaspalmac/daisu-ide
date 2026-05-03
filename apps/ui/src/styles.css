@@ -57,7 +57,7 @@
   /* === Sizing constants === */
   --titlebar-h:     32px;
   --activitybar-w:  48px;
-  --statusbar-h:    22px;
+  --statusbar-h:    24px;
   --tab-h:          32px;
 
   /* === Semantic tab tokens === */
@@ -294,7 +294,7 @@ body {
   display: flex;
   align-items: stretch;
   height: var(--tab-h);
-  background: var(--bg-panel);
+  background: var(--bg-elevated);
   border-bottom: 1px solid var(--border-subtle);
   overflow: hidden;
   flex-wrap: nowrap;
@@ -320,12 +320,12 @@ body {
   color: var(--fg-primary);
 }
 .daisu-tab:hover:not(.is-active) {
-  background: var(--bg-elevated);
+  background: var(--bg-panel);
   color: var(--fg-primary);
 }
-.daisu-tab-pin   { flex-shrink: 0; color: var(--accent); }
+.daisu-tab-pin   { flex-shrink: 0; color: var(--warn); }
 .daisu-tab-name  { overflow: hidden; text-overflow: ellipsis; }
-.daisu-tab-dirty { color: var(--accent); font-size: 14px; line-height: 1; }
+.daisu-tab-dirty { color: var(--warn); font-size: 14px; line-height: 1; }
 .daisu-tab-close {
   flex-shrink: 0;
   background: transparent;

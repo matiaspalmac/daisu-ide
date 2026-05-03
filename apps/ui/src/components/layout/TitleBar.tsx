@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Menu, Minus, Search, Square, User, X } from "lucide-react";
@@ -60,7 +60,7 @@ export function TitleBar(): JSX.Element {
     }
   }, [saveActive, pushToast]);
 
-  const win = getCurrentWindow();
+  const win = useMemo(() => getCurrentWindow(), []);
 
   return (
     <header

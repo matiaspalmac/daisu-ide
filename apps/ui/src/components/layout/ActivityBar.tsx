@@ -34,14 +34,24 @@ export function ActivityBar(): JSX.Element {
       level: "info",
     });
 
+  const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
+  const searchOpen = useUI((s) => s.searchPanelOpen);
+
   const items: Item[] = [
     {
       id: "files",
       icon: Files,
       label: "Explorador",
       action: () => {
-        setActive("files");
-        toggleSidebar();
+        // Clicking Files when active+open → collapse. Otherwise → activate
+        // and ensure sidebar is open. Decouples "what is showing" from "what
+        // is active" so the indicator never lies about state.
+        if (active === "files" && !sidebarCollapsed) {
+          toggleSidebar();
+        } else {
+          setActive("files");
+          if (sidebarCollapsed) toggleSidebar();
+        }
       },
     },
     {
@@ -49,8 +59,12 @@ export function ActivityBar(): JSX.Element {
       icon: Search,
       label: "Buscar",
       action: () => {
-        setActive("search");
-        toggleSearch();
+        if (active === "search" && searchOpen) {
+          toggleSearch();
+        } else {
+          setActive("search");
+          if (!searchOpen) toggleSearch();
+        }
       },
     },
     {

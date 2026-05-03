@@ -112,8 +112,12 @@ export function WelcomeScreen(): JSX.Element {
               key={c.kbd}
               type="button"
               onClick={() => void c.onClick()}
-              className="relative w-40 h-28 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-4 flex flex-col items-center justify-center gap-2 hover:border-[var(--border-strong)] hover:shadow-[var(--glow-cyan-sm)] transition-all"
+              className="group relative w-40 h-28 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-4 flex flex-col items-center justify-center gap-2 hover:border-[var(--border-strong)] hover:shadow-[var(--glow-cyan-sm)] hover:-translate-y-px transition-all overflow-hidden"
             >
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent)]/40 to-transparent group-hover:via-[var(--accent)]"
+              />
               <span className="absolute top-2 right-2 inline-flex items-center gap-1 bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/30 rounded-[var(--radius-sm)] px-1.5 py-0.5 font-mono text-[10px]">
                 <CornerDownRight size={9} />
                 {c.kbd}
@@ -149,10 +153,7 @@ export function WelcomeScreen(): JSX.Element {
               ))}
             </div>
           </div>
-          <div
-            aria-live="polite"
-            className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-4 text-center"
-          >
+          <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-4 text-center">
             <p className="text-sm text-[var(--fg-primary)]">{tip.title}</p>
             <p className="text-xs text-[var(--fg-secondary)] mt-1">{tip.body}</p>
           </div>

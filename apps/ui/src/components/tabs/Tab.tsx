@@ -58,8 +58,8 @@ export function Tab(props: Props): JSX.Element {
         <span
           aria-hidden="true"
           className={cn(
-            "daisu-tab-dirty text-[var(--accent)]",
-            active && "text-base shadow-[0_0_4px_var(--accent)] rounded-full",
+            "daisu-tab-dirty text-[var(--warn)]",
+            active && "text-base shadow-[0_0_4px_var(--warn)] rounded-full",
           )}
         >
           ●

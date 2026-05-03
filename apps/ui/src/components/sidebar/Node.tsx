@@ -29,7 +29,7 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
         tintClass,
         node.isEditing && "is-editing",
         node.isSelected
-          ? "is-selected bg-[var(--accent-soft)] text-[var(--accent)] border-l-2 border-[var(--accent)]"
+          ? "is-selected bg-[var(--accent-soft)] text-[var(--accent)] shadow-[inset_2px_0_0_var(--accent)]"
           : "hover:bg-[var(--accent-soft)]/40",
       )}
       onClick={() => {

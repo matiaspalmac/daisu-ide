@@ -23,7 +23,7 @@ export function StatusBar(): JSX.Element {
 
   return (
     <footer
-      className="daisu-statusbar h-[22px] flex items-center px-3 gap-3 bg-[var(--bg-panel)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--fg-secondary)]"
+      className="daisu-statusbar h-[24px] flex items-center px-3 gap-3 bg-[var(--bg-panel)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--fg-secondary)]"
       aria-label="Status bar"
     >
       {/* Left: file info segments */}

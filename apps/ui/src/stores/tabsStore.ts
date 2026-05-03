@@ -186,6 +186,7 @@ function applySession(blob: SessionBlob): Partial<TabsState> {
 }
 
 let saveInFlight = false;
+let restoring = false;
 
 export const useTabs = create<TabsState>((set, get) => ({
   ...RUNTIME_INITIAL(),
@@ -465,6 +466,10 @@ export const useTabs = create<TabsState>((set, get) => ({
   async saveSession() {
     const hash = get().workspaceHash;
     if (!hash) return;
+    // restoring is true while restoreSession is mid-flight; skipping prevents
+    // the periodic auto-save from clobbering the previous workspace's session
+    // file with the current (still-mounted) tabs during a workspace switch.
+    if (restoring) return;
     if (saveInFlight) return;
     saveInFlight = true;
     try {
@@ -478,11 +483,16 @@ export const useTabs = create<TabsState>((set, get) => ({
   },
 
   async restoreSession(workspaceHash) {
-    set({ workspaceHash });
-    const raw = await loadSessionCmd(workspaceHash).catch(() => null);
-    const blob = parseSessionBlob(raw);
-    disposeAllModels();
-    set({ ...RUNTIME_INITIAL(), workspaceHash, ...applySession(blob) });
+    restoring = true;
+    try {
+      set({ workspaceHash });
+      const raw = await loadSessionCmd(workspaceHash).catch(() => null);
+      const blob = parseSessionBlob(raw);
+      disposeAllModels();
+      set({ ...RUNTIME_INITIAL(), workspaceHash, ...applySession(blob) });
+    } finally {
+      restoring = false;
+    }
   },
 
   async clearSession(workspaceHash) {
