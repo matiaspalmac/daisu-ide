@@ -10,29 +10,35 @@ import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker"
 
 // Tauri webview blocks CDN loading; route Monaco to the locally-bundled
 // package and supply Vite-bundled web workers so language services work.
-self.MonacoEnvironment = {
-  getWorker(_workerId, label) {
-    switch (label) {
-      case "json":
-        return new jsonWorker();
-      case "css":
-      case "scss":
-      case "less":
-        return new cssWorker();
-      case "html":
-      case "handlebars":
-      case "razor":
-        return new htmlWorker();
-      case "typescript":
-      case "javascript":
-        return new tsWorker();
-      default:
-        return new editorWorker();
-    }
-  },
-};
-
-loader.config({ monaco: monacoLocal });
+// Wrapped in a guard so test/SSR environments without `window` skip setup
+// (per Monaco bundle gotcha — keep type-only imports for non-editor code).
+let monacoLoaderConfigured = false;
+function setupMonacoEnvironment(): void {
+  if (typeof window === "undefined" || monacoLoaderConfigured) return;
+  monacoLoaderConfigured = true;
+  self.MonacoEnvironment = {
+    getWorker(_workerId, label) {
+      switch (label) {
+        case "json":
+          return new jsonWorker();
+        case "css":
+        case "scss":
+        case "less":
+          return new cssWorker();
+        case "html":
+        case "handlebars":
+        case "razor":
+          return new htmlWorker();
+        case "typescript":
+        case "javascript":
+          return new tsWorker();
+        default:
+          return new editorWorker();
+      }
+    },
+  };
+  loader.config({ monaco: monacoLocal });
+}
 import { useTabs } from "../../stores/tabsStore";
 import { getOrCreateModel } from "../../lib/monaco-models";
 import {
@@ -42,6 +48,8 @@ import {
 import { flushPendingTheme } from "../../hooks/useTheme";
 
 type IStandaloneCodeEditor = monacoNs.editor.IStandaloneCodeEditor;
+
+setupMonacoEnvironment();
 
 export function Editor(): JSX.Element {
   const editorRef = useRef<IStandaloneCodeEditor | null>(null);

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from "react";
-import { Plus } from "lucide-react";
+import { Home, Plus } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
 import {
   draggable,
@@ -117,8 +118,31 @@ export function TabBar(): JSX.Element | null {
     }
   };
 
+  const inicioActive = activeTabId === null;
+
   return (
     <div ref={containerRef} className="daisu-tabbar" role="tablist" aria-label="Open tabs">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={inicioActive}
+        onClick={() => setActive(null)}
+        title="Inicio"
+        aria-label="Inicio"
+        className={cn(
+          "daisu-tab group relative",
+          inicioActive && "is-active",
+        )}
+      >
+        {inicioActive && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-px bg-[var(--accent)] shadow-[0_0_6px_var(--accent)]"
+          />
+        )}
+        <Home size={13} className="text-[var(--fg-muted)]" />
+        <span className="daisu-tab-name">Inicio</span>
+      </button>
       {visibleTabs.map((tab) => (
         <DraggableTab
           key={tab.id}

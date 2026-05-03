@@ -65,7 +65,7 @@ interface TabsState {
   closeOthers(id: string, force?: boolean): Promise<void>;
   closeAll(force?: boolean): Promise<void>;
   reopenClosed(): Promise<void>;
-  setActive(id: string): void;
+  setActive(id: string | null): void;
   setActiveByIndex(index: number): void;
   cycleTabs(dir: 1 | -1): void;
   reorder(fromId: string, toIndex: number): void;
@@ -347,6 +347,12 @@ export const useTabs = create<TabsState>((set, get) => ({
   },
 
   setActive(id) {
+    // Null = Inicio tab (virtual home/welcome). Bypass tab existence check.
+    if (id === null) {
+      set({ activeTabId: null });
+      void get().saveSession();
+      return;
+    }
     if (!get().tabs.some((t) => t.id === id)) return;
     set((s) => ({
       activeTabId: id,

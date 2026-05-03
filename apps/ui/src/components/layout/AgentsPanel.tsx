@@ -41,7 +41,13 @@ export function AgentsPanel(): JSX.Element {
           <button type="button" title="Historial" aria-label="Historial" className={HEADER_BTN}>
             <History size={13} />
           </button>
-          <button type="button" title="Notas" aria-label="Notas" className={HEADER_BTN}>
+          <button
+            type="button"
+            title="Configuración del proveedor"
+            aria-label="Configuración del proveedor"
+            onClick={() => useUI.getState().setRightPanelMode("config")}
+            className={HEADER_BTN}
+          >
             <FileText size={13} />
           </button>
         </div>

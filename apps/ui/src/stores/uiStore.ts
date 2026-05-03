@@ -5,6 +5,8 @@ export type ToastLevel = "info" | "success" | "warning" | "error";
 
 export type ActivityIcon = "files" | "search" | "git" | "extensions" | "graph" | "info";
 
+export type RightPanelMode = "chat" | "config" | "hidden";
+
 export interface ToastAction {
   label: string;
   onAction: () => void | Promise<void>;
@@ -28,10 +30,12 @@ interface UIState {
   settingsModalOpen: boolean;
   settingsActiveCategory: string;
   activeActivityIcon: ActivityIcon;
+  rightPanelMode: RightPanelMode;
   toasts: Toast[];
 
   toggleSidebar: () => void;
   setActiveActivityIcon: (id: ActivityIcon) => void;
+  setRightPanelMode: (mode: RightPanelMode) => void;
   toggleAgentsPanel: () => void;
   toggleSearchPanel: () => void;
   setSidebarWidth: (px: number) => void;
@@ -54,7 +58,8 @@ const SEARCH_MAX = 600;
 const INITIAL: Pick<UIState,
   | "sidebarWidth" | "agentsPanelWidth" | "searchPanelHeight"
   | "sidebarCollapsed" | "agentsPanelCollapsed" | "searchPanelOpen"
-  | "settingsModalOpen" | "settingsActiveCategory" | "activeActivityIcon" | "toasts"> = {
+  | "settingsModalOpen" | "settingsActiveCategory" | "activeActivityIcon"
+  | "rightPanelMode" | "toasts"> = {
   sidebarWidth: 240,
   agentsPanelWidth: 320,
   searchPanelHeight: 240,
@@ -64,6 +69,7 @@ const INITIAL: Pick<UIState,
   settingsModalOpen: false,
   settingsActiveCategory: "general",
   activeActivityIcon: "files",
+  rightPanelMode: "chat",
   toasts: [],
 };
 
@@ -74,6 +80,7 @@ export const useUI = create<UIState>((set) => ({
   ...INITIAL,
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setActiveActivityIcon: (id) => set({ activeActivityIcon: id }),
+  setRightPanelMode: (mode) => set({ rightPanelMode: mode }),
   toggleAgentsPanel: () => set((s) => ({ agentsPanelCollapsed: !s.agentsPanelCollapsed })),
   toggleSearchPanel: () => set((s) => ({ searchPanelOpen: !s.searchPanelOpen })),
   setSidebarWidth: (px) => set({ sidebarWidth: clamp(px, SIDEBAR_MIN, SIDEBAR_MAX) }),

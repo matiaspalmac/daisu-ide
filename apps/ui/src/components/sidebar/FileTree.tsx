@@ -72,15 +72,14 @@ export function FileTree(): JSX.Element | null {
       role="tree"
       aria-label="Workspace file tree"
     >
-      {size.h > 0 && (
-        <Tree<FileEntry>
+      <Tree<FileEntry>
           ref={treeRef}
           data={data}
           idAccessor="path"
           rowHeight={22}
           indent={16}
-          width={size.w}
-          height={size.h}
+          width={size.w || 240}
+          height={size.h || 400}
           onRename={onRename}
           onMove={onMove}
           onActivate={(node) => {
@@ -95,7 +94,6 @@ export function FileTree(): JSX.Element | null {
         >
           {Node as never}
         </Tree>
-      )}
     </div>
   );
 }

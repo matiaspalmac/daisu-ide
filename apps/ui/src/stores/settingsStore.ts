@@ -27,6 +27,13 @@ const SettingsSchema = z.object({
     systemDarkTheme: z.string().default("tron-dark"),
     systemLightTheme: z.string().default("daisu-light"),
   }).prefault({}),
+  aiProvider: z.object({
+    mode: z.enum(["cloud", "local"]).default("cloud"),
+    id: z
+      .enum(["gemini", "openai", "claude", "lmstudio", "ollama"])
+      .default("gemini"),
+    apiKey: z.string().default(""),
+  }).prefault({}),
   keybindings: z.record(z.string(), z.string()).default({}),
 });
 

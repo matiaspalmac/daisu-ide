@@ -11,12 +11,18 @@ import { EditorSettings } from "./categories/EditorSettings";
 import { ThemeSettings } from "./categories/ThemeSettings";
 import { KeybindingSettings } from "./categories/KeybindingSettings";
 import { AdvancedSettings } from "./categories/AdvancedSettings";
+import { Disenio } from "./categories/Disenio";
+import { StubCategory } from "./categories/StubCategory";
 
 const VALID_CATEGORIES: SettingsCategoryId[] = [
   "general",
   "editor",
   "themes",
+  "design",
+  "chat",
+  "security",
   "keybindings",
+  "info",
   "advanced",
 ];
 
@@ -66,7 +72,26 @@ export function SettingsModal(): JSX.Element | null {
               {active === "general" && <GeneralSettings />}
               {active === "editor" && <EditorSettings />}
               {active === "themes" && <ThemeSettings />}
+              {active === "design" && <Disenio />}
+              {active === "chat" && (
+                <StubCategory
+                  title="Chat"
+                  message="Configuración avanzada de chat e historial llega en M4."
+                />
+              )}
+              {active === "security" && (
+                <StubCategory
+                  title="Seguridad"
+                  message="Almacenamiento de API keys via OS keychain + permisos de plugins en M3."
+                />
+              )}
               {active === "keybindings" && <KeybindingSettings />}
+              {active === "info" && (
+                <StubCategory
+                  title="Información"
+                  message="Versión, licencias y sistema. Detallado en M3."
+                />
+              )}
               {active === "advanced" && <AdvancedSettings />}
             </main>
           </div>

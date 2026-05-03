@@ -8,7 +8,7 @@ import { ResizeHandles } from "./components/layout/ResizeHandles";
 import { ActivityBar } from "./components/layout/ActivityBar";
 import { Sidebar } from "./components/layout/Sidebar";
 import { EditorArea } from "./components/layout/EditorArea";
-import { AgentsPanel } from "./components/layout/AgentsPanel";
+import { RightPanel } from "./components/layout/RightPanel";
 import { StatusBar } from "./components/layout/StatusBar";
 import { SearchPanel } from "./components/layout/SearchPanel";
 import { ToastViewport } from "./components/ui/Toast";
@@ -211,7 +211,7 @@ export function App(): JSX.Element {
           <>
             <Separator className="daisu-resize-handle" />
             <Panel id="agents" defaultSize="25%" minSize="15%" maxSize="50%">
-              <AgentsPanel />
+              <RightPanel />
             </Panel>
           </>
         )}

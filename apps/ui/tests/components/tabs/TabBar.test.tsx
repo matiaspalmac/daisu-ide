@@ -45,9 +45,10 @@ describe("<TabBar>", () => {
     const idTwo = useTabs.getState().tabs[1]!.id;
     tabs.pin(idTwo);
     const { container } = render(<TabBar />);
-    const rendered = Array.from(container.querySelectorAll(".daisu-tab")).map(
-      (n) => (n.textContent ?? "").trim(),
-    );
+    // Skip the leading virtual "Inicio" tab rendered by TabBar.
+    const rendered = Array.from(container.querySelectorAll(".daisu-tab"))
+      .map((n) => (n.textContent ?? "").trim())
+      .filter((t) => !t.startsWith("Inicio"));
     expect(rendered[0]?.startsWith("Untitled-2")).toBe(true);
     expect(rendered[1]?.startsWith("Untitled-1")).toBe(true);
   });

@@ -32,10 +32,28 @@ export default defineConfig(async () => ({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.ts"],
-    alias: {
-      "monaco-editor": fileURLToPath(
-        new URL("./tests/__mocks__/monaco-editor.ts", import.meta.url),
-      ),
-    },
+    alias: [
+      // Vitest doesn't run vite's worker plugin, so `?worker` imports fail
+      // to resolve. Map each Monaco worker entry to a no-op stub. Specific
+      // aliases must come BEFORE the broad "monaco-editor" entry.
+      ...[
+        "monaco-editor/esm/vs/editor/editor.worker?worker",
+        "monaco-editor/esm/vs/language/json/json.worker?worker",
+        "monaco-editor/esm/vs/language/css/css.worker?worker",
+        "monaco-editor/esm/vs/language/html/html.worker?worker",
+        "monaco-editor/esm/vs/language/typescript/ts.worker?worker",
+      ].map((find) => ({
+        find,
+        replacement: fileURLToPath(
+          new URL("./tests/__mocks__/worker-stub.ts", import.meta.url),
+        ),
+      })),
+      {
+        find: "monaco-editor",
+        replacement: fileURLToPath(
+          new URL("./tests/__mocks__/monaco-editor.ts", import.meta.url),
+        ),
+      },
+    ],
   },
 }));
