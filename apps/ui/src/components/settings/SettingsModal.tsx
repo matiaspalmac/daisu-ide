@@ -1,6 +1,6 @@
 import { useEffect, useState, type JSX } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { X } from "@phosphor-icons/react";
 import { useUI } from "../../stores/uiStore";
 import {
   SettingsSidebar,
@@ -12,6 +12,7 @@ import { ThemeSettings } from "./categories/ThemeSettings";
 import { KeybindingSettings } from "./categories/KeybindingSettings";
 import { AdvancedSettings } from "./categories/AdvancedSettings";
 import { Disenio } from "./categories/Disenio";
+import { IntegrationsSettings } from "./categories/IntegrationsSettings";
 import { StubCategory } from "./categories/StubCategory";
 
 const VALID_CATEGORIES: SettingsCategoryId[] = [
@@ -20,6 +21,7 @@ const VALID_CATEGORIES: SettingsCategoryId[] = [
   "themes",
   "design",
   "chat",
+  "integrations",
   "security",
   "keybindings",
   "info",
@@ -56,7 +58,10 @@ export function SettingsModal(): JSX.Element | null {
           aria-describedby={undefined}
         >
           <header className="daisu-settings-header">
-            <Dialog.Title className="daisu-settings-title">Configuración</Dialog.Title>
+            <Dialog.Title className="daisu-settings-title">
+              <span className="daisu-glyph" aria-hidden="true">設</span>
+              Configuración
+            </Dialog.Title>
             <button
               type="button"
               className="daisu-icon-btn"
@@ -73,6 +78,7 @@ export function SettingsModal(): JSX.Element | null {
               {active === "editor" && <EditorSettings />}
               {active === "themes" && <ThemeSettings />}
               {active === "design" && <Disenio />}
+              {active === "integrations" && <IntegrationsSettings />}
               {active === "chat" && (
                 <StubCategory
                   title="Chat"

@@ -36,7 +36,7 @@ const SettingsSchema = z.object({
   }).prefault({}),
   design: z.object({
     activityBarSide: z.enum(["left", "right"]).default("left"),
-    activityBarVisible: z.boolean().default(true),
+    activityBarVisible: z.boolean().default(false),
     statusBarVisible: z.boolean().default(true),
     sidebarSide: z.enum(["left", "right"]).default("left"),
     sidebarVisible: z.boolean().default(true),
@@ -48,6 +48,12 @@ const SettingsSchema = z.object({
     titleBarHamburger: z.boolean().default(true),
     titleBarMenuStrip: z.boolean().default(true),
     titleBarUserAvatar: z.boolean().default(true),
+  }).prefault({}),
+  integrations: z.object({
+    discordRpcEnabled: z.boolean().default(true),
+    discordAppId: z.string().default("1500617151684542594"),
+    discordShowFile: z.boolean().default(true),
+    discordShowProject: z.boolean().default(true),
   }).prefault({}),
   keybindings: z.record(z.string(), z.string()).default({}),
 });

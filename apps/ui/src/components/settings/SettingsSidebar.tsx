@@ -2,15 +2,16 @@ import type { JSX } from "react";
 import {
   Info,
   Keyboard,
-  LayoutGrid,
-  MessageSquare,
+  SquaresFour,
+  Chat,
   Palette,
-  Settings,
+  Gear,
+  Plugs,
   Shield,
-  SquareCode,
+  Code,
   Wrench,
-  type LucideIcon,
-} from "lucide-react";
+  type Icon as PhosphorIcon,
+} from "@phosphor-icons/react";
 
 export type SettingsCategoryId =
   | "general"
@@ -18,6 +19,7 @@ export type SettingsCategoryId =
   | "themes"
   | "design"
   | "chat"
+  | "integrations"
   | "security"
   | "keybindings"
   | "info"
@@ -26,16 +28,17 @@ export type SettingsCategoryId =
 interface CategoryItem {
   id: SettingsCategoryId;
   label: string;
-  icon: LucideIcon;
+  icon: PhosphorIcon;
 }
 
 const CATEGORIES: CategoryItem[] = [
-  { id: "general", label: "General", icon: Settings },
+  { id: "general", label: "General", icon: Gear },
   { id: "keybindings", label: "Atajos", icon: Keyboard },
-  { id: "editor", label: "Editor", icon: SquareCode },
+  { id: "editor", label: "Editor", icon: Code },
   { id: "themes", label: "Apariencia", icon: Palette },
-  { id: "design", label: "Diseño", icon: LayoutGrid },
-  { id: "chat", label: "Chat", icon: MessageSquare },
+  { id: "design", label: "Diseño", icon: SquaresFour },
+  { id: "chat", label: "Chat", icon: Chat },
+  { id: "integrations", label: "Integraciones", icon: Plugs },
   { id: "security", label: "Seguridad", icon: Shield },
   { id: "info", label: "Información", icon: Info },
   { id: "advanced", label: "Avanzado", icon: Wrench },

@@ -312,3 +312,33 @@ export async function readFileWithEncodingCmd(
 ): Promise<OpenedFile> {
   return invoke<OpenedFile>("read_file_with_encoding", { path, encoding });
 }
+
+// === Discord Rich Presence ===
+
+export interface DiscordActivityPayload {
+  details?: string;
+  state?: string;
+  startTimestamp?: number;
+  largeImage?: string;
+  largeText?: string;
+  smallImage?: string;
+  smallText?: string;
+}
+
+export async function discordConnectCmd(appId: string): Promise<void> {
+  await invoke<void>("discord_connect", { appId });
+}
+
+export async function discordSetActivityCmd(
+  payload: DiscordActivityPayload,
+): Promise<void> {
+  await invoke<void>("discord_set_activity", { payload });
+}
+
+export async function discordClearActivityCmd(): Promise<void> {
+  await invoke<void>("discord_clear_activity");
+}
+
+export async function discordDisconnectCmd(): Promise<void> {
+  await invoke<void>("discord_disconnect");
+}

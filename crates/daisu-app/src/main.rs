@@ -43,7 +43,11 @@ fn main() {
             commands::git::git_list_branches,
             commands::git::git_checkout_branch,
             commands::git::git_fetch_remote,
-            commands::webview::detect_webview2
+            commands::webview::detect_webview2,
+            commands::discord::discord_connect,
+            commands::discord::discord_set_activity,
+            commands::discord::discord_clear_activity,
+            commands::discord::discord_disconnect
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
