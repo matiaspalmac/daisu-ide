@@ -47,6 +47,7 @@ export const ACTIONS: ActionDef[] = [
   { id: "view.toggleSidebar", category: "View", label: "Toggle sidebar", defaultBinding: "$mod+b" },
   { id: "view.toggleAgents", category: "View", label: "Toggle agents panel", defaultBinding: "$mod+j" },
   { id: "view.toggleSearch", category: "View", label: "Toggle search panel", defaultBinding: "$mod+Shift+f" },
+  { id: "view.toggleFocusMode", category: "View", label: "Toggle focus mode (静)", defaultBinding: "$mod+\\" },
 
   // Settings
   { id: "settings.open", category: "Settings", label: "Open settings", defaultBinding: "$mod+," },

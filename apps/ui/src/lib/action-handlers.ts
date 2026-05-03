@@ -82,6 +82,7 @@ export const ACTION_HANDLERS: Record<string, (ctx: ActionContext) => void> = {
   "view.toggleSidebar": (ctx) => ctx.ui.toggleSidebar(),
   "view.toggleAgents": (ctx) => ctx.ui.toggleAgentsPanel(),
   "view.toggleSearch": (ctx) => ctx.ui.toggleSearchPanel(),
+  "view.toggleFocusMode": (ctx) => ctx.ui.toggleFocusMode(),
   "settings.open": (ctx) => ctx.ui.openSettings(),
   "editor.formatDocument": (ctx) => {
     ctx.editor?.trigger("kb", "editor.action.formatDocument", {});
