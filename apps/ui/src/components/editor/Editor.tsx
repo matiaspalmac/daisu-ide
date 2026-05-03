@@ -1,6 +1,11 @@
 import { useEffect, useRef, type JSX } from "react";
-import { Editor as MonacoEditor, type Monaco, type OnMount } from "@monaco-editor/react";
+import { Editor as MonacoEditor, loader, type Monaco, type OnMount } from "@monaco-editor/react";
 import type * as monacoNs from "monaco-editor";
+import * as monacoLocal from "monaco-editor";
+
+// Use the locally-bundled monaco-editor instead of the default CDN loader so
+// Monaco works under restrictive CSP (script-src 'self') in Tauri webview.
+loader.config({ monaco: monacoLocal });
 import { useTabs } from "../../stores/tabsStore";
 import { getOrCreateModel } from "../../lib/monaco-models";
 import {
