@@ -37,6 +37,14 @@ walkdir = { workspace = true }
 trash = { workspace = true }
 tokio-util = { workspace = true, features = ["rt"] }
 sha1 = { workspace = true }
+ignore = "0.4"
+grep-searcher = "0.1"
+grep-regex = "0.1"
+git2 = { version = "0.19", default-features = false }
+encoding_rs = "0.8"
+once_cell = "1"
+parking_lot = "0.12"
+uuid = { version = "1", features = ["v4"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-registry = "0.6"
