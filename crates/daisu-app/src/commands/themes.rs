@@ -26,7 +26,7 @@ pub fn list_bundled_themes_inner() -> Vec<ThemeDescriptor> {
     vec![
         ThemeDescriptor {
             id: "tron-dark".to_string(),
-            name: "Tron Dark".to_string(),
+            name: "Daisu Nocturne".to_string(),
             kind: "dark".to_string(),
         },
         ThemeDescriptor {
