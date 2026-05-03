@@ -750,3 +750,48 @@ body,
 .daisu-git-untracked { color: #4ec97f; }
 .daisu-git-conflict { color: #e85b5b; }
 .daisu-git-staged { color: #6cb6ff; }
+
+.daisu-language-popover {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  padding: 8px;
+  width: 280px;
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 90;
+}
+.daisu-language-filter {
+  background: #1f1f1f;
+  border: 1px solid #3c3c3c;
+  color: var(--daisu-fg, #ccc);
+  padding: 4px 8px;
+  font-size: 13px;
+  border-radius: 3px;
+}
+.daisu-language-list {
+  overflow-y: auto;
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+}
+.daisu-language-item {
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: 4px 8px;
+  color: var(--daisu-fg, #ccc);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.daisu-language-item:hover { background: rgba(255, 255, 255, 0.06); }
+.daisu-language-item.is-active { background: #0078d4; color: #fff; }
+.daisu-language-empty {
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+  padding: 8px;
+}
