@@ -14,7 +14,32 @@ use crate::error::{AppError, AppResult};
 
 /// Names skipped at any depth during walks. Mirrors the `IGNORE_NAMES` constant
 /// in `commands/file_ops.rs`. Phase 4 surfaces this as a user setting.
-pub const IGNORE_NAMES: &[&str] = &["target", "node_modules", "dist", ".git"];
+pub const IGNORE_NAMES: &[&str] = &[
+    "target",
+    "node_modules",
+    "dist",
+    ".git",
+    ".next",
+    ".turbo",
+    ".cache",
+    "build",
+    "out",
+    ".vite",
+    ".parcel-cache",
+    ".nuxt",
+    "coverage",
+    ".nyc_output",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".tox",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".idea",
+    ".vscode",
+    ".gradle",
+    ".mvn",
+];
 
 /// Subdir under the workspace root that we skip explicitly (session restore).
 pub const SESSIONS_DIR: &str = ".daisu/sessions";
