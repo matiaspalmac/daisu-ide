@@ -45,9 +45,14 @@ describe("<Node>", () => {
       />
     );
     expect(screen.getByText("App.tsx")).toBeInTheDocument();
-    // FileIcon resolves the leaf icon by extension; assert an SVG is present
-    // in the row (label-less per Material-icon-theme convention).
-    expect(container.querySelector(".daisu-tree-row svg")).toBeInTheDocument();
+    // FileIcon resolves the leaf icon by extension. Assert the .tsx-specific
+    // React-blue color (#61DAFB) is set so a regression to the gray fallback
+    // (#888) would fail.
+    const svg = container.querySelector(".daisu-tree-row svg");
+    expect(svg).toBeInTheDocument();
+    expect(svg?.getAttribute("color") ?? svg?.getAttribute("stroke")).toBe(
+      "#61DAFB",
+    );
   });
 
   it("renders chevron and folder icon for non-leaf", () => {

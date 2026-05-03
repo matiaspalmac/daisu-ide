@@ -260,6 +260,15 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
       // Defensive: still drop if explicitly mismatched after session locked in.
       return;
     }
+    // While walkSessionId is null (backend hasn't returned the new session
+    // id yet), drop batches whose nodes don't fall under the current rootPath.
+    // Prevents stale walker batches from a just-cancelled previous workspace
+    // from leaking into the freshly-reset tree.
+    if (state.walkSessionId === null && state.rootPath) {
+      const root = state.rootPath;
+      const inRoot = batch.nodes.every((n) => n.path.startsWith(root));
+      if (!inRoot) return;
+    }
     const tree = new Map(state.tree);
     const childrenIndex = new Map(state.childrenIndex);
     for (const node of batch.nodes) {

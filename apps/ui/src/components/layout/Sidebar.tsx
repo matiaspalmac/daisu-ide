@@ -142,7 +142,7 @@ export function Sidebar(): JSX.Element {
           : null;
 
   const headerBtnCls =
-    "w-7 h-7 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--warn)] hover:bg-[var(--warn-soft)] rounded-[var(--radius-sm)] transition-colors";
+    "w-7 h-7 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--warn)] hover:bg-[var(--warn-soft)] rounded-[var(--radius-sm)] transition-colors disabled:opacity-40 disabled:hover:text-[var(--fg-muted)] disabled:hover:bg-transparent disabled:cursor-not-allowed";
 
   const handleRefresh = useCallback((): void => {
     if (!rootPath) return;
@@ -169,6 +169,7 @@ export function Sidebar(): JSX.Element {
             title="Nuevo archivo"
             aria-label="Nuevo archivo"
             onClick={() => void handleAction("newFile")}
+            disabled={!rootPath}
             className={headerBtnCls}
           >
             <FilePlus size={13} />
@@ -178,6 +179,7 @@ export function Sidebar(): JSX.Element {
             title="Nueva carpeta"
             aria-label="Nueva carpeta"
             onClick={() => void handleAction("newFolder")}
+            disabled={!rootPath}
             className={headerBtnCls}
           >
             <FolderPlus size={13} />
@@ -187,6 +189,7 @@ export function Sidebar(): JSX.Element {
             title="Refrescar"
             aria-label="Refrescar"
             onClick={handleRefresh}
+            disabled={!rootPath}
             className={headerBtnCls}
           >
             <RotateCcw size={13} />

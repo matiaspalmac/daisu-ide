@@ -53,6 +53,10 @@ export function TabBar(): JSX.Element | null {
     });
   }, [reorder]);
 
+  const tabsSignature = tabs
+    .map((t) => `${t.id}:${t.name}:${t.pinned ? 1 : 0}:${t.content !== t.savedContent ? 1 : 0}`)
+    .join("|");
+
   useEffect(() => {
     const root = containerRef.current;
     if (!root) return;
@@ -80,9 +84,9 @@ export function TabBar(): JSX.Element | null {
     obs.observe(root);
     recompute();
     return () => obs.disconnect();
-    // Only re-subscribe when the SET of tabs changes, not on every keystroke
-    // (each Monaco onChange clones the tabs array even though length is stable).
-  }, [tabs.length]);
+    // Re-run when tab COUNT or display-relevant fields change (id list, name,
+    // pinned, dirty). Skip content churn from Monaco onChange.
+  }, [tabsSignature]);
 
   const visibleTabs = tabs.filter((t) => !hiddenIds.includes(t.id));
   const hiddenTabs = tabs.filter((t) => hiddenIds.includes(t.id));

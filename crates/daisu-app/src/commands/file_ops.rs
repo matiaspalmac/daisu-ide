@@ -38,9 +38,10 @@ fn detect_eol(contents: &str) -> &'static str {
     }
 }
 
-/// Names skipped at any depth. Hard-coded for Phase 2; Phase 4 will surface
-/// these as a user-configurable setting.
-const IGNORE_NAMES: &[&str] = &["target", "node_modules", "dist", ".git"];
+/// Names skipped at any depth. Re-exports the walker's list to keep the initial
+/// tree walk and `list_dir_at` refresh behavior in sync. Phase 4 surfaces these
+/// as a user setting.
+use crate::watch::workspace::IGNORE_NAMES;
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]

@@ -28,11 +28,13 @@ export function ActivityBar(): JSX.Element {
   const openSettings = useUI((s) => s.openSettings);
   const pushToast = useUI((s) => s.pushToast);
 
-  const placeholder = (label: string) => () =>
+  const placeholder = (id: ActivityIcon, label: string) => () => {
+    setActive(id);
     pushToast({
       message: `${label} disponible en milestones futuros`,
       level: "info",
     });
+  };
 
   const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
   const searchOpen = useUI((s) => s.searchPanelOpen);
@@ -71,25 +73,25 @@ export function ActivityBar(): JSX.Element {
       id: "git",
       icon: GitBranch,
       label: "Control de fuente",
-      action: placeholder("Control de fuente"),
+      action: placeholder("git", "Control de fuente"),
     },
     {
       id: "extensions",
       icon: Blocks,
       label: "Extensiones",
-      action: placeholder("Extensiones"),
+      action: placeholder("extensions", "Extensiones"),
     },
     {
       id: "graph",
       icon: Globe,
       label: "Mapa proyecto",
-      action: placeholder("Mapa proyecto"),
+      action: placeholder("graph", "Mapa proyecto"),
     },
     {
       id: "info",
       icon: Activity,
       label: "Estado",
-      action: placeholder("Estado"),
+      action: placeholder("info", "Estado"),
     },
   ];
 

@@ -169,10 +169,12 @@ fn run_walk_blocking(
         error: None,
     };
     let send_result = blocking_send(&out, final_batch);
-    eprintln!(
-        "daisu walker finished: final_nodes={nodes_in_final} send_ok={}",
-        send_result.is_ok()
-    );
+    if cfg!(debug_assertions) {
+        eprintln!(
+            "daisu walker finished: final_nodes={nodes_in_final} send_ok={}",
+            send_result.is_ok()
+        );
+    }
     Ok(())
 }
 

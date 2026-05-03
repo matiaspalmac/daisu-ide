@@ -15,6 +15,10 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
+vi.mock("../../src/lib/tauri-env", () => ({
+  isTauri: () => true,
+}));
+
 const refresh = vi.fn(async () => undefined);
 vi.mock("../../src/stores/gitStore", () => ({
   useGit: { getState: () => ({ refresh }) },

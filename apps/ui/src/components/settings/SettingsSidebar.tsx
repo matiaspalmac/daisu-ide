@@ -5,8 +5,10 @@ import {
   LayoutGrid,
   MessageSquare,
   Palette,
+  Settings,
   Shield,
   SquareCode,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,6 +30,7 @@ interface CategoryItem {
 }
 
 const CATEGORIES: CategoryItem[] = [
+  { id: "general", label: "General", icon: Settings },
   { id: "keybindings", label: "Atajos", icon: Keyboard },
   { id: "editor", label: "Editor", icon: SquareCode },
   { id: "themes", label: "Apariencia", icon: Palette },
@@ -35,6 +38,7 @@ const CATEGORIES: CategoryItem[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "security", label: "Seguridad", icon: Shield },
   { id: "info", label: "Información", icon: Info },
+  { id: "advanced", label: "Avanzado", icon: Wrench },
 ];
 
 interface Props {

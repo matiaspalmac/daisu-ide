@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { isTauri } from "../../lib/tauri-env";
 
 type ResizeDirection =
   | "North"
@@ -51,8 +52,13 @@ export function ResizeHandles(): JSX.Element {
             ) {
               return;
             }
+            if (!isTauri()) return;
             e.preventDefault();
-            void getCurrentWindow().startResizeDragging(h.dir);
+            try {
+              void getCurrentWindow().startResizeDragging(h.dir);
+            } catch {
+              // browser preview or window unavailable
+            }
           }}
         />
       ))}
