@@ -3,6 +3,8 @@
 //! cancellation tokens, and atomic bulk-replace.
 
 pub mod matcher;
+pub mod registry;
+pub mod searcher;
 pub mod walker;
 
 #[allow(clippy::struct_excessive_bools)]
@@ -31,4 +33,34 @@ impl Default for SearchOptions {
             max_results: 5000,
         }
     }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SearchHit {
+    pub id: String,
+    pub path: String,
+    pub line_no: u32,
+    pub line_text: String,
+    pub match_start_col: u32,
+    pub match_end_col: u32,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SearchSummary {
+    pub request_id: String,
+    pub total_hits: u32,
+    pub files_searched: u32,
+    pub truncated: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SearchHitEvent {
+    pub request_id: String,
+    pub hits: Vec<SearchHit>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SearchProgressEvent {
+    pub request_id: String,
+    pub files_searched: u32,
 }
