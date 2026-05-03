@@ -49,7 +49,7 @@ export const DialogContent = forwardRef<
       {children}
       <DialogPrimitive.Close
         className="absolute right-3 top-3 rounded-[var(--radius-sm)] p-1 text-[var(--fg-muted)] opacity-70 transition-opacity hover:opacity-100 hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
-        aria-label="Cerrar"
+        aria-label="Close"
       >
         <X size={14} />
       </DialogPrimitive.Close>
