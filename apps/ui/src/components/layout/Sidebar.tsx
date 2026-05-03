@@ -1,12 +1,19 @@
 import type { JSX } from "react";
 import { useCallback } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import {
+  ChevronsDownUp,
+  FilePlus,
+  FolderPlus,
+  RotateCcw,
+} from "lucide-react";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useUI } from "../../stores/uiStore";
 import { FileTree } from "../sidebar/FileTree";
 import { EmptyState } from "../sidebar/EmptyState";
 import { RecentsDropdown } from "../sidebar/RecentsDropdown";
 import { TreeContextMenu, type TreeAction } from "../sidebar/ContextMenu";
+import { BottomDock } from "../sidebar/BottomDock";
 import { copy } from "../../lib/copy";
 import { translateError } from "../../lib/error-translate";
 
@@ -135,25 +142,81 @@ export function Sidebar(): JSX.Element {
           ? "empty-folder"
           : null;
 
+  const headerBtnCls =
+    "w-6 h-6 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-[var(--radius-sm)] transition-colors";
+
+  const handleRefresh = useCallback((): void => {
+    if (!rootPath) return;
+    void handlePickRecent(rootPath);
+  }, [rootPath, handlePickRecent]);
+
+  const handleCollapseAll = useCallback((): void => {
+    pushToast({
+      message: "Colapsar todo disponible en milestones futuros",
+      level: "info",
+    });
+  }, [pushToast]);
+
   return (
-    <aside className="daisu-sidebar" aria-label="Workspace explorer">
-      <div className="daisu-sidebar-header">
+    <aside
+      className="daisu-sidebar h-full flex flex-col min-w-0 bg-[var(--bg-panel)]"
+      aria-label="Workspace explorer"
+    >
+      <div className="daisu-sidebar-header h-9 px-3 flex items-center justify-between border-b border-[var(--border-subtle)] text-[11px] uppercase tracking-[0.08em] text-[var(--fg-secondary)]">
         <span>{copy.sidebar.explorerHeading.toUpperCase()}</span>
-        <RecentsDropdown
-          recents={recents}
-          onOpenFolderPicker={handleOpenFolder}
-          onPickRecent={handlePickRecent}
-          onClearRecents={handleClearRecents}
-        />
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            title="Nuevo archivo"
+            aria-label="Nuevo archivo"
+            onClick={() => void handleAction("newFile")}
+            className={headerBtnCls}
+          >
+            <FilePlus size={13} />
+          </button>
+          <button
+            type="button"
+            title="Nueva carpeta"
+            aria-label="Nueva carpeta"
+            onClick={() => void handleAction("newFolder")}
+            className={headerBtnCls}
+          >
+            <FolderPlus size={13} />
+          </button>
+          <button
+            type="button"
+            title="Refrescar"
+            aria-label="Refrescar"
+            onClick={handleRefresh}
+            className={headerBtnCls}
+          >
+            <RotateCcw size={13} />
+          </button>
+          <button
+            type="button"
+            title="Colapsar todo"
+            aria-label="Colapsar todo"
+            onClick={handleCollapseAll}
+            className={headerBtnCls}
+          >
+            <ChevronsDownUp size={13} />
+          </button>
+          <RecentsDropdown
+            recents={recents}
+            onOpenFolderPicker={handleOpenFolder}
+            onPickRecent={handlePickRecent}
+            onClearRecents={handleClearRecents}
+          />
+        </div>
       </div>
-      <div className="daisu-sidebar-body">
+      <div className="daisu-sidebar-body flex-1 min-h-0">
         <TreeContextMenu
           target={selection.size > 0 ? "node" : "empty-area"}
           selectionSize={selection.size}
           clipboardPresent={clipboard !== null}
           onAction={handleAction}
         >
-          <div className="daisu-sidebar-treezone">
+          <div className="daisu-sidebar-treezone h-full">
             {empty === "no-folder" && (
               <EmptyState variant="no-folder" onOpenFolder={handleOpenFolder} />
             )}
@@ -177,6 +240,7 @@ export function Sidebar(): JSX.Element {
           </div>
         </TreeContextMenu>
       </div>
+      {rootPath && <BottomDock />}
     </aside>
   );
 }

@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { Button } from "@/components/ui/button";
 import { copy } from "../../lib/copy";
 
 type Variant = "no-folder" | "walking" | "empty-folder" | "read-error";
@@ -18,11 +19,11 @@ export function EmptyState(props: Props): JSX.Element {
     case "no-folder":
       return (
         <div className="daisu-empty-state" role="status">
-          <h3>{copy.sidebar.noFolderTitle}</h3>
-          <p>{copy.sidebar.noFolderBody}</p>
-          <button type="button" className="daisu-btn-primary" onClick={props.onOpenFolder}>
+          <h3 className="text-sm text-[var(--fg-secondary)]">{copy.sidebar.noFolderTitle}</h3>
+          <p className="text-xs text-[var(--fg-muted)]">{copy.sidebar.noFolderBody}</p>
+          <Button variant="primary" onClick={props.onOpenFolder}>
             {copy.buttons.openFolder}
-          </button>
+          </Button>
         </div>
       );
     case "walking":
