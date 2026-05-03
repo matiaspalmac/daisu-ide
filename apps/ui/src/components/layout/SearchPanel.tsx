@@ -1,6 +1,6 @@
 import { useEffect, type JSX } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { X } from "lucide-react";
+import { X } from "@phosphor-icons/react";
 import { SearchInput } from "../search/SearchInput";
 import { ReplaceInput } from "../search/ReplaceInput";
 import { GlobFilters } from "../search/GlobFilters";
@@ -108,7 +108,10 @@ export function SearchPanel(): JSX.Element {
   return (
     <section className="daisu-search-panel" aria-label="Workspace search">
       <header className="daisu-search-header">
-        <span>Search</span>
+        <span style={{ display: "inline-flex", alignItems: "center" }}>
+          <span className="daisu-glyph" aria-hidden="true">検</span>
+          Search
+        </span>
         <button
           type="button"
           className="daisu-icon-btn-sm"

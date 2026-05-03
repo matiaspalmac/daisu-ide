@@ -23,17 +23,19 @@ export function ReplaceInput(): JSX.Element {
       <input
         type="text"
         className="daisu-input daisu-search-input"
-        placeholder="Replace..."
+        placeholder="Replace"
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
       <button
         type="button"
-        className="daisu-btn"
+        className="daisu-search-toggle daisu-search-toggle-text"
         disabled={!canReplace}
         onClick={() => setConfirmOpen(true)}
+        title="Replace All"
+        aria-label="Replace All"
       >
-        Replace All
+        AB
       </button>
       <ReplaceConfirmDialog
         open={confirmOpen}

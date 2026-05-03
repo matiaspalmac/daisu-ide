@@ -1,30 +1,35 @@
 import type { JSX, KeyboardEvent } from "react";
 import { useRef } from "react";
 import {
-  Activity,
-  Blocks,
+  Pulse,
+  PuzzlePiece,
   Files,
   GitBranch,
   Globe,
-  Search,
-  Settings,
-  type LucideIcon,
-} from "lucide-react";
+  MagnifyingGlass,
+  Gear,
+  type Icon as PhosphorIcon,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/cn";
 import { useUI, type ActivityIcon } from "../../stores/uiStore";
 
 interface Item {
   id: ActivityIcon;
-  icon: LucideIcon;
+  icon: PhosphorIcon;
   label: string;
   action: () => void;
 }
 
 export function ActivityBar(): JSX.Element {
-  const active = useUI((s) => s.activeActivityIcon);
+  const storedActive = useUI((s) => s.activeActivityIcon);
   const setActive = useUI((s) => s.setActiveActivityIcon);
   const toggleSidebar = useUI((s) => s.toggleSidebar);
-  const toggleSearch = useUI((s) => s.toggleSearchPanel);
+  const setSidebarMode = useUI((s) => s.setSidebarMode);
+  const sidebarMode = useUI((s) => s.sidebarMode);
+  // Source-of-truth for files/search highlight is sidebarMode itself, so the
+  // activity bar can never disagree with what the sidebar is rendering.
+  const active: ActivityIcon =
+    sidebarMode === "search" ? "search" : sidebarMode === "files" ? "files" : storedActive;
   const openSettings = useUI((s) => s.openSettings);
   const pushToast = useUI((s) => s.pushToast);
 
@@ -37,7 +42,6 @@ export function ActivityBar(): JSX.Element {
   };
 
   const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
-  const searchOpen = useUI((s) => s.searchPanelOpen);
 
   const items: Item[] = [
     {
@@ -45,28 +49,33 @@ export function ActivityBar(): JSX.Element {
       icon: Files,
       label: "Explorador",
       action: () => {
-        // Clicking Files when active+open → collapse. Otherwise → activate
-        // and ensure sidebar is open. Decouples "what is showing" from "what
-        // is active" so the indicator never lies about state.
-        if (active === "files" && !sidebarCollapsed) {
+        // Click on the already-active+open Files → collapse. Otherwise →
+        // ensure sidebar mode = files, expand if collapsed, sync active icon.
+        const showingFiles = sidebarMode === "files" && !sidebarCollapsed;
+        if (showingFiles) {
           toggleSidebar();
-        } else {
-          setActive("files");
-          if (sidebarCollapsed) toggleSidebar();
+          return;
         }
+        setActive("files");
+        setSidebarMode("files");
+        if (sidebarCollapsed) toggleSidebar();
       },
     },
     {
       id: "search",
-      icon: Search,
+      icon: MagnifyingGlass,
       label: "Buscar",
       action: () => {
-        if (active === "search" && searchOpen) {
-          toggleSearch();
-        } else {
-          setActive("search");
-          if (!searchOpen) toggleSearch();
+        // Mirror Files behaviour. Active+open search → collapse sidebar.
+        // Otherwise switch to search view and ensure sidebar visible.
+        const showingSearch = sidebarMode === "search" && !sidebarCollapsed;
+        if (showingSearch) {
+          toggleSidebar();
+          return;
         }
+        setActive("search");
+        setSidebarMode("search");
+        if (sidebarCollapsed) toggleSidebar();
       },
     },
     {
@@ -77,7 +86,7 @@ export function ActivityBar(): JSX.Element {
     },
     {
       id: "extensions",
-      icon: Blocks,
+      icon: PuzzlePiece,
       label: "Extensiones",
       action: placeholder("extensions", "Extensiones"),
     },
@@ -89,7 +98,7 @@ export function ActivityBar(): JSX.Element {
     },
     {
       id: "info",
-      icon: Activity,
+      icon: Pulse,
       label: "Estado",
       action: placeholder("info", "Estado"),
     },
@@ -138,7 +147,7 @@ export function ActivityBar(): JSX.Element {
               "text-[var(--warn)] bg-[var(--warn-soft)] after:bg-[var(--warn)] after:shadow-[var(--glow-orange-sm)]",
           )}
         >
-          <it.icon size={18} strokeWidth={1.5} />
+          <it.icon size={18} />
         </button>
       ))}
 
@@ -151,7 +160,7 @@ export function ActivityBar(): JSX.Element {
         onClick={() => openSettings()}
         className="w-10 h-10 grid place-items-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] hover:text-[var(--warn)] hover:bg-[var(--warn-soft)] transition-colors"
       >
-        <Settings size={18} strokeWidth={1.5} />
+        <Gear size={18} />
       </button>
     </aside>
   );

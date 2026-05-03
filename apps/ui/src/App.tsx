@@ -1,7 +1,8 @@
 import type { JSX } from "react";
 import { useEffect } from "react";
-import { Group, Panel, Separator } from "react-resizable-panels";
+import { Group, Panel, Separator, usePanelRef } from "react-resizable-panels";
 import { listen } from "@tauri-apps/api/event";
+import { IconContext } from "@phosphor-icons/react";
 import { TitleBar } from "./components/layout/TitleBar";
 import { WebView2Banner } from "./components/layout/WebView2Banner";
 import { ResizeHandles } from "./components/layout/ResizeHandles";
@@ -10,7 +11,8 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { EditorArea } from "./components/layout/EditorArea";
 import { RightPanel } from "./components/layout/RightPanel";
 import { StatusBar } from "./components/layout/StatusBar";
-import { SearchPanel } from "./components/layout/SearchPanel";
+import { useSearchListeners } from "./hooks/useSearchListeners";
+import { useDiscordRpc } from "./hooks/useDiscordRpc";
 import { ToastViewport } from "./components/ui/Toast";
 import { CloseConfirmModal } from "./components/tabs/CloseConfirmModal";
 import { SettingsModal } from "./components/settings/SettingsModal";
@@ -36,9 +38,15 @@ export function App(): JSX.Element {
   useTheme();
   useGitWatcher();
   useEditorCursorWiring();
+  useSearchListeners();
+  useDiscordRpc();
   const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
   const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
-  const searchOpen = useUI((s) => s.searchPanelOpen);
+  const focusMode = useUI((s) => s.focusMode);
+
+  useEffect(() => {
+    document.body.classList.toggle("daisu-focus-mode", focusMode);
+  }, [focusMode]);
   const loadSettings = useSettings((s) => s.load);
   const design = useSettings((s) => s.settings.design);
   const restoreTabs = useTabs((s) => s.restoreSession);
@@ -181,36 +189,72 @@ export function App(): JSX.Element {
     };
   }, [hydrate, applyBatch, applyFsChange, openWorkspace, pushToast]);
 
-  const showSidebar = design.sidebarVisible && !sidebarCollapsed;
-  const showRightPanel = design.rightPanelVisible && !agentsCollapsed;
+  const showSidebar = design.sidebarVisible && !sidebarCollapsed && !focusMode;
+  const showRightPanel = design.rightPanelVisible && !agentsCollapsed && !focusMode;
   const sidebarOnRight = design.sidebarSide === "right";
   const rightPanelOnLeft = design.rightPanelSide === "left";
   const activityBarOnRight = design.activityBarSide === "right";
 
+  const sidebarRef = usePanelRef();
+  const agentsRef = usePanelRef();
+
+  // Double-click on a resize handle auto-fits the adjacent panel to its
+  // content scrollWidth (mirrors VS Code's dblclick-to-fit behaviour).
+  // Falls back to the panel's defaultSize when content can't be measured.
+  const fitPanel = (
+    panelId: "sidebar" | "agents",
+    fallbackPct: number,
+  ) => (): void => {
+    const ref = panelId === "sidebar" ? sidebarRef.current : agentsRef.current;
+    if (!ref) return;
+    const groupEl = document.getElementById("daisu-main-split");
+    const panelEl = document.querySelector<HTMLElement>(
+      `[data-panel-id="${panelId}"]`,
+    );
+    if (!groupEl || !panelEl) {
+      ref.resize(`${fallbackPct}%`);
+      return;
+    }
+    const inner =
+      panelEl.querySelector<HTMLElement>(".daisu-sidebar, .daisu-agents-panel") ??
+      panelEl;
+    const desired = Math.max(inner.scrollWidth + 16, 200);
+    const groupWidth = groupEl.clientWidth || window.innerWidth;
+    const pct = Math.min(45, Math.max(12, (desired / groupWidth) * 100));
+    ref.resize(`${pct}%`);
+  };
+
   const sidebarPanel = showSidebar ? (
     <>
-      <Panel id="sidebar" defaultSize="15%" minSize="10%" maxSize="40%">
+      <Panel panelRef={sidebarRef} id="sidebar" defaultSize="15%" minSize="10%" maxSize="40%">
         <Sidebar />
       </Panel>
-      <Separator className="daisu-resize-handle" />
+      <Separator
+        className="daisu-resize-handle"
+        onDoubleClick={fitPanel("sidebar", 15)}
+      />
     </>
   ) : null;
 
   const rightPanel = showRightPanel ? (
     <>
-      <Separator className="daisu-resize-handle" />
-      <Panel id="agents" defaultSize="25%" minSize="15%" maxSize="50%">
+      <Separator
+        className="daisu-resize-handle"
+        onDoubleClick={fitPanel("agents", 25)}
+      />
+      <Panel panelRef={agentsRef} id="agents" defaultSize="25%" minSize="15%" maxSize="50%">
         <RightPanel />
       </Panel>
     </>
   ) : null;
 
   return (
+    <IconContext.Provider value={{ weight: "light", size: 14 }}>
     <main className="daisu-shell flex flex-col h-screen overflow-hidden">
       <TitleBar />
       <WebView2Banner />
       <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
-        {design.activityBarVisible && !activityBarOnRight && <ActivityBar />}
+        {design.activityBarVisible && !activityBarOnRight && !focusMode && <ActivityBar />}
         <Group
           orientation="horizontal"
           className="daisu-main-split flex-1"
@@ -219,35 +263,20 @@ export function App(): JSX.Element {
         {!sidebarOnRight && sidebarPanel}
         {rightPanelOnLeft && rightPanel}
         <Panel id="center" defaultSize="56%" minSize="30%">
-          <Group
-            orientation="vertical"
-            id="daisu-center-split"
-            className="h-full w-full"
-          >
-            <Panel id="editor" defaultSize={searchOpen ? "70%" : "100%"} minSize="20%">
-              <EditorArea />
-            </Panel>
-            {searchOpen && (
-              <>
-                <Separator className="daisu-resize-handle daisu-resize-handle-horizontal" />
-                <Panel id="search" defaultSize="30%" minSize="15%">
-                  <SearchPanel />
-                </Panel>
-              </>
-            )}
-          </Group>
+          <EditorArea />
         </Panel>
         {!rightPanelOnLeft && rightPanel}
         {sidebarOnRight && sidebarPanel}
         </Group>
-        {design.activityBarVisible && activityBarOnRight && <ActivityBar />}
+        {design.activityBarVisible && activityBarOnRight && !focusMode && <ActivityBar />}
       </div>
-      {design.statusBarVisible && <StatusBar />}
+      {design.statusBarVisible && !focusMode && <StatusBar />}
       <ToastViewport />
       <CloseConfirmModalConnected />
       <SettingsModal />
       <ResizeHandles />
     </main>
+    </IconContext.Provider>
   );
 }
 

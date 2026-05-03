@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { ChevronLeft, Cloud, Cpu } from "lucide-react";
+import { CaretLeft, Cloud, Cpu } from "@phosphor-icons/react";
 import { useUI } from "../../stores/uiStore";
 import { useSettings } from "../../stores/settingsStore";
 
@@ -92,7 +92,7 @@ export function ConfigPanel(): JSX.Element {
           onClick={() => setRightPanelMode("chat")}
           className="w-6 h-6 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-[var(--radius-sm)]"
         >
-          <ChevronLeft size={14} />
+          <CaretLeft size={14} />
         </button>
       </header>
 

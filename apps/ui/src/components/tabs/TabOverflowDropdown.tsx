@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown, Pin } from "lucide-react";
+import { CaretDown, PushPin } from "@phosphor-icons/react";
 
 export interface OverflowEntry {
   id: string;
@@ -24,7 +24,7 @@ export function TabOverflowDropdown(props: Props): JSX.Element | null {
           className="daisu-tab-overflow"
           aria-label={`+${props.hidden.length} more tabs`}
         >
-          <ChevronDown size={12} />
+          <CaretDown size={12} />
           +{props.hidden.length}
         </button>
       </DropdownMenu.Trigger>
@@ -37,10 +37,11 @@ export function TabOverflowDropdown(props: Props): JSX.Element | null {
               onSelect={() => props.onPick(entry.id)}
             >
               {entry.pinned && (
-                <Pin
+                <PushPin
                   size={12}
+                  weight="fill"
                   aria-hidden="true"
-                  style={{ transform: "rotate(-45deg)", marginRight: 4 }}
+                  style={{ marginRight: 4 }}
                 />
               )}
               {entry.name}

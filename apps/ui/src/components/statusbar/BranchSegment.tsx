@@ -1,5 +1,5 @@
 import type { JSX, MouseEvent } from "react";
-import { GitBranch, RefreshCw } from "lucide-react";
+import { GitBranch, ArrowsClockwise } from "@phosphor-icons/react";
 import { BranchPicker } from "./BranchPicker";
 import { useGit } from "../../stores/gitStore";
 import { useUI } from "../../stores/uiStore";
@@ -51,7 +51,7 @@ export function BranchSegment(): JSX.Element | null {
         aria-label="Fetch from origin"
         title="Fetch from origin"
       >
-        <RefreshCw size={10} />
+        <ArrowsClockwise size={10} />
       </button>
     </span>
   );

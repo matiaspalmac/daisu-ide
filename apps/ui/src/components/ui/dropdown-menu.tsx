@@ -1,5 +1,5 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { Check, ChevronRight, Circle } from "lucide-react";
+import { Check, CaretRight, Circle } from "@phosphor-icons/react";
 import {
   forwardRef,
   type ComponentPropsWithoutRef,
@@ -31,7 +31,7 @@ export const DropdownMenuSubTrigger = forwardRef<
     {...props}
   >
     {children}
-    <ChevronRight size={12} className="ml-auto" />
+    <CaretRight size={12} className="ml-auto" />
   </DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
@@ -135,7 +135,7 @@ export const DropdownMenuRadioItem = forwardRef<
   >
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator>
-        <Circle size={6} className="fill-[var(--accent)] text-[var(--accent)]" />
+        <Circle size={6} weight="fill" className="text-[var(--accent)]" />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
     {children}

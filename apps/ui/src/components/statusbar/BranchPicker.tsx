@@ -8,7 +8,7 @@ import {
 } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { Check } from "lucide-react";
+import { Check } from "@phosphor-icons/react";
 import { useGit } from "../../stores/gitStore";
 import { useUI } from "../../stores/uiStore";
 import type { BranchInfo } from "../../api/tauri";

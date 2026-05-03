@@ -1,10 +1,4 @@
 import type { JSX } from "react";
-import {
-  CaseSensitive,
-  Regex,
-  WholeWord,
-  AlignVerticalSpaceAround,
-} from "lucide-react";
 import { useSearch } from "../../stores/searchStore";
 
 export function SearchInput(): JSX.Element {
@@ -25,7 +19,7 @@ export function SearchInput(): JSX.Element {
       <input
         type="text"
         className="daisu-input daisu-search-input"
-        placeholder="Search..."
+        placeholder="Search"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -37,39 +31,39 @@ export function SearchInput(): JSX.Element {
       />
       <button
         type="button"
-        className={`daisu-icon-btn-sm${options.caseSensitive ? " is-on" : ""}`}
+        className={`daisu-search-toggle daisu-search-toggle-text${options.caseSensitive ? " is-on" : ""}`}
         aria-label="Match case"
         title="Match case"
         onClick={() => toggle("caseSensitive")}
       >
-        <CaseSensitive size={14} />
+        Aa
       </button>
       <button
         type="button"
-        className={`daisu-icon-btn-sm${options.wholeWord ? " is-on" : ""}`}
-        aria-label="Whole word"
-        title="Whole word"
+        className={`daisu-search-toggle daisu-search-toggle-text${options.wholeWord ? " is-on" : ""}`}
+        aria-label="Match whole word"
+        title="Match whole word"
         onClick={() => toggle("wholeWord")}
       >
-        <WholeWord size={14} />
+        <span className="daisu-search-toggle-underline">ab</span>
       </button>
       <button
         type="button"
-        className={`daisu-icon-btn-sm${options.regex ? " is-on" : ""}`}
-        aria-label="Regex"
-        title="Regex"
+        className={`daisu-search-toggle daisu-search-toggle-text${options.regex ? " is-on" : ""}`}
+        aria-label="Use regular expression"
+        title="Use regular expression"
         onClick={() => toggle("regex")}
       >
-        <Regex size={14} />
+        .*
       </button>
       <button
         type="button"
-        className={`daisu-icon-btn-sm${options.multiline ? " is-on" : ""}`}
+        className={`daisu-search-toggle daisu-search-toggle-text${options.multiline ? " is-on" : ""}`}
         aria-label="Multiline"
         title="Multiline"
         onClick={() => toggle("multiline")}
       >
-        <AlignVerticalSpaceAround size={14} />
+        ¶
       </button>
     </div>
   );

@@ -1,11 +1,11 @@
 import type { JSX } from "react";
 import {
   BookOpen,
-  ClipboardList,
+  ClipboardText,
   GitFork,
-  History,
-  MessageCircle,
-} from "lucide-react";
+  ClockCounterClockwise,
+  ChatCircle,
+} from "@phosphor-icons/react";
 import type { ComponentType, SVGProps } from "react";
 import { useUI } from "../../stores/uiStore";
 
@@ -28,7 +28,7 @@ function SpotifyIcon({ size = 14, ...rest }: { size?: number } & SVGProps<SVGSVG
 }
 
 interface IconSpec {
-  Icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+  Icon: ComponentType<{ size?: number }>;
   label: string;
 }
 
@@ -37,9 +37,9 @@ interface IconSpec {
 // 4. round speech bubble, 5. open book, 6. fork/share branches.
 const ICONS: IconSpec[] = [
   { Icon: SpotifyIcon, label: "Spotify" },
-  { Icon: ClipboardList, label: "Notas" },
-  { Icon: History, label: "Historial" },
-  { Icon: MessageCircle, label: "Chat" },
+  { Icon: ClipboardText, label: "Notas" },
+  { Icon: ClockCounterClockwise, label: "Historial" },
+  { Icon: ChatCircle, label: "Chat" },
   { Icon: BookOpen, label: "Documentación" },
   { Icon: GitFork, label: "Compartir" },
 ];
@@ -69,7 +69,7 @@ export function BottomDock(): JSX.Element {
           aria-label={label}
           title={label}
         >
-          <Icon size={13} strokeWidth={1.5} />
+          <Icon size={13} />
         </button>
       ))}
     </div>

@@ -16,7 +16,7 @@ export function GlobFilters(): JSX.Element {
   return (
     <div className="daisu-search-globs">
       <label className="daisu-search-glob-label">
-        <span>Include</span>
+        <span>files to include</span>
         <input
           type="text"
           className="daisu-input"
@@ -26,7 +26,7 @@ export function GlobFilters(): JSX.Element {
         />
       </label>
       <label className="daisu-search-glob-label">
-        <span>Exclude</span>
+        <span>files to exclude</span>
         <input
           type="text"
           className="daisu-input"

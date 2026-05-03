@@ -1,6 +1,6 @@
 import type { ChangeEvent, JSX, KeyboardEvent } from "react";
 import { useState } from "react";
-import { ArrowUp, FileText, History, MessageSquarePlus } from "lucide-react";
+import { ArrowUp, FileText, ClockCounterClockwise, ChatCenteredDots } from "@phosphor-icons/react";
 import { useUI } from "../../stores/uiStore";
 
 const HEADER_BTN =
@@ -33,13 +33,16 @@ export function AgentsPanel(): JSX.Element {
       aria-label="Chat panel"
     >
       <header className="h-9 px-3 flex items-center justify-between border-b border-[var(--border-subtle)] text-[11px] uppercase tracking-[0.08em] text-[var(--fg-secondary)]">
-        <span>Chat</span>
+        <span className="flex items-center">
+          <span className="daisu-glyph" aria-hidden="true">話</span>
+          Chat
+        </span>
         <div className="flex items-center gap-0.5">
           <button type="button" title="Nueva conversación" aria-label="Nueva conversación" className={HEADER_BTN}>
-            <MessageSquarePlus size={13} />
+            <ChatCenteredDots size={13} />
           </button>
           <button type="button" title="Historial" aria-label="Historial" className={HEADER_BTN}>
-            <History size={13} />
+            <ClockCounterClockwise size={13} />
           </button>
           <button
             type="button"
@@ -87,7 +90,7 @@ export function AgentsPanel(): JSX.Element {
             onClick={send}
             className="w-7 h-7 grid place-items-center bg-[var(--warn)] text-[var(--fg-inverse)] rounded-[var(--radius-sm)] hover:bg-[var(--warn-bright)] shadow-[var(--glow-orange-sm)] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed"
           >
-            <ArrowUp size={14} strokeWidth={2} />
+            <ArrowUp size={14} weight="bold" />
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { useMemo, useState, type JSX } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { CaretDown, CaretRight } from "@phosphor-icons/react";
 import { useSearch } from "../../stores/searchStore";
 import { ResultLine } from "./ResultLine";
 import type { SearchHit } from "../../api/tauri";
@@ -59,9 +59,9 @@ export function ResultsList(): JSX.Element {
               onClick={() => toggle(path)}
             >
               {isCollapsed ? (
-                <ChevronRight size={12} />
+                <CaretRight size={12} />
               ) : (
-                <ChevronDown size={12} />
+                <CaretDown size={12} />
               )}
               <span className="daisu-search-file-name">{fileName}</span>
               <span className="daisu-search-file-count">

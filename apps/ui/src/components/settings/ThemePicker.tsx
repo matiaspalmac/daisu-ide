@@ -1,5 +1,5 @@
 import { useEffect, useState, type JSX } from "react";
-import { Check } from "lucide-react";
+import { Check } from "@phosphor-icons/react";
 import { useThemes } from "../../stores/themesStore";
 import { useSettings } from "../../stores/settingsStore";
 import { readThemeJsonCmd, type ThemeDescriptor } from "../../api/tauri";

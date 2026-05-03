@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from "react";
-import { Pencil, RotateCcw } from "lucide-react";
+import { Pencil, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { useSettings } from "../../../stores/settingsStore";
 import { useUI } from "../../../stores/uiStore";
 import { ACTIONS } from "../../../lib/keybinding-registry";
@@ -120,7 +120,7 @@ export function KeybindingField(props: Props): JSX.Element {
         className="daisu-icon-btn-sm"
         onClick={reset}
       >
-        <RotateCcw size={12} />
+        <ArrowCounterClockwise size={12} />
       </button>
     </div>
   );

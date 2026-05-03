@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ClockCounterClockwise } from "@phosphor-icons/react";
 import { copy } from "../../lib/copy";
 import type { RecentEntry } from "../../stores/workspaceStore";
 
@@ -15,9 +15,13 @@ export function RecentsDropdown(props: Props): JSX.Element {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button type="button" className="daisu-icon-btn" aria-label="Recent">
-          {copy.buttons.recent}
-          <ChevronDown size={12} />
+        <button
+          type="button"
+          className="daisu-recents-trigger"
+          aria-label={copy.buttons.recent}
+          title={copy.buttons.recent}
+        >
+          <ClockCounterClockwise size={13} />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>

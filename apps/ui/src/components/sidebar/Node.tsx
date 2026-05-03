@@ -1,6 +1,6 @@
 import type { CSSProperties, JSX } from "react";
 import type { NodeApi, TreeApi } from "react-arborist";
-import { ChevronRight, Folder, FolderOpen } from "lucide-react";
+import { CaretRight, Folder, FolderOpen } from "@phosphor-icons/react";
 import clsx from "clsx";
 import type { FileEntry } from "../../api/tauri";
 import { useGit } from "../../stores/gitStore";
@@ -46,7 +46,7 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
           className={clsx("daisu-tree-chevron", node.isOpen && "is-open")}
           aria-hidden="true"
         >
-          <ChevronRight size={14} strokeWidth={1.5} />
+          <CaretRight size={14} />
         </span>
       )}
       {node.isLeaf && <span className="daisu-tree-chevron-spacer" aria-hidden="true" />}
