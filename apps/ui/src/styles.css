@@ -1733,3 +1733,40 @@ body.daisu-focus-mode header[class*="titlebar-h"]:hover { opacity: 1; }
 .daisu-search-glob-label .daisu-input:focus {
   border-color: var(--border-active);
 }
+
+/* Welcome — daily haiku block (replaces rotating tip). One haiku per day,
+   stable selection so the screen feels like a quiet daily ritual. */
+.daisu-welcome-haiku {
+  margin: 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+.daisu-welcome-haiku-jp {
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", "Times New Roman", serif;
+  font-size: 17px;
+  font-weight: 300;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  margin: 0;
+  opacity: 0.92;
+}
+.daisu-welcome-haiku-es {
+  font-style: italic;
+  font-size: 13px;
+  color: var(--fg-secondary);
+  margin: 0;
+  line-height: 1.55;
+  border: 0;
+  padding: 0;
+}
+.daisu-welcome-haiku-author {
+  font-size: 11px;
+  color: var(--fg-muted);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}

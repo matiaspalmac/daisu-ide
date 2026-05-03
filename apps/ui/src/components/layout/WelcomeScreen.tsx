@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { FilePlus, FileText, FolderOpen, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useTabs, getScratchUntitled } from "../../stores/tabsStore";
@@ -14,37 +14,34 @@ interface ActionSpec {
   onClick: () => void | Promise<void>;
 }
 
-interface Tip {
-  title: string;
-  body: string;
+interface Haiku {
+  jp: string;
+  es: string;
+  author: string;
 }
 
-const TIPS: Tip[] = [
-  {
-    title: "Ctrl+Shift+P abre la paleta",
-    body: "Todo el IDE a un atajo. Escribí lo que necesitás hacer.",
-  },
-  {
-    title: "Ctrl+B alterna la barra lateral",
-    body: "Maximiza el editor cuando necesites concentrarte.",
-  },
-  {
-    title: "Ctrl+/ comenta líneas",
-    body: "Comenta o descomenta sin escribir símbolos.",
-  },
-  {
-    title: "Ctrl+Shift+F busca en el proyecto",
-    body: "Busca cualquier texto en todo el workspace.",
-  },
-  {
-    title: "F2 renombra archivos",
-    body: "Selecciona en el árbol y presiona F2 para renombrar.",
-  },
-  {
-    title: "Tabs arrastrables",
-    body: "Reordená pestañas arrastrándolas dentro de la barra.",
-  },
+// Selección curada de haiku clásicos. Uno por día (determinístico). El idioma
+// japonés es referencia visual; la traducción al español lleva el peso.
+const HAIKUS: Haiku[] = [
+  { jp: "古池や蛙飛びこむ水の音", es: "viejo estanque — una rana salta, sonido del agua.", author: "Bashō" },
+  { jp: "閑さや岩にしみ入る蝉の声", es: "tal silencio — la voz de las cigarras penetra la roca.", author: "Bashō" },
+  { jp: "雀の子そこのけそこのけお馬が通る", es: "fuera, gorrioncito — viene pasando el caballo.", author: "Issa" },
+  { jp: "やせ蛙負けるな一茶これにあり", es: "rana flaca — no te rindas, Issa está contigo.", author: "Issa" },
+  { jp: "朝顔につるべ取られてもらひ水", es: "una enredadera tomó el balde — pido agua prestada.", author: "Chiyo-ni" },
+  { jp: "菜の花や月は東に日は西に", es: "campo de mostaza — la luna al este, el sol al oeste.", author: "Buson" },
+  { jp: "目には青葉山ほととぎす初鰹", es: "hojas verdes a la vista, cuco en la montaña, primer bonito.", author: "Sodō" },
+  { jp: "夏草や兵どもが夢の跡", es: "hierba de verano — todo lo que queda del sueño de los guerreros.", author: "Bashō" },
+  { jp: "雪とけて村いっぱいの子どもかな", es: "se derrite la nieve — el pueblo lleno de niños.", author: "Issa" },
+  { jp: "我と来て遊べや親のない雀", es: "ven, juega conmigo — gorrión sin padres.", author: "Issa" },
+  { jp: "柿くへば鐘が鳴るなり法隆寺", es: "comiendo un caqui — suenan las campanas de Hōryū-ji.", author: "Shiki" },
+  { jp: "この道や行く人なしに秋の暮", es: "este camino — nadie lo recorre, atardecer de otoño.", author: "Bashō" },
 ];
+
+function dayOfYear(d: Date): number {
+  const start = new Date(d.getFullYear(), 0, 0);
+  const diff = d.getTime() - start.getTime();
+  return Math.floor(diff / 86_400_000);
+}
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -61,15 +58,8 @@ export function WelcomeScreen(): JSX.Element {
   const openWorkspace = useWorkspace((s) => s.openWorkspace);
   const recents = useWorkspace((s) => s.recents);
   const pushToast = useUI((s) => s.pushToast);
-  const [tipIdx, setTipIdx] = useState(() => Math.floor(Math.random() * TIPS.length));
+  const haiku = useMemo(() => HAIKUS[dayOfYear(new Date()) % HAIKUS.length]!, []);
   const [scratchCount, setScratchCount] = useState(() => getScratchUntitled().length);
-
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setTipIdx((i) => (i + 1) % TIPS.length);
-    }, 12000);
-    return () => window.clearInterval(id);
-  }, []);
 
   const handleOpenFile = useCallback(async (): Promise<void> => {
     try {
@@ -95,7 +85,6 @@ export function WelcomeScreen(): JSX.Element {
     { kbd: "Ctrl+K O", Icon: FolderOpen, label: "Abrir carpeta", onClick: handleOpenFolder },
   ];
 
-  const tip = TIPS[tipIdx]!;
   const greetingText = useMemo(greeting, []);
 
   return (
@@ -172,11 +161,11 @@ export function WelcomeScreen(): JSX.Element {
           </div>
         )}
 
-        <p className="daisu-welcome-tip" aria-live="polite">
-          <span className="daisu-welcome-tip-prefix" aria-hidden="true">訓</span>
-          <span className="sr-only">tip:</span>
-          {tip.title}. <span style={{ color: "var(--fg-muted)" }}>{tip.body}</span>
-        </p>
+        <figure className="daisu-welcome-haiku">
+          <p className="daisu-welcome-haiku-jp" aria-hidden="true">{haiku.jp}</p>
+          <blockquote className="daisu-welcome-haiku-es">{haiku.es}</blockquote>
+          <figcaption className="daisu-welcome-haiku-author">— {haiku.author}</figcaption>
+        </figure>
       </div>
     </section>
   );
