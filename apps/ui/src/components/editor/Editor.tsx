@@ -67,27 +67,31 @@ export function Editor(): JSX.Element {
     };
   }, []);
 
-  // Force-blur Monaco's hidden textarea on any mousedown OUTSIDE the editor's
-  // DOM. Monaco has no public blur() API (issue #307/#548) and aggressively
-  // captures focus, so the only reliable way to make a single click on the
-  // sidebar/tabs/etc. respond immediately (instead of needing a second click
-  // to "wake up" the target) is to fire this in the capture phase BEFORE
-  // Monaco's own document listeners run.
+  // Force-blur Monaco when mousedown/pointerdown happens OUTSIDE its DOM.
+  // Monaco has no public blur() API (issues #307/#548) and aggressively
+  // captures focus on every keystroke + mouseenter. Capture-phase listener
+  // fires BEFORE Monaco's own document handlers and any focus-restore logic.
   useEffect(() => {
-    const onDown = (e: MouseEvent): void => {
+    const blurEditor = (e: MouseEvent | PointerEvent): void => {
       const editor = editorRef.current;
       if (!editor) return;
       const editorEl = editor.getDomNode();
       if (!editorEl) return;
       const target = e.target as Node | null;
       if (target && editorEl.contains(target)) return;
+      // Try the inner hidden textarea first (Monaco's actual focus target).
       const ta = editorEl.querySelector("textarea.inputarea") as HTMLTextAreaElement | null;
-      if (ta && document.activeElement === ta) {
-        ta.blur();
-      }
+      if (ta) ta.blur();
+      // Belt-and-suspenders: nuke any focused element inside the editor DOM.
+      const active = document.activeElement as HTMLElement | null;
+      if (active && editorEl.contains(active)) active.blur();
     };
-    document.addEventListener("mousedown", onDown, true);
-    return () => document.removeEventListener("mousedown", onDown, true);
+    document.addEventListener("mousedown", blurEditor, true);
+    document.addEventListener("pointerdown", blurEditor, true);
+    return () => {
+      document.removeEventListener("mousedown", blurEditor, true);
+      document.removeEventListener("pointerdown", blurEditor, true);
+    };
   }, []);
 
   function syncActiveTab(): void {
@@ -113,7 +117,10 @@ export function Editor(): JSX.Element {
     if (tab.cursorState) {
       editor.restoreViewState(tab.cursorState);
     }
-    editor.focus();
+    // NOTE: do NOT call editor.focus() here. Auto-stealing focus on every tab
+    // switch causes the "needs-double-click" symptom — Monaco re-captures
+    // focus immediately after our global mousedown blur fix releases it. The
+    // user can click into the editor to start typing.
     prevActiveRef.current = newId;
   }
 
