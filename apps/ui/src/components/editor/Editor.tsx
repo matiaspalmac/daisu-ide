@@ -67,56 +67,12 @@ export function Editor(): JSX.Element {
     };
   }, []);
 
-  // Force-blur Monaco when mousedown/pointerdown happens OUTSIDE its DOM,
-  // AND block Monaco from re-focusing for the next ~150ms. Monaco has no
-  // public blur() API (issues #307/#548) and aggressively re-grabs focus on
-  // every change, fighting the user's outside click and producing the
-  // "needs-double-click" symptom. The capture-phase guard runs BEFORE
-  // Monaco's own document listeners and the focusin block kills any
-  // synchronous re-focus the runtime tries to perform during the same tick.
-  useEffect(() => {
-    let blockUntil = 0;
-
-    const editorContains = (target: EventTarget | null): boolean => {
-      const editor = editorRef.current;
-      const editorEl = editor?.getDomNode();
-      if (!editorEl || !target) return false;
-      return editorEl.contains(target as Node);
-    };
-
-    const blurEditor = (e: MouseEvent | PointerEvent): void => {
-      if (editorContains(e.target)) return;
-      blockUntil = performance.now() + 150;
-      const editor = editorRef.current;
-      const editorEl = editor?.getDomNode();
-      if (!editorEl) return;
-      const ta = editorEl.querySelector("textarea.inputarea") as HTMLTextAreaElement | null;
-      if (ta) ta.blur();
-      const active = document.activeElement as HTMLElement | null;
-      if (active && editorEl.contains(active)) active.blur();
-    };
-
-    const guardFocusIn = (e: FocusEvent): void => {
-      if (performance.now() >= blockUntil) return;
-      if (!editorContains(e.target)) return;
-      const editor = editorRef.current;
-      const editorEl = editor?.getDomNode();
-      if (!editorEl) return;
-      const ta = editorEl.querySelector("textarea.inputarea") as HTMLTextAreaElement | null;
-      if (ta) ta.blur();
-      const active = document.activeElement as HTMLElement | null;
-      if (active && editorEl.contains(active)) active.blur();
-    };
-
-    document.addEventListener("mousedown", blurEditor, true);
-    document.addEventListener("pointerdown", blurEditor, true);
-    document.addEventListener("focusin", guardFocusIn, true);
-    return () => {
-      document.removeEventListener("mousedown", blurEditor, true);
-      document.removeEventListener("pointerdown", blurEditor, true);
-      document.removeEventListener("focusin", guardFocusIn, true);
-    };
-  }, []);
+  // NOTE: a previous version installed a global capture-phase mousedown blur
+  // + focusin guard here. Per the bugs-frontend audit the listener was masking
+  // the underlying issue (auto-focus on every tab switch) and itself created a
+  // re-focus loop. With `editor.focus()` removed from syncActiveTab the blur
+  // hack is no longer needed. Trixty IDE (same Tauri+Monaco+React stack)
+  // relies purely on plain onClick handlers without any blur trickery.
 
   function syncActiveTab(): void {
     const editor = editorRef.current;

@@ -78,10 +78,7 @@ export function AgentsPanel(): JSX.Element {
             disabled={!canSend}
             aria-disabled={!canSend}
             aria-label="Enviar"
-            onMouseDown={(e) => {
-              if (e.button !== 0) return;
-              send();
-            }}
+            onClick={send}
             className="w-7 h-7 grid place-items-center bg-[var(--warn)] text-[var(--fg-inverse)] rounded-[var(--radius-sm)] hover:bg-[var(--warn-bright)] shadow-[var(--glow-orange-sm)] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed"
           >
             <ArrowUp size={14} strokeWidth={2} />
