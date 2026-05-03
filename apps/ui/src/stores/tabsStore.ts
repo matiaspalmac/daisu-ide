@@ -82,6 +82,7 @@ interface TabsState {
   clearSession(workspaceHash: string): Promise<void>;
 
   resolvePendingClose(action: "save" | "discard" | "cancel"): Promise<void>;
+  recoverScratchUntitled(): number;
 
   reset(): void;
 
@@ -91,6 +92,70 @@ interface TabsState {
 
 const RECENT_CAP = 20;
 const SESSION_VERSION = 1 as const;
+const SCRATCH_KEY = "daisu:scratch-untitled";
+
+interface ScratchUntitled {
+  name: string;
+  content: string;
+  language: string;
+  untitledIndex: number | null;
+}
+
+function readScratch(): ScratchUntitled[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(SCRATCH_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (x): x is ScratchUntitled =>
+        typeof x === "object" &&
+        x !== null &&
+        typeof (x as ScratchUntitled).name === "string" &&
+        typeof (x as ScratchUntitled).content === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+function writeScratch(items: ScratchUntitled[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (items.length === 0) window.localStorage.removeItem(SCRATCH_KEY);
+    else window.localStorage.setItem(SCRATCH_KEY, JSON.stringify(items));
+  } catch {
+    // best-effort
+  }
+}
+
+export function persistDirtyUntitledScratch(tabs: OpenTab[]): number {
+  const dirty = tabs.filter(
+    (t) => t.path === null && t.content !== t.savedContent,
+  );
+  if (dirty.length === 0) return 0;
+  const existing = readScratch();
+  const next = [
+    ...existing,
+    ...dirty.map((t) => ({
+      name: t.name,
+      content: t.content,
+      language: t.language,
+      untitledIndex: t.untitledIndex,
+    })),
+  ];
+  writeScratch(next);
+  return dirty.length;
+}
+
+export function getScratchUntitled(): ScratchUntitled[] {
+  return readScratch();
+}
+
+export function clearScratchUntitled(): void {
+  writeScratch([]);
+}
 
 const RUNTIME_INITIAL = (): Pick<
   TabsState,
@@ -546,6 +611,34 @@ export const useTabs = create<TabsState>((set, get) => ({
     for (const id of pending.ids) {
       await get().closeTab(id, true);
     }
+  },
+
+  recoverScratchUntitled() {
+    const items = readScratch();
+    if (items.length === 0) return 0;
+    const startCounter = get().untitledCounter;
+    const newTabs: OpenTab[] = items.map((s, i) => ({
+      id: uuid(),
+      path: null,
+      name: s.name,
+      language: s.language,
+      content: s.content,
+      savedContent: "",
+      cursorState: null,
+      pinned: false,
+      untitledIndex: s.untitledIndex ?? startCounter + i + 1,
+      eol: "LF",
+      encoding: "UTF-8",
+    }));
+    set((state) => ({
+      tabs: [...state.tabs, ...newTabs],
+      activeTabId: newTabs[newTabs.length - 1]?.id ?? state.activeTabId,
+      untitledCounter: startCounter + items.length,
+      mruOrder: [...newTabs.map((t) => t.id), ...state.mruOrder],
+    }));
+    clearScratchUntitled();
+    void get().saveSession();
+    return items.length;
   },
 
   reset() {

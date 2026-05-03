@@ -1,8 +1,8 @@
 import type { JSX } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { CornerDownRight, FileText, FilePlus, FolderOpen } from "lucide-react";
+import { CornerDownRight, FileText, FilePlus, FolderOpen, RotateCcw } from "lucide-react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { useTabs } from "../../stores/tabsStore";
+import { useTabs, getScratchUntitled } from "../../stores/tabsStore";
 import { useUI } from "../../stores/uiStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { translateError } from "../../lib/error-translate";
@@ -57,11 +57,13 @@ const TIPS: Tip[] = [
 export function WelcomeScreen(): JSX.Element {
   const newTab = useTabs((s) => s.newTab);
   const openTab = useTabs((s) => s.openTab);
+  const recoverScratch = useTabs((s) => s.recoverScratchUntitled);
   const openWorkspace = useWorkspace((s) => s.openWorkspace);
   const recents = useWorkspace((s) => s.recents);
   const pushToast = useUI((s) => s.pushToast);
   const [tipIdx, setTipIdx] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [scratchCount, setScratchCount] = useState(() => getScratchUntitled().length);
 
   useEffect(() => {
     if (paused) return;
@@ -128,6 +130,26 @@ export function WelcomeScreen(): JSX.Element {
             </button>
           ))}
         </div>
+
+        {scratchCount > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              const n = recoverScratch();
+              setScratchCount(0);
+              pushToast({
+                message: `${n} pestaña(s) Untitled recuperada(s)`,
+                level: "success",
+              });
+            }}
+            className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)] bg-[var(--warn-soft)] border border-[var(--warn)]/40 text-[var(--warn)] hover:shadow-[var(--glow-orange-sm)] transition-shadow"
+          >
+            <RotateCcw size={14} />
+            <span className="text-sm">
+              Recuperar {scratchCount} pestaña(s) Untitled sin guardar
+            </span>
+          </button>
+        )}
 
         {recents.length > 0 && (
           <div className="w-[512px] flex flex-col gap-2">

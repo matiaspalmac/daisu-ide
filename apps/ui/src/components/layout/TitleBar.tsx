@@ -14,6 +14,7 @@ import {
 import { useUI } from "../../stores/uiStore";
 import { useTabs } from "../../stores/tabsStore";
 import { useWorkspace } from "../../stores/workspaceStore";
+import { useSettings } from "../../stores/settingsStore";
 import { translateError } from "../../lib/error-translate";
 
 export function TitleBar(): JSX.Element {
@@ -24,6 +25,7 @@ export function TitleBar(): JSX.Element {
   const openTab = useTabs((s) => s.openTab);
   const saveActive = useTabs((s) => s.saveActive);
   const openWorkspace = useWorkspace((s) => s.openWorkspace);
+  const design = useSettings((s) => s.settings.design);
 
   const handleOpen = useCallback(async (): Promise<void> => {
     try {
@@ -76,17 +78,20 @@ export function TitleBar(): JSX.Element {
       className="h-[var(--titlebar-h)] bg-[var(--bg-panel)] border-b border-[var(--border-subtle)] flex items-stretch text-[12px] text-[var(--fg-secondary)] select-none"
     >
       {/* Hamburger */}
-      <button
-        type="button"
-        className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
-        onClick={() => openSettings()}
-        title="Menú"
-        aria-label="Menú"
-      >
-        <Menu size={14} strokeWidth={1.5} />
-      </button>
+      {design.titleBarHamburger && (
+        <button
+          type="button"
+          className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+          onClick={() => openSettings()}
+          title="Menú"
+          aria-label="Menú"
+        >
+          <Menu size={14} strokeWidth={1.5} />
+        </button>
+      )}
 
       {/* Menu strip */}
+      {design.titleBarMenuStrip && (
       <nav className="flex items-stretch">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -217,19 +222,22 @@ export function TitleBar(): JSX.Element {
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>
+      )}
 
       {/* Spacer (drag region) */}
       <div className="flex-1" data-tauri-drag-region />
 
       {/* User avatar — placeholder */}
-      <button
-        type="button"
-        className="w-8 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
-        title="Cuenta"
-        aria-label="Cuenta"
-      >
-        <User size={14} strokeWidth={1.5} />
-      </button>
+      {design.titleBarUserAvatar && (
+        <button
+          type="button"
+          className="w-8 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+          title="Cuenta"
+          aria-label="Cuenta"
+        >
+          <User size={14} strokeWidth={1.5} />
+        </button>
+      )}
 
       {/* Window controls */}
       <button

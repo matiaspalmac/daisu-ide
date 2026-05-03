@@ -17,7 +17,7 @@ import { SettingsModal } from "./components/settings/SettingsModal";
 import { useUI } from "./stores/uiStore";
 import { useSettings } from "./stores/settingsStore";
 import { useWorkspace } from "./stores/workspaceStore";
-import { useTabs } from "./stores/tabsStore";
+import { useTabs, persistDirtyUntitledScratch } from "./stores/tabsStore";
 import { useKeybindings } from "./hooks/useKeybindings";
 import { useTheme } from "./hooks/useTheme";
 import { useGitWatcher } from "./hooks/useGitWatcher";
@@ -63,12 +63,10 @@ export function App(): JSX.Element {
       // Detach the previous workspace hash BEFORE closing tabs, otherwise
       // every closeTab → saveSession() call will overwrite the prior
       // workspace's session file with an empty-tabs blob.
-      const dirtyUntitled = useTabs
-        .getState()
-        .tabs.filter((t) => t.path === null && t.content !== t.savedContent);
-      if (dirtyUntitled.length > 0) {
+      const persisted = persistDirtyUntitledScratch(useTabs.getState().tabs);
+      if (persisted > 0) {
         useUI.getState().pushToast({
-          message: `${dirtyUntitled.length} pestaña(s) Untitled sin guardar — recupera vía Archivo › Reabrir cerrada`,
+          message: `${persisted} pestaña(s) Untitled guardadas en buffer — recupera desde Inicio`,
           level: "warning",
         });
       }

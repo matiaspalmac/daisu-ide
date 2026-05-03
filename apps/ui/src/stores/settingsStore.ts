@@ -43,6 +43,11 @@ const SettingsSchema = z.object({
     rightPanelSide: z.enum(["right", "left"]).default("right"),
     rightPanelVisible: z.boolean().default(true),
     terminalVisible: z.boolean().default(false),
+    statusBarPanelToggles: z.boolean().default(true),
+    statusBarUtility: z.boolean().default(true),
+    titleBarHamburger: z.boolean().default(true),
+    titleBarMenuStrip: z.boolean().default(true),
+    titleBarUserAvatar: z.boolean().default(true),
   }).prefault({}),
   keybindings: z.record(z.string(), z.string()).default({}),
 });

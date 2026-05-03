@@ -18,6 +18,11 @@ interface DesignCardProps {
     | "sidebarVisible"
     | "rightPanelVisible"
     | "terminalVisible"
+    | "statusBarPanelToggles"
+    | "statusBarUtility"
+    | "titleBarHamburger"
+    | "titleBarMenuStrip"
+    | "titleBarUserAvatar"
   >;
 }
 
@@ -30,6 +35,11 @@ interface DesignSettings {
   rightPanelSide: Side;
   rightPanelVisible: boolean;
   terminalVisible: boolean;
+  statusBarPanelToggles: boolean;
+  statusBarUtility: boolean;
+  titleBarHamburger: boolean;
+  titleBarMenuStrip: boolean;
+  titleBarUserAvatar: boolean;
 }
 
 const SIDE_OPTIONS: Array<{ value: Side; label: string }> = [
@@ -150,13 +160,36 @@ export function Disenio(): JSX.Element {
       </section>
 
       <section>
-        <h3 className="text-sm font-medium mb-1 text-[var(--fg-primary)]">
+        <h3 className="text-sm font-medium mb-3 text-[var(--fg-primary)]">
           Botones de paneles
         </h3>
-        <p className="text-xs text-[var(--fg-secondary)] mb-3">
-          Próximamente — configuración de visibilidad para los toggles en
-          barra de estado y barra de título.
-        </p>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+          <DesignCard
+            title="Toggles de paneles"
+            desc="Botones cyan/orange en barra de estado para mostrar/ocultar paneles"
+            toggleKey="statusBarPanelToggles"
+          />
+          <DesignCard
+            title="Cluster utilitario"
+            desc="Errores, advertencias, notificaciones y configuración en barra de estado"
+            toggleKey="statusBarUtility"
+          />
+          <DesignCard
+            title="Menú hamburguesa"
+            desc="Botón de menú principal en barra de título"
+            toggleKey="titleBarHamburger"
+          />
+          <DesignCard
+            title="Barra de menús"
+            desc="Archivo, Edición, Selección, Vista, Terminal en barra de título"
+            toggleKey="titleBarMenuStrip"
+          />
+          <DesignCard
+            title="Avatar de usuario"
+            desc="Icono de cuenta en barra de título"
+            toggleKey="titleBarUserAvatar"
+          />
+        </div>
       </section>
 
       <p className="text-[11px] text-[var(--fg-muted)] mt-4">

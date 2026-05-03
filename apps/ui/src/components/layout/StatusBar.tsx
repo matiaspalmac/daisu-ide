@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { Bell, CircleSlash, PanelLeft, PanelRight, Settings, TriangleAlert } from "lucide-react";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useUI } from "../../stores/uiStore";
+import { useSettings } from "../../stores/settingsStore";
 import { BranchSegment } from "../statusbar/BranchSegment";
 import { SearchProgress } from "../statusbar/SearchProgress";
 import { CursorSegment } from "../statusbar/CursorSegment";
@@ -20,6 +21,7 @@ export function StatusBar(): JSX.Element {
   const openSettings = useUI((s) => s.openSettings);
   const toggleSidebar = useUI((s) => s.toggleSidebar);
   const toggleAgents = useUI((s) => s.toggleAgentsPanel);
+  const design = useSettings((s) => s.settings.design);
 
   return (
     <footer
@@ -43,6 +45,8 @@ export function StatusBar(): JSX.Element {
 
       {/* Right: utility cluster */}
       <div className="flex items-center gap-1 flex-shrink-0">
+        {design.statusBarUtility && (
+        <>
         <button
           type="button"
           className={utilityCls}
@@ -94,6 +98,10 @@ export function StatusBar(): JSX.Element {
           <Settings size={12} />
         </button>
         <span className="h-3 w-px bg-[var(--border-subtle)] mx-1" aria-hidden="true" />
+        </>
+        )}
+        {design.statusBarPanelToggles && (
+        <>
         <button
           type="button"
           className={panelToggleCls}
@@ -112,6 +120,8 @@ export function StatusBar(): JSX.Element {
         >
           <PanelRight size={12} />
         </button>
+        </>
+        )}
       </div>
       {/* Workspace name retained from rootPath for screen readers but not visually rendered. */}
       <span className="sr-only">{useWorkspace.getState().rootPath ?? ""}</span>
