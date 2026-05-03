@@ -56,11 +56,11 @@ export function SettingsModal(): JSX.Element | null {
           aria-describedby={undefined}
         >
           <header className="daisu-settings-header">
-            <Dialog.Title className="daisu-settings-title">Settings</Dialog.Title>
+            <Dialog.Title className="daisu-settings-title">Configuración</Dialog.Title>
             <button
               type="button"
               className="daisu-icon-btn"
-              aria-label="Close settings"
+              aria-label="Cerrar configuración"
               onClick={() => closeSettings()}
             >
               <X size={16} />

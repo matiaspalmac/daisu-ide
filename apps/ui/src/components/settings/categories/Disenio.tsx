@@ -114,22 +114,22 @@ export function Disenio(): JSX.Element {
         <h3 className="text-sm font-medium mb-3 text-[var(--fg-primary)]">
           Componentes
         </h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
           <DesignCard
             title="Barra de actividad"
-            desc="Navegación principal con acceso a explorador, búsqueda y extensiones"
+            desc="Navegación lateral con explorador, búsqueda y extensiones"
             selectKey="activityBarSide"
             selectOptions={SIDE_OPTIONS}
             toggleKey="activityBarVisible"
           />
           <DesignCard
             title="Barra de estado"
-            desc="Información de estado del editor y proyecto"
+            desc="Información del editor y proyecto"
             toggleKey="statusBarVisible"
           />
           <DesignCard
             title="Panel lateral"
-            desc="Panel con explorador de archivos, búsqueda y otras herramientas"
+            desc="Explorador de archivos, búsqueda y otras herramientas"
             selectKey="sidebarSide"
             selectOptions={SIDE_OPTIONS}
             toggleKey="sidebarVisible"
@@ -141,7 +141,7 @@ export function Disenio(): JSX.Element {
           />
           <DesignCard
             title="Panel de chat"
-            desc="Panel de chat con IA para asistencia de código"
+            desc="Chat con IA para asistencia de código"
             selectKey="rightPanelSide"
             selectOptions={SIDE_OPTIONS}
             toggleKey="rightPanelVisible"
@@ -149,7 +149,17 @@ export function Disenio(): JSX.Element {
         </div>
       </section>
 
-      <p className="text-[11px] text-[var(--fg-muted)]">
+      <section>
+        <h3 className="text-sm font-medium mb-1 text-[var(--fg-primary)]">
+          Botones de paneles
+        </h3>
+        <p className="text-xs text-[var(--fg-secondary)] mb-3">
+          Próximamente — configuración de visibilidad para los toggles en
+          barra de estado y barra de título.
+        </p>
+      </section>
+
+      <p className="text-[11px] text-[var(--fg-muted)] mt-4">
         Cambios aplican en vivo. Persisten en almacenamiento local.
       </p>
     </div>
