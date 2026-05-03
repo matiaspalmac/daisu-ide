@@ -50,7 +50,7 @@
     "zustand": "5.0.0"
   },
   "devDependencies": {
-    "@axe-core/react": "4.10.0",
+    "@axe-core/react": "4.11.3",
     "@fast-check/vitest": "0.2.0",
     "@size-limit/file": "11.0.0",
     "@testing-library/jest-dom": "^6.6.3",

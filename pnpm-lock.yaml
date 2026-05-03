@@ -145,8 +145,8 @@ importers:
         version: 5.0.0(@types/react@19.2.14)(react@19.2.5)(use-sync-external-store@1.6.0(react@19.2.5))
     devDependencies:
       '@axe-core/react':
-        specifier: 4.10.0
-        version: 4.10.0
+        specifier: 4.11.3
+        version: 4.11.3
       '@fast-check/vitest':
         specifier: 0.2.0
         version: 0.2.0(vitest@4.1.5(@types/node@25.6.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(yaml@2.8.4)))
@@ -207,8 +207,8 @@ packages:
   '@atlaskit/pragmatic-drag-and-drop@1.8.0':
     resolution: {integrity: sha512-xUvSniuXsiu28ImUnR27oEH4Ov8AExQrdwBE3feAq0d9W9ngLgS+dD5DY3PW5wKEMFjdSecIzbg7o9bsctbf5Q==}
 
-  '@axe-core/react@4.10.0':
-    resolution: {integrity: sha512-gpFj1+G0zabbd0ZDum1N5FPJtUOfPIfslXNH58WuR7opSK0WTwPJ49ZlYr/Wg2fA4VGI5lfkG5fAZSG9p8ecKw==}
+  '@axe-core/react@4.11.3':
+    resolution: {integrity: sha512-G7TrxptKNFfrQZ+Iygb8nGx5w8Su0jIjwmtVN/9Jc4G6RumCh1rD3pZRT2NzZKjT70q4BReuWVwEazS3HxFfjg==}
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -1577,10 +1577,6 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
-  axe-core@4.10.3:
-    resolution: {integrity: sha512-Xm7bpRXnDSX2YE2YFfBk2FnF0ep6tmG7xPh8iHee8MIcrgq762Nkce856dYtJYLkuIoYZvGfTs/PbZhideTcEg==}
-    engines: {node: '>=4'}
-
   axe-core@4.11.4:
     resolution: {integrity: sha512-KunSNx+TVpkAw/6ULfhnx+HWRecjqZGTOyquAoWHYLRSdK1tB5Ihce1ZW+UY3fj33bYAFWPu7W/GRSmmrCGuxA==}
     engines: {node: '>=4'}
@@ -2831,9 +2827,9 @@ snapshots:
       bind-event-listener: 3.0.0
       raf-schd: 4.0.3
 
-  '@axe-core/react@4.10.0':
+  '@axe-core/react@4.11.3':
     dependencies:
-      axe-core: 4.10.3
+      axe-core: 4.11.4
       requestidlecallback: 0.3.0
 
   '@babel/code-frame@7.29.0':
@@ -4091,8 +4087,6 @@ snapshots:
   assertion-error@2.0.1: {}
 
   asynckit@0.4.0: {}
-
-  axe-core@4.10.3: {}
 
   axe-core@4.11.4: {}
 
