@@ -31,7 +31,11 @@ export function Tab(props: Props): JSX.Element {
   return (
     <div
       ref={dragHandleRef}
-      className={cn("daisu-tab group relative", active && "is-active")}
+      className={cn(
+        "daisu-tab group relative",
+        active && "is-active",
+        tab.pinned && "is-pinned",
+      )}
       onClick={onActivate}
       onMouseDown={handleMouseDown}
       role="tab"
@@ -45,10 +49,17 @@ export function Tab(props: Props): JSX.Element {
         />
       )}
       {tab.pinned && (
+        <span
+          aria-hidden="true"
+          className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-[var(--warn)] shadow-[var(--glow-orange-sm)]"
+        />
+      )}
+      {tab.pinned && (
         <Pin
-          size={12}
+          size={11}
           aria-label="Pinned"
-          className="daisu-tab-pin text-[var(--accent)]"
+          className="daisu-tab-pin text-[var(--warn)] shrink-0"
+          fill="currentColor"
           style={{ transform: "rotate(-45deg)" }}
         />
       )}
@@ -65,17 +76,19 @@ export function Tab(props: Props): JSX.Element {
           ●
         </span>
       )}
-      <button
-        type="button"
-        aria-label="Close"
-        className="daisu-tab-close hover:text-[var(--accent)]"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-      >
-        <X size={12} />
-      </button>
+      {!tab.pinned && (
+        <button
+          type="button"
+          aria-label="Close"
+          className="daisu-tab-close hover:text-[var(--accent)]"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+        >
+          <X size={12} />
+        </button>
+      )}
       {closestEdge === "left" && (
         <span
           aria-hidden="true"

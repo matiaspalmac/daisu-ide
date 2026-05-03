@@ -39,6 +39,7 @@ export function App(): JSX.Element {
   const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
   const searchOpen = useUI((s) => s.searchPanelOpen);
   const loadSettings = useSettings((s) => s.load);
+  const design = useSettings((s) => s.settings.design);
   const restoreTabs = useTabs((s) => s.restoreSession);
   const saveTabsSession = useTabs((s) => s.saveSession);
   const closeAllTabs = useTabs((s) => s.closeAll);
@@ -61,6 +62,15 @@ export function App(): JSX.Element {
       // Detach the previous workspace hash BEFORE closing tabs, otherwise
       // every closeTab → saveSession() call will overwrite the prior
       // workspace's session file with an empty-tabs blob.
+      const dirtyUntitled = useTabs
+        .getState()
+        .tabs.filter((t) => t.path === null && t.content !== t.savedContent);
+      if (dirtyUntitled.length > 0) {
+        useUI.getState().pushToast({
+          message: `${dirtyUntitled.length} pestaña(s) Untitled sin guardar — recupera vía Archivo › Reabrir cerrada`,
+          level: "warning",
+        });
+      }
       useTabs.getState()._setWorkspaceHash(null);
       void closeAllTabs(true);
     }
@@ -169,25 +179,43 @@ export function App(): JSX.Element {
     };
   }, [hydrate, applyBatch, applyFsChange, openWorkspace, pushToast]);
 
+  const showSidebar = design.sidebarVisible && !sidebarCollapsed;
+  const showRightPanel = design.rightPanelVisible && !agentsCollapsed;
+  const sidebarOnRight = design.sidebarSide === "right";
+  const rightPanelOnLeft = design.rightPanelSide === "left";
+  const activityBarOnRight = design.activityBarSide === "right";
+
+  const sidebarPanel = showSidebar ? (
+    <>
+      <Panel id="sidebar" defaultSize="15%" minSize="10%" maxSize="40%">
+        <Sidebar />
+      </Panel>
+      <Separator className="daisu-resize-handle" />
+    </>
+  ) : null;
+
+  const rightPanel = showRightPanel ? (
+    <>
+      <Separator className="daisu-resize-handle" />
+      <Panel id="agents" defaultSize="25%" minSize="15%" maxSize="50%">
+        <RightPanel />
+      </Panel>
+    </>
+  ) : null;
+
   return (
     <main className="daisu-shell flex flex-col h-screen overflow-hidden">
       <TitleBar />
       <WebView2Banner />
       <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
-        <ActivityBar />
+        {design.activityBarVisible && !activityBarOnRight && <ActivityBar />}
         <Group
           orientation="horizontal"
           className="daisu-main-split flex-1"
           id="daisu-main-split"
         >
-        {!sidebarCollapsed && (
-          <>
-            <Panel id="sidebar" defaultSize="15%" minSize="10%" maxSize="40%">
-              <Sidebar />
-            </Panel>
-            <Separator className="daisu-resize-handle" />
-          </>
-        )}
+        {!sidebarOnRight && sidebarPanel}
+        {rightPanelOnLeft && rightPanel}
         <Panel id="center" defaultSize="56%" minSize="30%">
           <Group
             orientation="vertical"
@@ -207,17 +235,12 @@ export function App(): JSX.Element {
             )}
           </Group>
         </Panel>
-        {!agentsCollapsed && (
-          <>
-            <Separator className="daisu-resize-handle" />
-            <Panel id="agents" defaultSize="25%" minSize="15%" maxSize="50%">
-              <RightPanel />
-            </Panel>
-          </>
-        )}
+        {!rightPanelOnLeft && rightPanel}
+        {sidebarOnRight && sidebarPanel}
         </Group>
+        {design.activityBarVisible && activityBarOnRight && <ActivityBar />}
       </div>
-      <StatusBar />
+      {design.statusBarVisible && <StatusBar />}
       <ToastViewport />
       <CloseConfirmModalConnected />
       <SettingsModal />

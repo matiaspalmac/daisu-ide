@@ -87,7 +87,7 @@ export function StatusBar(): JSX.Element {
         <button
           type="button"
           className={utilityCls}
-          title="Configuración"
+          title="Configuración (Ctrl+,)"
           aria-label="Configuración"
           onClick={() => openSettings()}
         >
@@ -97,7 +97,7 @@ export function StatusBar(): JSX.Element {
         <button
           type="button"
           className={panelToggleCls}
-          title="Panel lateral"
+          title="Panel lateral (Ctrl+B)"
           aria-label="Panel lateral"
           onClick={() => toggleSidebar()}
         >
@@ -106,7 +106,7 @@ export function StatusBar(): JSX.Element {
         <button
           type="button"
           className={panelToggleCls}
-          title="Panel de chat"
+          title="Panel de chat (Ctrl+Shift+B)"
           aria-label="Panel de chat"
           onClick={() => toggleAgents()}
         >

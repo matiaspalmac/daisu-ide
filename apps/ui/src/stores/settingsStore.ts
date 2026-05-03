@@ -34,6 +34,16 @@ const SettingsSchema = z.object({
       .default("gemini"),
     apiKey: z.string().default(""),
   }).prefault({}),
+  design: z.object({
+    activityBarSide: z.enum(["left", "right"]).default("left"),
+    activityBarVisible: z.boolean().default(true),
+    statusBarVisible: z.boolean().default(true),
+    sidebarSide: z.enum(["left", "right"]).default("left"),
+    sidebarVisible: z.boolean().default(true),
+    rightPanelSide: z.enum(["right", "left"]).default("right"),
+    rightPanelVisible: z.boolean().default(true),
+    terminalVisible: z.boolean().default(false),
+  }).prefault({}),
   keybindings: z.record(z.string(), z.string()).default({}),
 });
 
