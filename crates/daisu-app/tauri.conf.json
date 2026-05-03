@@ -32,12 +32,5 @@
     "targets": "all",
     "icon": ["icons/icon.ico"]
   },
-  "plugins": {
-    "dialog": {},
-    "fs": {
-      "scope": ["$HOME/**", "$DOCUMENT/**", "$DESKTOP/**"]
-    },
-    "store": {},
-    "window-state": {}
-  }
+  "plugins": {}
 }
