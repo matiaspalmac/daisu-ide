@@ -1,9 +1,11 @@
 import type { CSSProperties, JSX } from "react";
 import type { NodeApi, TreeApi } from "react-arborist";
-import { ChevronRight, File, Folder, FolderOpen } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 import clsx from "clsx";
 import type { FileEntry } from "../../api/tauri";
 import { useGit } from "../../stores/gitStore";
+import { FileIcon } from "@/lib/file-icon";
+import { cn } from "@/lib/cn";
 
 interface Props {
   node: NodeApi<FileEntry>;
@@ -20,8 +22,6 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export function Node({ node, style, dragHandle }: Props): JSX.Element {
-  const Icon = node.isLeaf ? File : node.isOpen ? FolderOpen : Folder;
-  const iconLabel = node.isLeaf ? "File" : "Folder";
   const status = useGit((s) => s.status(node.data.path));
   const tintClass = status ? `daisu-git-${status.toLowerCase()}` : "";
   const badge = status ? STATUS_BADGE[status] : null;
@@ -30,11 +30,13 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
     <div
       ref={dragHandle}
       style={style}
-      className={clsx(
+      className={cn(
         "daisu-tree-row",
         tintClass,
-        node.isSelected && "is-selected",
         node.isEditing && "is-editing",
+        node.isSelected
+          ? "is-selected bg-[var(--accent-soft)] text-[var(--accent)] border-l-2 border-[var(--accent)]"
+          : "hover:bg-[var(--accent-soft)]/40",
       )}
       onDoubleClick={() => {
         if (!node.isLeaf) node.toggle();
@@ -49,7 +51,13 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
         </span>
       )}
       {node.isLeaf && <span className="daisu-tree-chevron-spacer" aria-hidden="true" />}
-      <Icon size={14} aria-label={iconLabel} className="daisu-tree-icon" />
+      {node.isLeaf ? (
+        <FileIcon name={node.data.name} size={14} />
+      ) : node.isOpen ? (
+        <FolderOpen size={14} aria-label="Folder" className="daisu-tree-icon text-[var(--fg-muted)]" />
+      ) : (
+        <Folder size={14} aria-label="Folder" className="daisu-tree-icon text-[var(--fg-muted)]" />
+      )}
       {node.isEditing ? (
         <input
           autoFocus
