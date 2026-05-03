@@ -36,7 +36,7 @@ const mkNode = (
 describe("<Node>", () => {
   it("renders file name and a leaf icon", () => {
     const node = mkNode();
-    render(
+    const { container } = render(
       <Node
         node={node as never}
         style={{}}
@@ -45,7 +45,9 @@ describe("<Node>", () => {
       />
     );
     expect(screen.getByText("App.tsx")).toBeInTheDocument();
-    expect(screen.getByLabelText("File")).toBeInTheDocument();
+    // FileIcon resolves the leaf icon by extension; assert an SVG is present
+    // in the row (label-less per Material-icon-theme convention).
+    expect(container.querySelector(".daisu-tree-row svg")).toBeInTheDocument();
   });
 
   it("renders chevron and folder icon for non-leaf", () => {
