@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Editing">
+  <defs>
+    <radialGradient id="bgEdit" cx="50%" cy="42%" r="70%">
+      <stop offset="0%" stop-color="#1C1C25"/>
+      <stop offset="60%" stop-color="#14141B"/>
+      <stop offset="100%" stop-color="#0A0A0F"/>
+    </radialGradient>
+    <linearGradient id="inkEdit" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8C497"/>
+      <stop offset="55%" stop-color="#D4A574"/>
+      <stop offset="100%" stop-color="#A88458"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="96" ry="96" fill="url(#bgEdit)"/>
+  <circle cx="120" cy="100" r="180" fill="#D4A574" opacity="0.05"/>
+  <circle cx="420" cy="430" r="200" fill="#A88458" opacity="0.04"/>
+
+  <!-- Ink brush stroke (筆) — calligraphic diagonal sweep -->
+  <g transform="rotate(-38 256 256)">
+    <!-- Brush handle (slim rectangle) -->
+    <rect x="246" y="80" width="20" height="220" rx="10"
+          fill="url(#inkEdit)"/>
+    <!-- Ferrule -->
+    <rect x="240" y="296" width="32" height="14" rx="3"
+          fill="#0A0A0F" opacity="0.85"/>
+    <!-- Bristles (tapered teardrop) -->
+    <path d="M 240 310 Q 256 360 248 432 Q 256 440 264 432 Q 272 360 272 310 Z"
+          fill="url(#inkEdit)"/>
+    <!-- Ink drop -->
+    <ellipse cx="256" cy="450" rx="6" ry="10" fill="url(#inkEdit)" opacity="0.7"/>
+  </g>
+
+  <!-- Subtle ink trail dot bottom-right -->
+  <circle cx="380" cy="380" r="4" fill="#D4A574" opacity="0.6"/>
+</svg>

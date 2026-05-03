@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Idle">
+  <defs>
+    <radialGradient id="bgMoon" cx="50%" cy="42%" r="70%">
+      <stop offset="0%" stop-color="#1C1C25"/>
+      <stop offset="60%" stop-color="#14141B"/>
+      <stop offset="100%" stop-color="#0A0A0F"/>
+    </radialGradient>
+    <linearGradient id="inkMoon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8C497"/>
+      <stop offset="55%" stop-color="#D4A574"/>
+      <stop offset="100%" stop-color="#A88458"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="96" ry="96" fill="url(#bgMoon)"/>
+  <circle cx="120" cy="100" r="180" fill="#D4A574" opacity="0.05"/>
+  <circle cx="420" cy="430" r="200" fill="#A88458" opacity="0.04"/>
+
+  <!-- Crescent moon: subtraction of two circles -->
+  <mask id="crescent">
+    <rect width="512" height="512" fill="black"/>
+    <circle cx="240" cy="256" r="140" fill="white"/>
+    <circle cx="200" cy="226" r="130" fill="black"/>
+  </mask>
+  <rect width="512" height="512" fill="url(#inkMoon)" mask="url(#crescent)"/>
+
+  <!-- Tiny stars -->
+  <circle cx="370" cy="160" r="3" fill="#E8C497" opacity="0.85"/>
+  <circle cx="400" cy="220" r="2" fill="#E8C497" opacity="0.7"/>
+  <circle cx="350" cy="380" r="2.5" fill="#E8C497" opacity="0.75"/>
+  <circle cx="420" cy="320" r="1.5" fill="#E8C497" opacity="0.6"/>
+</svg>
