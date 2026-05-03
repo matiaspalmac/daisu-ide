@@ -24,6 +24,7 @@ import { useGitWatcher } from "./hooks/useGitWatcher";
 import { useEditorCursorWiring } from "./hooks/useEditorCursor";
 import { useGit } from "./stores/gitStore";
 import { copy } from "./lib/copy";
+import { isTauri } from "./lib/tauri-env";
 
 // react-resizable-panels v4 uses percentage-string sizing on each Panel
 // `defaultSize` prop. Layout persistence (useDefaultLayout) was dropped
@@ -77,6 +78,7 @@ export function App(): JSX.Element {
   }, [workspaceHash, restoreTabs, closeAllTabs]);
 
   useEffect(() => {
+    if (!isTauri()) return;
     let unlistenBeforeClose: (() => void) | null = null;
     void listen<void>("system:before-close", () => {
       void saveTabsSession();
@@ -115,6 +117,7 @@ export function App(): JSX.Element {
   const pushToast = useUI((s) => s.pushToast);
 
   useEffect(() => {
+    if (!isTauri()) return;
     hydrate().catch(() => undefined);
 
     const unlistenPromises: Promise<() => void>[] = [];

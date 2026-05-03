@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useGit } from "../stores/gitStore";
+import { isTauri } from "../lib/tauri-env";
 
 /**
  * Subscribe to `git-changed` Tauri events and window focus events; both
@@ -9,6 +10,7 @@ import { useGit } from "../stores/gitStore";
  */
 export function useGitWatcher(): void {
   useEffect(() => {
+    if (!isTauri()) return;
     let cancelled = false;
     let unlistenGit: (() => void) | null = null;
     let unlistenFocus: (() => void) | null = null;
