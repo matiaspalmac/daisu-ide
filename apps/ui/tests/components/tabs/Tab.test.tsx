@@ -13,6 +13,8 @@ const baseTab: OpenTab = {
   cursorState: null,
   pinned: false,
   untitledIndex: null,
+  eol: "LF",
+  encoding: "UTF-8",
 };
 
 describe("<Tab>", () => {

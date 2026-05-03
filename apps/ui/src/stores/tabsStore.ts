@@ -26,6 +26,8 @@ export interface OpenTab {
   cursorState: monaco.editor.ICodeEditorViewState | null;
   pinned: boolean;
   untitledIndex: number | null;
+  eol: "LF" | "CRLF";
+  encoding: string;
 }
 
 export interface ClosedTabSnapshot {
@@ -36,6 +38,8 @@ export interface ClosedTabSnapshot {
   content: string;
   savedContent: string;
   closedAt: number;
+  eol: "LF" | "CRLF";
+  encoding: string;
 }
 
 export type PendingCloseMode = "single" | "batch";
@@ -68,6 +72,7 @@ interface TabsState {
   pin(id: string): void;
   unpin(id: string): void;
   updateContent(id: string, content: string): void;
+  setLanguage(id: string, languageId: string): void;
   saveActive(): Promise<void>;
   saveActiveAs(): Promise<void>;
   saveAll(): Promise<void>;
@@ -145,6 +150,8 @@ function snapshotForSession(state: TabsState): SessionBlob {
       cursorState: t.cursorState as unknown as SessionBlob["tabs"][number]["cursorState"],
       pinned: t.pinned,
       untitledIndex: t.untitledIndex,
+      eol: t.eol,
+      encoding: t.encoding,
     })),
     mruOrder: state.mruOrder,
     recentlyClosed: state.recentlyClosed,
@@ -162,6 +169,8 @@ function applySession(blob: SessionBlob): Partial<TabsState> {
     cursorState: t.cursorState as unknown as monaco.editor.ICodeEditorViewState | null,
     pinned: t.pinned,
     untitledIndex: t.untitledIndex,
+    eol: (t as { eol?: "LF" | "CRLF" }).eol ?? "LF",
+    encoding: (t as { encoding?: string }).encoding ?? "UTF-8",
   }));
   const ids = new Set(tabs.map((t) => t.id));
   return {
@@ -198,6 +207,8 @@ export const useTabs = create<TabsState>((set, get) => ({
       cursorState: null,
       pinned: false,
       untitledIndex: null,
+      eol: opened.eol ?? "LF",
+      encoding: opened.encoding ?? "UTF-8",
     };
     set((s) => ({
       tabs: [...s.tabs, tab],
@@ -219,6 +230,8 @@ export const useTabs = create<TabsState>((set, get) => ({
       cursorState: null,
       pinned: false,
       untitledIndex: next,
+      eol: "LF",
+      encoding: "UTF-8",
     };
     set((s) => ({
       tabs: [...s.tabs, tab],
@@ -245,6 +258,8 @@ export const useTabs = create<TabsState>((set, get) => ({
       content: tab.content,
       savedContent: tab.savedContent,
       closedAt: Date.now(),
+      eol: tab.eol,
+      encoding: tab.encoding,
     };
     set((s) => {
       const tabs = s.tabs.filter((t) => t.id !== id);
@@ -305,6 +320,8 @@ export const useTabs = create<TabsState>((set, get) => ({
       cursorState: null,
       pinned: false,
       untitledIndex: null,
+      eol: head.eol ?? "LF",
+      encoding: head.encoding ?? "UTF-8",
     };
     set((s) => ({
       tabs: [...s.tabs, tab],
@@ -382,6 +399,15 @@ export const useTabs = create<TabsState>((set, get) => ({
     set((s) => ({
       tabs: s.tabs.map((t) => (t.id === id ? { ...t, content } : t)),
     }));
+  },
+
+  setLanguage(id, languageId) {
+    set((s) => ({
+      tabs: s.tabs.map((t) =>
+        t.id === id ? { ...t, language: languageId } : t,
+      ),
+    }));
+    void get().saveSession();
   },
 
   async saveActive() {
