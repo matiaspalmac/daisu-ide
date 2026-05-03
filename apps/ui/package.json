@@ -14,7 +14,7 @@
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "1.8.0",
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "1.1.0",
-    "@monaco-editor/react": "^4.6.0",
+    "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-alert-dialog": "1.1.0",
     "@radix-ui/react-context-menu": "2.2.0",
     "@radix-ui/react-dialog": "1.1.0",
