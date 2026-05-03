@@ -18,6 +18,9 @@ import { useWorkspace } from "./stores/workspaceStore";
 import { useTabs } from "./stores/tabsStore";
 import { useKeybindings } from "./hooks/useKeybindings";
 import { useTheme } from "./hooks/useTheme";
+import { useGitWatcher } from "./hooks/useGitWatcher";
+import { useEditorCursorWiring } from "./hooks/useEditorCursor";
+import { useGit } from "./stores/gitStore";
 import { copy } from "./lib/copy";
 
 // Note: react-resizable-panels v4 uses percentage-string sizing.
@@ -29,6 +32,8 @@ import { copy } from "./lib/copy";
 export function App(): JSX.Element {
   useKeybindings();
   useTheme();
+  useGitWatcher();
+  useEditorCursorWiring();
   const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
   const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
   const searchOpen = useUI((s) => s.searchPanelOpen);
@@ -50,6 +55,12 @@ export function App(): JSX.Element {
   useEffect(() => {
     loadSettings().catch(() => undefined);
   }, [loadSettings]);
+
+  const rootPath = useWorkspace((s) => s.rootPath);
+  useEffect(() => {
+    useGit.getState().setWorkspacePath(rootPath ?? null);
+    if (rootPath) void useGit.getState().refresh();
+  }, [rootPath]);
 
   useEffect(() => {
     if (workspaceHash) {
