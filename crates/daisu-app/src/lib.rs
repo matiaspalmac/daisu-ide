@@ -1,5 +1,7 @@
 pub mod commands;
 pub mod error;
+pub mod git;
+pub mod search;
 pub mod state;
 pub mod validation;
 pub mod watch;

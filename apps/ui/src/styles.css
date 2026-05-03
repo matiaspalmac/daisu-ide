@@ -720,3 +720,201 @@ body,
 .daisu-settings-nav-item:hover { background: rgba(255,255,255,0.05); }
 .daisu-settings-nav-item.is-active { background: #0078d4; color: #fff; }
 .daisu-settings-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* Phase 5: status bar segments */
+.daisu-status-segment {
+  font-size: 11px;
+  color: var(--daisu-statusbar-fg, var(--daisu-statusBar-foreground, #ffffff));
+  background: transparent;
+  border: 0;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.daisu-status-clickable {
+  cursor: pointer;
+}
+.daisu-status-clickable:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+.daisu-search-match {
+  background: rgba(234, 192, 79, 0.4);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.daisu-git-modified { color: #d4ac4d; }
+.daisu-git-untracked { color: #4ec97f; }
+.daisu-git-conflict { color: #e85b5b; }
+.daisu-git-staged { color: #6cb6ff; }
+
+.daisu-language-popover {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  padding: 8px;
+  width: 280px;
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 90;
+}
+.daisu-language-filter {
+  background: #1f1f1f;
+  border: 1px solid #3c3c3c;
+  color: var(--daisu-fg, #ccc);
+  padding: 4px 8px;
+  font-size: 13px;
+  border-radius: 3px;
+}
+.daisu-language-list {
+  overflow-y: auto;
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+}
+.daisu-language-item {
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: 4px 8px;
+  color: var(--daisu-fg, #ccc);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.daisu-language-item:hover { background: rgba(255, 255, 255, 0.06); }
+.daisu-language-item.is-active { background: #0078d4; color: #fff; }
+.daisu-language-empty {
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+  padding: 8px;
+}
+
+.daisu-branch-segment {
+  gap: 6px;
+}
+.daisu-icon-btn-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 2px;
+}
+.daisu-icon-btn-sm:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.daisu-statusbar-left,
+.daisu-statusbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 1;
+  min-width: 0;
+}
+.daisu-statusbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.daisu-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+}
+.daisu-search-input { flex: 1; min-width: 0; }
+.daisu-search-globs {
+  display: flex;
+  gap: 12px;
+  padding: 0 12px 8px;
+}
+.daisu-search-glob-label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: #888;
+}
+.daisu-search-results { flex: 1; overflow-y: auto; }
+.daisu-search-summary {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #888;
+  border-top: 1px solid var(--daisu-border, #2b2b2b);
+  border-bottom: 1px solid var(--daisu-border, #2b2b2b);
+}
+.daisu-search-truncated { color: #e2c08d; }
+.daisu-search-empty {
+  padding: 24px;
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+}
+.daisu-search-file-header {
+  background: transparent;
+  border: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  color: var(--daisu-fg, #ccc);
+  font-size: 12px;
+  cursor: pointer;
+}
+.daisu-search-file-header:hover { background: rgba(255,255,255,0.04); }
+.daisu-search-file-name { font-weight: 500; }
+.daisu-search-file-count { color: #888; }
+.daisu-search-file-hits { display: flex; flex-direction: column; }
+.daisu-result-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 12px 2px 24px;
+  font-family: Cascadia Code, Consolas, monospace;
+  font-size: 12px;
+}
+.daisu-result-line.is-excluded { opacity: 0.45; }
+.daisu-result-line-btn {
+  background: transparent;
+  border: 0;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  cursor: pointer;
+  color: var(--daisu-fg, #ccc);
+  width: 100%;
+  text-align: left;
+}
+.daisu-result-line-btn:hover { background: rgba(255,255,255,0.04); }
+.daisu-result-line-no { color: #888; min-width: 32px; text-align: right; }
+.daisu-result-line-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.daisu-modal-list { margin: 0; padding: 0 0 0 18px; }
+.daisu-modal-list-more { color: #888; list-style: none; }
+
+.daisu-git-badge {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-left: auto;
+  padding-right: 6px;
+}
+
+.daisu-branch-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}

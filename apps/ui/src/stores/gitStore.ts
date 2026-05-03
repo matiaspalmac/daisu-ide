@@ -1,67 +1,102 @@
 import { create } from "zustand";
-
-export type GitFileStatus =
-  | "Untracked"
-  | "Modified"
-  | "Staged"
-  | "Conflict"
-  | "Ignored"
-  | "Renamed";
-
-export interface GitWorkspaceInfo {
-  branch: string;
-  ahead: number;
-  behind: number;
-  remoteUrl: string | null;
-  statuses: Record<string, GitFileStatus>;
-}
-
-export interface BranchInfo {
-  name: string;
-  isCurrent: boolean;
-  isRemote: boolean;
-  upstream: string | null;
-}
+import {
+  gitCheckoutBranchCmd,
+  gitFetchRemoteCmd,
+  gitListBranchesCmd,
+  gitWorkspaceInfoCmd,
+  type BranchInfo,
+  type FetchResult,
+  type GitFileStatus,
+  type GitWorkspaceInfo,
+} from "../api/tauri";
 
 interface GitState {
-  workspaceInfo: GitWorkspaceInfo | null;
-  statuses: Map<string, GitFileStatus>;
+  workspacePath: string | null;
+  info: GitWorkspaceInfo | null;
   branches: BranchInfo[];
   loading: boolean;
-  fetching: boolean;
-  lastFetchedAt: number | null;
 
-  setWorkspaceInfo: (info: GitWorkspaceInfo) => void;
-  setBranches: (branches: BranchInfo[]) => void;
-  setLoading: (loading: boolean) => void;
-  setFetching: (fetching: boolean) => void;
-  markFetched: () => void;
-  clear: () => void;
+  setWorkspacePath(path: string | null): void;
+  refresh(): Promise<void>;
+  loadBranches(): Promise<void>;
+  checkoutBranch(name: string, force: boolean): Promise<void>;
+  fetchRemote(remote: string): Promise<FetchResult>;
+  status(path: string): GitFileStatus | null;
+  hasDirtyTree(): boolean;
+  reset(): void;
 }
 
-export const useGit = create<GitState>((set) => ({
-  workspaceInfo: null,
-  statuses: new Map(),
+export const useGit = create<GitState>((set, get) => ({
+  workspacePath: null,
+  info: null,
   branches: [],
   loading: false,
-  fetching: false,
-  lastFetchedAt: null,
-  setWorkspaceInfo: (info) =>
-    set({
-      workspaceInfo: info,
-      statuses: new Map(Object.entries(info.statuses)),
-    }),
-  setBranches: (branches) => set({ branches }),
-  setLoading: (loading) => set({ loading }),
-  setFetching: (fetching) => set({ fetching }),
-  markFetched: () => set({ lastFetchedAt: Date.now() }),
-  clear: () =>
-    set({
-      workspaceInfo: null,
-      statuses: new Map(),
-      branches: [],
-      loading: false,
-      fetching: false,
-      lastFetchedAt: null,
-    }),
+
+  setWorkspacePath(path) {
+    set({ workspacePath: path });
+    if (!path) set({ info: null, branches: [] });
+  },
+
+  async refresh() {
+    const path = get().workspacePath;
+    if (!path) return;
+    set({ loading: true });
+    try {
+      const info = await gitWorkspaceInfoCmd(path);
+      set({ info });
+    } catch {
+      set({ info: null });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  async loadBranches() {
+    const path = get().workspacePath;
+    if (!path) return;
+    try {
+      const branches = await gitListBranchesCmd(path);
+      set({ branches });
+    } catch {
+      set({ branches: [] });
+    }
+  },
+
+  async checkoutBranch(name, force) {
+    const path = get().workspacePath;
+    if (!path) return;
+    await gitCheckoutBranchCmd(path, name, force);
+    await get().refresh();
+    await get().loadBranches();
+  },
+
+  async fetchRemote(remote) {
+    const path = get().workspacePath;
+    if (!path) {
+      return { commitsReceived: 0, remote };
+    }
+    const result = await gitFetchRemoteCmd(path, remote);
+    await get().refresh();
+    return result;
+  },
+
+  status(path) {
+    const info = get().info;
+    if (!info) return null;
+    return info.statuses[path] ?? null;
+  },
+
+  hasDirtyTree() {
+    // Untracked files don't conflict with `safe()` checkout. Mirror the
+    // backend's safe-checkout policy so the BranchPicker only triggers the
+    // force-checkout dialog when the working tree actually has tracked
+    // modifications/staged changes/conflicts.
+    const info = get().info;
+    if (!info) return false;
+    return Object.values(info.statuses).some((s) => s !== "Untracked");
+  },
+
+  reset() {
+    set({ workspacePath: null, info: null, branches: [], loading: false });
+  },
 }));

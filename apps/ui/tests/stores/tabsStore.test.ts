@@ -6,6 +6,8 @@ vi.mock("../../src/api/tauri", () => ({
     path,
     contents: `seed:${path}`,
     language: "typescript",
+    eol: "LF",
+    encoding: "UTF-8",
   })),
   saveFile: vi.fn(async () => undefined),
   saveFileAsViaDialog: vi.fn(async (_contents: string) => `C:\\demo\\saved-as.ts`),

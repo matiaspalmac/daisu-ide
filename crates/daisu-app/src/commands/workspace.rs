@@ -14,11 +14,13 @@ use tokio_util::sync::CancellationToken;
 
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
+use crate::watch::git_watcher::watch_git_dir;
 use crate::watch::workspace::{spawn_workspace_watcher, walk_workspace, WalkOptions};
 
 const TREE_BATCH_EVENT: &str = "workspace:tree-batch";
 const FS_CHANGED_EVENT: &str = "workspace:fs-changed";
 const GIT_INDEX_EVENT: &str = "workspace:git-index";
+const GIT_CHANGED_EVENT: &str = "git-changed";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct WorkspaceInfo {
@@ -121,6 +123,33 @@ pub fn open_workspace(
         }
     });
 
+    // Phase 5: dedicated git watcher on the repo's actual git dir (handles
+    // subdirectories of a repo and `.git` worktree pointer files via git2's
+    // discovery). Rotate the cancellation token so the previous workspace's
+    // debounce loop exits cleanly.
+    if let Ok(handle) = crate::git::repo_handle::get_repo(&root) {
+        let git_dir = handle.lock().path().to_path_buf();
+        let gw_cancel = state.replace_git_cancel();
+        let (gw_tx, mut gw_rx) = mpsc::channel::<()>(8);
+        match watch_git_dir(&git_dir, gw_tx, &gw_cancel, Duration::from_millis(500)) {
+            Ok(watcher) => {
+                state.set_git_watcher(watcher);
+                let app_clone = app.clone();
+                tokio::spawn(async move {
+                    while gw_rx.recv().await.is_some() {
+                        let _ = app_clone.emit(GIT_CHANGED_EVENT, ());
+                    }
+                });
+            }
+            Err(err) => {
+                let _ = app.emit(
+                    "system:warning",
+                    format!("git watcher could not start: {err}"),
+                );
+            }
+        }
+    }
+
     Ok(WorkspaceInfo {
         root_path: root.display().to_string(),
         batch_id,
@@ -137,6 +166,11 @@ pub fn open_workspace(
 pub fn close_workspace(state: State<'_, AppState>) -> AppResult<()> {
     if let Some(prev) = state.take_walker_token() {
         prev.cancel();
+    }
+    state.cancel_git();
+    state.drop_git_watcher();
+    if let Some(root) = state.root() {
+        crate::git::repo_handle::invalidate(&root);
     }
     state.set_root(None);
     Ok(())

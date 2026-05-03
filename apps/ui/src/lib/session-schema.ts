@@ -12,6 +12,8 @@ const tabSchema = z.object({
   cursorState: cursorStateSchema,
   pinned: z.boolean(),
   untitledIndex: z.number().nullable(),
+  eol: z.enum(["LF", "CRLF"]).default("LF"),
+  encoding: z.string().default("UTF-8"),
 });
 
 const closedTabSchema = z.object({
@@ -22,6 +24,8 @@ const closedTabSchema = z.object({
   content: z.string(),
   savedContent: z.string(),
   closedAt: z.number(),
+  eol: z.enum(["LF", "CRLF"]).default("LF"),
+  encoding: z.string().default("UTF-8"),
 });
 
 const sessionBlobSchema = z.object({

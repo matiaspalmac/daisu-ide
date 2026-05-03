@@ -2,16 +2,30 @@
 //!
 //! `AppState` holds the active workspace's cancellation token (so a new
 //! `open_workspace` can cancel a prior walker) and the current root path.
+//! Phase 5 adds the dedicated git watcher handle and its cancellation token.
 
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use notify::RecommendedWatcher;
 use tokio_util::sync::CancellationToken;
 
-#[derive(Default)]
 pub struct AppState {
     pub workspace_root: Mutex<Option<PathBuf>>,
     pub walker_token: Mutex<Option<CancellationToken>>,
+    git_cancel: parking_lot::Mutex<Option<CancellationToken>>,
+    git_watcher: parking_lot::Mutex<Option<RecommendedWatcher>>,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            workspace_root: Mutex::new(None),
+            walker_token: Mutex::new(None),
+            git_cancel: parking_lot::Mutex::new(None),
+            git_watcher: parking_lot::Mutex::new(None),
+        }
+    }
 }
 
 impl AppState {
@@ -67,5 +81,38 @@ impl AppState {
             .lock()
             .expect("workspace_root mutex poisoned")
             .clone()
+    }
+
+    /// Replace the active git cancellation token. Cancels the previous token
+    /// (if any) so the prior debounce loop exits cleanly. Returns the freshly
+    /// installed token for the caller to hand to the watcher.
+    pub fn replace_git_cancel(&self) -> CancellationToken {
+        let mut guard = self.git_cancel.lock();
+        if let Some(prev) = guard.take() {
+            prev.cancel();
+        }
+        let token = CancellationToken::new();
+        *guard = Some(token.clone());
+        token
+    }
+
+    /// Cancel the active git cancellation token (stops the debounce loop) and
+    /// clear it. Idempotent.
+    pub fn cancel_git(&self) {
+        let mut guard = self.git_cancel.lock();
+        if let Some(prev) = guard.take() {
+            prev.cancel();
+        }
+    }
+
+    /// Store the active git watcher handle. Dropping the handle stops the
+    /// underlying notify watcher.
+    pub fn set_git_watcher(&self, watcher: RecommendedWatcher) {
+        *self.git_watcher.lock() = Some(watcher);
+    }
+
+    /// Drop the active git watcher (stops it). Called from `close_workspace`.
+    pub fn drop_git_watcher(&self) {
+        *self.git_watcher.lock() = None;
     }
 }

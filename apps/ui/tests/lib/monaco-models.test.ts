@@ -67,6 +67,8 @@ const tab = (id: string) => ({
   cursorState: null,
   pinned: false,
   untitledIndex: 1,
+  eol: "LF" as const,
+  encoding: "UTF-8",
 });
 
 beforeEach(() => {

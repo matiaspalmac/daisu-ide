@@ -5,6 +5,8 @@ export interface OpenedFile {
   path: string;
   contents: string;
   language: string;
+  eol: "LF" | "CRLF";
+  encoding: string;
 }
 
 export async function openFileViaDialog(): Promise<OpenedFile | null> {
@@ -137,4 +139,176 @@ export async function exportSettingsCmd(targetPath: string): Promise<void> {
 
 export async function importSettingsCmd(sourcePath: string): Promise<unknown> {
   return invoke<unknown>("import_settings", { sourcePath });
+}
+
+// ---- Search ----
+
+export interface SearchOptions {
+  query: string;
+  caseSensitive: boolean;
+  regex: boolean;
+  wholeWord: boolean;
+  multiline: boolean;
+  includeGlobs: string[];
+  excludeGlobs: string[];
+  maxResults: number;
+}
+
+export interface SearchHit {
+  id: string;
+  path: string;
+  lineNo: number;
+  lineText: string;
+  matchStartCol: number;
+  matchEndCol: number;
+}
+
+export interface SearchSummary {
+  requestId: string;
+  totalHits: number;
+  filesSearched: number;
+  truncated: boolean;
+}
+
+export interface SearchHitEvent {
+  requestId: string;
+  hits: SearchHit[];
+}
+
+export interface SearchProgressEvent {
+  requestId: string;
+  filesSearched: number;
+}
+
+export interface ReplaceRequest {
+  options: SearchOptions;
+  replacement: string;
+  hits: SearchHit[];
+  excludedHitIds: string[];
+}
+
+export interface ReplaceError {
+  path: string;
+  reason: string;
+}
+
+export interface ReplaceResults {
+  filesModified: number;
+  totalReplacements: number;
+  errors: ReplaceError[];
+}
+
+function toBackendOptions(opts: SearchOptions): Record<string, unknown> {
+  return {
+    query: opts.query,
+    case_sensitive: opts.caseSensitive,
+    regex: opts.regex,
+    whole_word: opts.wholeWord,
+    multiline: opts.multiline,
+    include_globs: opts.includeGlobs,
+    exclude_globs: opts.excludeGlobs,
+    max_results: opts.maxResults,
+  };
+}
+
+export async function searchWorkspaceCmd(
+  workspacePath: string,
+  options: SearchOptions,
+  requestId: string,
+): Promise<SearchSummary> {
+  return invoke<SearchSummary>("search_workspace", {
+    workspacePath,
+    options: toBackendOptions(options),
+    requestId,
+  });
+}
+
+export async function cancelSearchCmd(requestId: string): Promise<void> {
+  await invoke<void>("cancel_search", { requestId });
+}
+
+export async function replaceInWorkspaceCmd(
+  request: ReplaceRequest,
+): Promise<ReplaceResults> {
+  return invoke<ReplaceResults>("replace_in_workspace", {
+    request: {
+      options: toBackendOptions(request.options),
+      replacement: request.replacement,
+      hits: request.hits.map((h) => ({
+        id: h.id,
+        path: h.path,
+        line_no: h.lineNo,
+        line_text: h.lineText,
+        match_start_col: h.matchStartCol,
+        match_end_col: h.matchEndCol,
+      })),
+      excluded_hit_ids: request.excludedHitIds,
+    },
+  });
+}
+
+// ---- Git ----
+
+export type GitFileStatus = "Modified" | "Untracked" | "Conflict" | "Staged";
+
+export interface GitWorkspaceInfo {
+  branch: string;
+  ahead: number;
+  behind: number;
+  remoteUrl: string | null;
+  statuses: Record<string, GitFileStatus>;
+}
+
+export interface BranchInfo {
+  name: string;
+  isRemote: boolean;
+  isHead: boolean;
+}
+
+export interface FetchResult {
+  commitsReceived: number;
+  remote: string;
+}
+
+export async function gitWorkspaceInfoCmd(
+  workspacePath: string,
+): Promise<GitWorkspaceInfo> {
+  return invoke<GitWorkspaceInfo>("git_workspace_info", { workspacePath });
+}
+
+export async function gitListBranchesCmd(
+  workspacePath: string,
+): Promise<BranchInfo[]> {
+  return invoke<BranchInfo[]>("git_list_branches", { workspacePath });
+}
+
+export async function gitCheckoutBranchCmd(
+  workspacePath: string,
+  branch: string,
+  force: boolean,
+): Promise<void> {
+  await invoke<void>("git_checkout_branch", { workspacePath, branch, force });
+}
+
+export async function gitFetchRemoteCmd(
+  workspacePath: string,
+  remote: string,
+): Promise<FetchResult> {
+  return invoke<FetchResult>("git_fetch_remote", { workspacePath, remote });
+}
+
+// ---- File ops Phase 5 extensions ----
+
+export async function convertEolCmd(
+  path: string,
+  target: "LF" | "CRLF",
+): Promise<void> {
+  await invoke<void>("convert_eol", { path, target });
+}
+
+export async function readFileWithEncodingCmd(
+  path: string,
+  encoding: string,
+): Promise<OpenedFile> {
+  return invoke<OpenedFile>("read_file_with_encoding", { path, encoding });
 }
