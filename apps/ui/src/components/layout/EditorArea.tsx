@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { Editor } from "../editor/Editor";
 import { TabBar } from "../tabs/TabBar";
 import { WelcomeScreen } from "./WelcomeScreen";
+import { Breadcrumb } from "./Breadcrumb";
 import { useTabs } from "../../stores/tabsStore";
 
 export function EditorArea(): JSX.Element {
@@ -12,6 +13,7 @@ export function EditorArea(): JSX.Element {
   return (
     <section className="daisu-editor-region h-full flex flex-col min-h-0" aria-label="Editor area">
       <TabBar />
+      {hasActiveFile && <Breadcrumb />}
       <div className="flex-1 min-h-0 relative">
         {hasActiveFile ? (
           <div className="daisu-editor-host h-full w-full">
