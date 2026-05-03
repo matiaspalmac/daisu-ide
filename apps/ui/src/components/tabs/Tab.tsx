@@ -1,5 +1,5 @@
 import type { JSX, MouseEvent } from "react";
-import { Pin, X } from "lucide-react";
+import { PushPin, X } from "@phosphor-icons/react";
 import type { OpenTab } from "../../stores/tabsStore";
 import { useGit } from "../../stores/gitStore";
 import type { Edge } from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
@@ -55,26 +55,21 @@ export function Tab(props: Props): JSX.Element {
         />
       )}
       {tab.pinned && (
-        <Pin
+        <PushPin
           size={11}
+          weight="fill"
           aria-label="Pinned"
           className="daisu-tab-pin text-[var(--warn)] shrink-0"
-          fill="currentColor"
-          style={{ transform: "rotate(-45deg)" }}
         />
       )}
       <FileIcon name={tab.name} size={13} />
       <span className={`daisu-tab-name${gitClass}`}>{tab.name}</span>
       {dirty && (
         <span
-          aria-hidden="true"
-          className={cn(
-            "daisu-tab-dirty text-[var(--warn)]",
-            active && "text-base shadow-[0_0_4px_var(--warn)] rounded-full",
-          )}
-        >
-          ●
-        </span>
+          aria-label="Sin guardar"
+          title="Sin guardar"
+          className={cn("daisu-tab-dirty-dot", active && "is-active")}
+        />
       )}
       {!tab.pinned && (
         <button

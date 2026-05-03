@@ -30,7 +30,7 @@ describe("<Tab>", () => {
     const { container } = render(
       <Tab tab={tab} active={true} onActivate={vi.fn()} onClose={vi.fn()} closestEdge={null} />,
     );
-    expect(container.querySelector(".daisu-tab-dirty")).not.toBeNull();
+    expect(container.querySelector(".daisu-tab-dirty-dot")).not.toBeNull();
   });
 
   it("renders pin glyph when pinned", () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from "react";
-import { Home, Plus } from "lucide-react";
+import { House, Plus } from "@phosphor-icons/react";
 import { cn } from "@/lib/cn";
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
 import {
@@ -144,7 +144,7 @@ export function TabBar(): JSX.Element | null {
             className="absolute inset-x-0 top-0 h-px bg-[var(--accent)] shadow-[0_0_6px_var(--accent)]"
           />
         )}
-        <Home size={13} className="text-[var(--fg-muted)]" />
+        <House size={13} className="text-[var(--fg-muted)]" />
         <span className="daisu-tab-name">Inicio</span>
       </button>
       {visibleTabs.map((tab) => (
