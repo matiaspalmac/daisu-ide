@@ -812,3 +812,18 @@ body,
   background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
 }
+
+.daisu-statusbar-left,
+.daisu-statusbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 1;
+  min-width: 0;
+}
+.daisu-statusbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
