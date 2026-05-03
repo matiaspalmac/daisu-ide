@@ -3,7 +3,8 @@ import { useEffect } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { listen } from "@tauri-apps/api/event";
 import { TitleBar } from "./components/layout/TitleBar";
-import { Toolbar } from "./components/layout/Toolbar";
+import { WebView2Banner } from "./components/layout/WebView2Banner";
+import { ResizeHandles } from "./components/layout/ResizeHandles";
 import { Sidebar } from "./components/layout/Sidebar";
 import { EditorArea } from "./components/layout/EditorArea";
 import { AgentsPanel } from "./components/layout/AgentsPanel";
@@ -161,9 +162,9 @@ export function App(): JSX.Element {
   }, [hydrate, applyBatch, applyFsChange, openWorkspace, pushToast]);
 
   return (
-    <main className="daisu-shell">
+    <main className="daisu-shell grid grid-rows-[var(--titlebar-h)_auto_1fr_var(--statusbar-h)] h-screen overflow-hidden">
       <TitleBar />
-      <Toolbar />
+      <WebView2Banner />
       <Group
         orientation="horizontal"
         className="daisu-main-split"
@@ -208,6 +209,7 @@ export function App(): JSX.Element {
       <ToastViewport />
       <CloseConfirmModalConnected />
       <SettingsModal />
+      <ResizeHandles />
     </main>
   );
 }
