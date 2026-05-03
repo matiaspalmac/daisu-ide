@@ -1,12 +1,14 @@
 import type { JSX } from "react";
 import { useEffect } from "react";
-import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
+import { Group, Panel, Separator } from "react-resizable-panels";
 import { listen } from "@tauri-apps/api/event";
 import { TitleBar } from "./components/layout/TitleBar";
-import { Toolbar } from "./components/layout/Toolbar";
+import { WebView2Banner } from "./components/layout/WebView2Banner";
+import { ResizeHandles } from "./components/layout/ResizeHandles";
+import { ActivityBar } from "./components/layout/ActivityBar";
 import { Sidebar } from "./components/layout/Sidebar";
 import { EditorArea } from "./components/layout/EditorArea";
-import { AgentsPanel } from "./components/layout/AgentsPanel";
+import { RightPanel } from "./components/layout/RightPanel";
 import { StatusBar } from "./components/layout/StatusBar";
 import { SearchPanel } from "./components/layout/SearchPanel";
 import { ToastViewport } from "./components/ui/Toast";
@@ -15,19 +17,19 @@ import { SettingsModal } from "./components/settings/SettingsModal";
 import { useUI } from "./stores/uiStore";
 import { useSettings } from "./stores/settingsStore";
 import { useWorkspace } from "./stores/workspaceStore";
-import { useTabs } from "./stores/tabsStore";
+import { useTabs, persistDirtyUntitledScratch } from "./stores/tabsStore";
 import { useKeybindings } from "./hooks/useKeybindings";
 import { useTheme } from "./hooks/useTheme";
 import { useGitWatcher } from "./hooks/useGitWatcher";
 import { useEditorCursorWiring } from "./hooks/useEditorCursor";
 import { useGit } from "./stores/gitStore";
 import { copy } from "./lib/copy";
+import { isTauri } from "./lib/tauri-env";
 
-// Note: react-resizable-panels v4 uses percentage-string sizing.
-// We use useDefaultLayout({ groupId, storage }) to persist sizes to
-// localStorage instead of syncing to Zustand on every drag (avoids
-// feedback loops). Approximate percent defaults assume a ~1280px window:
-//   240/1280 ≈ 19% sidebar, 320/1280 ≈ 25% agents.
+// react-resizable-panels v4 uses percentage-string sizing on each Panel
+// `defaultSize` prop. Layout persistence (useDefaultLayout) was dropped
+// in P1 hotfix due to v4 layout-data assertion crashes on fresh storage;
+// re-introduce after upstream fix (or migrate persistence) in P6+.
 
 export function App(): JSX.Element {
   useKeybindings();
@@ -38,19 +40,11 @@ export function App(): JSX.Element {
   const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
   const searchOpen = useUI((s) => s.searchPanelOpen);
   const loadSettings = useSettings((s) => s.load);
+  const design = useSettings((s) => s.settings.design);
   const restoreTabs = useTabs((s) => s.restoreSession);
   const saveTabsSession = useTabs((s) => s.saveSession);
   const closeAllTabs = useTabs((s) => s.closeAll);
   const workspaceHash = useWorkspace((s) => s.workspaceHash);
-
-  const mainSplit = useDefaultLayout({
-    groupId: "daisu-main-split",
-    storage: typeof window !== "undefined" ? window.localStorage : memoryStorage,
-  });
-  const centerSplit = useDefaultLayout({
-    groupId: "daisu-center-split",
-    storage: typeof window !== "undefined" ? window.localStorage : memoryStorage,
-  });
 
   useEffect(() => {
     loadSettings().catch(() => undefined);
@@ -69,12 +63,20 @@ export function App(): JSX.Element {
       // Detach the previous workspace hash BEFORE closing tabs, otherwise
       // every closeTab → saveSession() call will overwrite the prior
       // workspace's session file with an empty-tabs blob.
+      const persisted = persistDirtyUntitledScratch(useTabs.getState().tabs);
+      if (persisted > 0) {
+        useUI.getState().pushToast({
+          message: `${persisted} pestaña(s) Untitled guardadas en buffer — recupera desde Inicio`,
+          level: "warning",
+        });
+      }
       useTabs.getState()._setWorkspaceHash(null);
       void closeAllTabs(true);
     }
   }, [workspaceHash, restoreTabs, closeAllTabs]);
 
   useEffect(() => {
+    if (!isTauri()) return;
     let unlistenBeforeClose: (() => void) | null = null;
     void listen<void>("system:before-close", () => {
       void saveTabsSession();
@@ -113,6 +115,7 @@ export function App(): JSX.Element {
   const pushToast = useUI((s) => s.pushToast);
 
   useEffect(() => {
+    if (!isTauri()) return;
     hydrate().catch(() => undefined);
 
     const unlistenPromises: Promise<() => void>[] = [];
@@ -131,6 +134,14 @@ export function App(): JSX.Element {
         done: boolean;
         error: string | null;
       }>("workspace:tree-batch", (event) => {
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log("[walker]", {
+            nodes: event.payload.nodes.length,
+            done: event.payload.done,
+            batch_id: event.payload.batch_id,
+          });
+        }
         applyBatch({
           batchId: event.payload.batch_id,
           parentPath: event.payload.parent_path,
@@ -170,31 +181,48 @@ export function App(): JSX.Element {
     };
   }, [hydrate, applyBatch, applyFsChange, openWorkspace, pushToast]);
 
+  const showSidebar = design.sidebarVisible && !sidebarCollapsed;
+  const showRightPanel = design.rightPanelVisible && !agentsCollapsed;
+  const sidebarOnRight = design.sidebarSide === "right";
+  const rightPanelOnLeft = design.rightPanelSide === "left";
+  const activityBarOnRight = design.activityBarSide === "right";
+
+  const sidebarPanel = showSidebar ? (
+    <>
+      <Panel id="sidebar" defaultSize="15%" minSize="10%" maxSize="40%">
+        <Sidebar />
+      </Panel>
+      <Separator className="daisu-resize-handle" />
+    </>
+  ) : null;
+
+  const rightPanel = showRightPanel ? (
+    <>
+      <Separator className="daisu-resize-handle" />
+      <Panel id="agents" defaultSize="25%" minSize="15%" maxSize="50%">
+        <RightPanel />
+      </Panel>
+    </>
+  ) : null;
+
   return (
-    <main className="daisu-shell">
+    <main className="daisu-shell flex flex-col h-screen overflow-hidden">
       <TitleBar />
-      <Toolbar />
-      <Group
-        orientation="horizontal"
-        className="daisu-main-split"
-        id="daisu-main-split"
-        defaultLayout={mainSplit.defaultLayout}
-        onLayoutChange={mainSplit.onLayoutChange}
-      >
-        {!sidebarCollapsed && (
-          <>
-            <Panel id="sidebar" defaultSize="19%" minSize="10%" maxSize="45%">
-              <Sidebar />
-            </Panel>
-            <Separator className="daisu-resize-handle" />
-          </>
-        )}
-        <Panel id="center" minSize="30%">
+      <WebView2Banner />
+      <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
+        {design.activityBarVisible && !activityBarOnRight && <ActivityBar />}
+        <Group
+          orientation="horizontal"
+          className="daisu-main-split flex-1"
+          id="daisu-main-split"
+        >
+        {!sidebarOnRight && sidebarPanel}
+        {rightPanelOnLeft && rightPanel}
+        <Panel id="center" defaultSize="56%" minSize="30%">
           <Group
             orientation="vertical"
             id="daisu-center-split"
-            defaultLayout={centerSplit.defaultLayout}
-            onLayoutChange={centerSplit.onLayoutChange}
+            className="h-full w-full"
           >
             <Panel id="editor" defaultSize={searchOpen ? "70%" : "100%"} minSize="20%">
               <EditorArea />
@@ -209,19 +237,16 @@ export function App(): JSX.Element {
             )}
           </Group>
         </Panel>
-        {!agentsCollapsed && (
-          <>
-            <Separator className="daisu-resize-handle" />
-            <Panel id="agents" defaultSize="25%" minSize="15%" maxSize="50%">
-              <AgentsPanel />
-            </Panel>
-          </>
-        )}
-      </Group>
-      <StatusBar />
+        {!rightPanelOnLeft && rightPanel}
+        {sidebarOnRight && sidebarPanel}
+        </Group>
+        {design.activityBarVisible && activityBarOnRight && <ActivityBar />}
+      </div>
+      {design.statusBarVisible && <StatusBar />}
       <ToastViewport />
       <CloseConfirmModalConnected />
       <SettingsModal />
+      <ResizeHandles />
     </main>
   );
 }
@@ -240,13 +265,3 @@ function CloseConfirmModalConnected(): JSX.Element | null {
   );
 }
 
-// In-memory storage fallback for non-browser environments (SSR / tests).
-const memoryStorage: Pick<Storage, "getItem" | "setItem"> = (() => {
-  const map = new Map<string, string>();
-  return {
-    getItem: (key: string) => map.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      map.set(key, value);
-    },
-  };
-})();

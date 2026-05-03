@@ -20,9 +20,13 @@ beforeEach(() => useTabs.getState().reset());
 afterEach(() => vi.clearAllMocks());
 
 describe("<TabBar>", () => {
-  it("renders nothing when no tabs", () => {
+  it("renders only the new-tab button when no tabs", () => {
     const { container } = render(<TabBar />);
-    expect(container.querySelector(".daisu-tabbar")).toBeNull();
+    const bar = container.querySelector(".daisu-tabbar");
+    expect(bar).not.toBeNull();
+    // Only the trailing "+" button should be present.
+    expect(bar?.querySelector("[data-tab-id]")).toBeNull();
+    expect(bar?.querySelector('button[aria-label="Nuevo archivo"]')).not.toBeNull();
   });
 
   it("renders one tab per OpenTab", () => {
@@ -41,9 +45,10 @@ describe("<TabBar>", () => {
     const idTwo = useTabs.getState().tabs[1]!.id;
     tabs.pin(idTwo);
     const { container } = render(<TabBar />);
-    const rendered = Array.from(container.querySelectorAll(".daisu-tab")).map(
-      (n) => (n.textContent ?? "").trim(),
-    );
+    // Skip the leading virtual "Inicio" tab rendered by TabBar.
+    const rendered = Array.from(container.querySelectorAll(".daisu-tab"))
+      .map((n) => (n.textContent ?? "").trim())
+      .filter((t) => !t.startsWith("Inicio"));
     expect(rendered[0]?.startsWith("Untitled-2")).toBe(true);
     expect(rendered[1]?.startsWith("Untitled-1")).toBe(true);
   });

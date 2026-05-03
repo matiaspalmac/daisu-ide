@@ -19,12 +19,12 @@
         "minHeight": 500,
         "resizable": true,
         "fullscreen": false,
-        "decorations": true,
+        "decorations": false,
         "transparent": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": null
     }
   },
   "bundle": {
@@ -32,12 +32,5 @@
     "targets": "all",
     "icon": ["icons/icon.ico"]
   },
-  "plugins": {
-    "dialog": {},
-    "fs": {
-      "scope": ["$HOME/**", "$DOCUMENT/**", "$DESKTOP/**"]
-    },
-    "store": {},
-    "window-state": {}
-  }
+  "plugins": {}
 }

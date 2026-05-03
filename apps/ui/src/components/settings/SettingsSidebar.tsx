@@ -1,23 +1,44 @@
 import type { JSX } from "react";
+import {
+  Info,
+  Keyboard,
+  LayoutGrid,
+  MessageSquare,
+  Palette,
+  Settings,
+  Shield,
+  SquareCode,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
 
 export type SettingsCategoryId =
   | "general"
   | "editor"
   | "themes"
+  | "design"
+  | "chat"
+  | "security"
   | "keybindings"
+  | "info"
   | "advanced";
 
 interface CategoryItem {
   id: SettingsCategoryId;
   label: string;
+  icon: LucideIcon;
 }
 
 const CATEGORIES: CategoryItem[] = [
-  { id: "general", label: "General" },
-  { id: "editor", label: "Editor" },
-  { id: "themes", label: "Themes" },
-  { id: "keybindings", label: "Keybindings" },
-  { id: "advanced", label: "Advanced" },
+  { id: "general", label: "General", icon: Settings },
+  { id: "keybindings", label: "Atajos", icon: Keyboard },
+  { id: "editor", label: "Editor", icon: SquareCode },
+  { id: "themes", label: "Apariencia", icon: Palette },
+  { id: "design", label: "Diseño", icon: LayoutGrid },
+  { id: "chat", label: "Chat", icon: MessageSquare },
+  { id: "security", label: "Seguridad", icon: Shield },
+  { id: "info", label: "Información", icon: Info },
+  { id: "advanced", label: "Avanzado", icon: Wrench },
 ];
 
 interface Props {
@@ -32,11 +53,14 @@ export function SettingsSidebar(props: Props): JSX.Element {
         <button
           key={c.id}
           type="button"
-          className={`daisu-settings-nav-item${props.active === c.id ? " is-active" : ""}`}
+          className={`daisu-settings-nav-item flex items-center gap-2${
+            props.active === c.id ? " is-active" : ""
+          }`}
           aria-current={props.active === c.id}
           onClick={() => props.onSelect(c.id)}
         >
-          {c.label}
+          <c.icon size={14} />
+          <span>{c.label}</span>
         </button>
       ))}
     </nav>

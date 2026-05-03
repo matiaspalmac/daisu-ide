@@ -1,10 +1,11 @@
 use daisu_app::commands::themes::{list_bundled_themes_inner, read_theme_json_inner};
 
 #[test]
-fn list_bundled_themes_returns_two() {
+fn list_bundled_themes_returns_three() {
     let list = list_bundled_themes_inner();
-    assert_eq!(list.len(), 2);
+    assert_eq!(list.len(), 3);
     let ids: Vec<&str> = list.iter().map(|d| d.id.as_str()).collect();
+    assert!(ids.contains(&"tron-dark"));
     assert!(ids.contains(&"daisu-dark"));
     assert!(ids.contains(&"daisu-light"));
 }
@@ -46,7 +47,7 @@ fn read_theme_json_unknown_id_returns_not_found() {
 
 #[test]
 fn bundled_themes_have_required_keys() {
-    for id in ["daisu-dark", "daisu-light"] {
+    for id in ["tron-dark", "daisu-dark", "daisu-light"] {
         let value = read_theme_json_inner(id).unwrap();
         assert!(value.get("name").is_some(), "{id} missing name");
         assert!(value.get("type").is_some(), "{id} missing type");

@@ -65,7 +65,7 @@ interface TabsState {
   closeOthers(id: string, force?: boolean): Promise<void>;
   closeAll(force?: boolean): Promise<void>;
   reopenClosed(): Promise<void>;
-  setActive(id: string): void;
+  setActive(id: string | null): void;
   setActiveByIndex(index: number): void;
   cycleTabs(dir: 1 | -1): void;
   reorder(fromId: string, toIndex: number): void;
@@ -82,6 +82,7 @@ interface TabsState {
   clearSession(workspaceHash: string): Promise<void>;
 
   resolvePendingClose(action: "save" | "discard" | "cancel"): Promise<void>;
+  recoverScratchUntitled(): number;
 
   reset(): void;
 
@@ -91,6 +92,70 @@ interface TabsState {
 
 const RECENT_CAP = 20;
 const SESSION_VERSION = 1 as const;
+const SCRATCH_KEY = "daisu:scratch-untitled";
+
+interface ScratchUntitled {
+  name: string;
+  content: string;
+  language: string;
+  untitledIndex: number | null;
+}
+
+function readScratch(): ScratchUntitled[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(SCRATCH_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (x): x is ScratchUntitled =>
+        typeof x === "object" &&
+        x !== null &&
+        typeof (x as ScratchUntitled).name === "string" &&
+        typeof (x as ScratchUntitled).content === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+function writeScratch(items: ScratchUntitled[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (items.length === 0) window.localStorage.removeItem(SCRATCH_KEY);
+    else window.localStorage.setItem(SCRATCH_KEY, JSON.stringify(items));
+  } catch {
+    // best-effort
+  }
+}
+
+export function persistDirtyUntitledScratch(tabs: OpenTab[]): number {
+  const dirty = tabs.filter(
+    (t) => t.path === null && t.content !== t.savedContent,
+  );
+  if (dirty.length === 0) return 0;
+  const existing = readScratch();
+  const next = [
+    ...existing,
+    ...dirty.map((t) => ({
+      name: t.name,
+      content: t.content,
+      language: t.language,
+      untitledIndex: t.untitledIndex,
+    })),
+  ];
+  writeScratch(next);
+  return dirty.length;
+}
+
+export function getScratchUntitled(): ScratchUntitled[] {
+  return readScratch();
+}
+
+export function clearScratchUntitled(): void {
+  writeScratch([]);
+}
 
 const RUNTIME_INITIAL = (): Pick<
   TabsState,
@@ -186,6 +251,7 @@ function applySession(blob: SessionBlob): Partial<TabsState> {
 }
 
 let saveInFlight = false;
+let restoring = false;
 
 export const useTabs = create<TabsState>((set, get) => ({
   ...RUNTIME_INITIAL(),
@@ -196,7 +262,20 @@ export const useTabs = create<TabsState>((set, get) => ({
       get().setActive(existing.id);
       return;
     }
-    const opened = await openFile(path);
+    let opened: Awaited<ReturnType<typeof openFile>>;
+    try {
+      opened = await openFile(path);
+    } catch (e) {
+      // Surface backend errors (permission denied, file gone, binary blob,
+      // etc.) so the click does not silently no-op.
+      const { useUI } = await import("./uiStore");
+      const { translateError } = await import("../lib/error-translate");
+      useUI.getState().pushToast({
+        message: translateError(e),
+        level: "error",
+      });
+      return;
+    }
     const tab: OpenTab = {
       id: uuid(),
       path: opened.path,
@@ -333,6 +412,12 @@ export const useTabs = create<TabsState>((set, get) => ({
   },
 
   setActive(id) {
+    // Null = Inicio tab (virtual home/welcome). Bypass tab existence check.
+    if (id === null) {
+      set({ activeTabId: null });
+      void get().saveSession();
+      return;
+    }
     if (!get().tabs.some((t) => t.id === id)) return;
     set((s) => ({
       activeTabId: id,
@@ -465,6 +550,10 @@ export const useTabs = create<TabsState>((set, get) => ({
   async saveSession() {
     const hash = get().workspaceHash;
     if (!hash) return;
+    // restoring is true while restoreSession is mid-flight; skipping prevents
+    // the periodic auto-save from clobbering the previous workspace's session
+    // file with the current (still-mounted) tabs during a workspace switch.
+    if (restoring) return;
     if (saveInFlight) return;
     saveInFlight = true;
     try {
@@ -478,11 +567,16 @@ export const useTabs = create<TabsState>((set, get) => ({
   },
 
   async restoreSession(workspaceHash) {
-    set({ workspaceHash });
-    const raw = await loadSessionCmd(workspaceHash).catch(() => null);
-    const blob = parseSessionBlob(raw);
-    disposeAllModels();
-    set({ ...RUNTIME_INITIAL(), workspaceHash, ...applySession(blob) });
+    restoring = true;
+    try {
+      set({ workspaceHash });
+      const raw = await loadSessionCmd(workspaceHash).catch(() => null);
+      const blob = parseSessionBlob(raw);
+      disposeAllModels();
+      set({ ...RUNTIME_INITIAL(), workspaceHash, ...applySession(blob) });
+    } finally {
+      restoring = false;
+    }
   },
 
   async clearSession(workspaceHash) {
@@ -517,6 +611,34 @@ export const useTabs = create<TabsState>((set, get) => ({
     for (const id of pending.ids) {
       await get().closeTab(id, true);
     }
+  },
+
+  recoverScratchUntitled() {
+    const items = readScratch();
+    if (items.length === 0) return 0;
+    const startCounter = get().untitledCounter;
+    const newTabs: OpenTab[] = items.map((s, i) => ({
+      id: uuid(),
+      path: null,
+      name: s.name,
+      language: s.language,
+      content: s.content,
+      savedContent: "",
+      cursorState: null,
+      pinned: false,
+      untitledIndex: s.untitledIndex ?? startCounter + i + 1,
+      eol: "LF",
+      encoding: "UTF-8",
+    }));
+    set((state) => ({
+      tabs: [...state.tabs, ...newTabs],
+      activeTabId: newTabs[newTabs.length - 1]?.id ?? state.activeTabId,
+      untitledCounter: startCounter + items.length,
+      mruOrder: [...newTabs.map((t) => t.id), ...state.mruOrder],
+    }));
+    clearScratchUntitled();
+    void get().saveSession();
+    return items.length;
   },
 
   reset() {

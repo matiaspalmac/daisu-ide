@@ -8,6 +8,7 @@ use crate::error::{AppError, AppResult};
 
 const BUNDLED_DARK: &str = include_str!("../themes/daisu-dark.json");
 const BUNDLED_LIGHT: &str = include_str!("../themes/daisu-light.json");
+const BUNDLED_TRON: &str = include_str!("../themes/tron-dark.json");
 
 /// Descriptor returned to the frontend so the picker can render swatches and
 /// filter by kind without reading the full JSON for every entry.
@@ -23,6 +24,11 @@ pub struct ThemeDescriptor {
 #[must_use]
 pub fn list_bundled_themes_inner() -> Vec<ThemeDescriptor> {
     vec![
+        ThemeDescriptor {
+            id: "tron-dark".to_string(),
+            name: "Tron Dark".to_string(),
+            kind: "dark".to_string(),
+        },
         ThemeDescriptor {
             id: "daisu-dark".to_string(),
             name: "Daisu Dark".to_string(),
@@ -43,6 +49,7 @@ pub fn list_bundled_themes_inner() -> Vec<ThemeDescriptor> {
 /// the bundled JSON fails to parse (build-time issue, not user-facing).
 pub fn read_theme_json_inner(id: &str) -> AppResult<serde_json::Value> {
     let raw = match id {
+        "tron-dark" => BUNDLED_TRON,
         "daisu-dark" => BUNDLED_DARK,
         "daisu-light" => BUNDLED_LIGHT,
         _ => return Err(AppError::not_found(id)),

@@ -36,7 +36,7 @@ const mkNode = (
 describe("<Node>", () => {
   it("renders file name and a leaf icon", () => {
     const node = mkNode();
-    render(
+    const { container } = render(
       <Node
         node={node as never}
         style={{}}
@@ -45,7 +45,14 @@ describe("<Node>", () => {
       />
     );
     expect(screen.getByText("App.tsx")).toBeInTheDocument();
-    expect(screen.getByLabelText("File")).toBeInTheDocument();
+    // FileIcon resolves the leaf icon by extension. Assert the .tsx-specific
+    // React-blue color (#61DAFB) is set so a regression to the gray fallback
+    // (#888) would fail.
+    const svg = container.querySelector(".daisu-tree-row svg");
+    expect(svg).toBeInTheDocument();
+    expect(svg?.getAttribute("color") ?? svg?.getAttribute("stroke")).toBe(
+      "#61DAFB",
+    );
   });
 
   it("renders chevron and folder icon for non-leaf", () => {

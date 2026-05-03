@@ -15,6 +15,10 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
+vi.mock("../../src/lib/tauri-env", () => ({
+  isTauri: () => true,
+}));
+
 const refresh = vi.fn(async () => undefined);
 vi.mock("../../src/stores/gitStore", () => ({
   useGit: { getState: () => ({ refresh }) },
@@ -40,19 +44,26 @@ describe("useGitWatcher", () => {
   });
 
   it("git-changed fires gitStore.refresh", async () => {
+    vi.useFakeTimers();
     renderHook(() => useGitWatcher());
     await Promise.resolve();
     await Promise.resolve();
     listeners["git-changed"]?.();
+    // Hook debounces by 250ms before invoking refresh.
+    vi.advanceTimersByTime(260);
     expect(refresh).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   it("focus fires gitStore.refresh", async () => {
+    vi.useFakeTimers();
     renderHook(() => useGitWatcher());
     await Promise.resolve();
     await Promise.resolve();
     listeners["tauri://focus"]?.();
+    vi.advanceTimersByTime(260);
     expect(refresh).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   it("unmount unsubscribes both listeners", async () => {

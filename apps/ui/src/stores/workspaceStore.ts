@@ -167,38 +167,71 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   },
 
   async openWorkspace(path) {
-    const info = await openWorkspaceCmd(path);
-    const hash = cheapHash(info.root_path);
-    const next = INITIAL_RUNTIME();
-    next.rootPath = info.root_path;
-    next.workspaceHash = hash;
-    next.walkSessionId = info.batch_id;
-
-    const recents = [
-      { path: info.root_path, name: basenameOf(info.root_path), openedAt: Date.now() },
-      ...get().recents.filter((r) => r.path !== info.root_path),
-    ].slice(0, RECENTS_CAP);
-
-    const expandedPersisted = get().expandedPersisted;
-    const restored = expandedPersisted[hash] ?? [];
-
+    // Pre-populate runtime BEFORE invoking the backend so the walker's tree
+    // batches (which can arrive synchronously from the awaited command on
+    // fast disks) accumulate against this session rather than being wiped
+    // by a post-await `set({...INITIAL_RUNTIME})` race.
     set({
-      ...next,
+      ...INITIAL_RUNTIME(),
+      rootPath: path,
       tree: new Map([
         [
-          info.root_path,
+          path,
           {
-            path: info.root_path,
-            name: basenameOf(info.root_path),
+            path,
+            name: basenameOf(path),
             kind: "dir",
             size: null,
             mtimeMs: null,
           },
         ],
       ]),
-      childrenIndex: new Map([[info.root_path, []]]),
-      expanded: new Set(restored),
-      recents,
+      childrenIndex: new Map([[path, []]]),
+    });
+
+    const info = await openWorkspaceCmd(path);
+    const hash = cheapHash(info.root_path);
+    const recents = [
+      { path: info.root_path, name: basenameOf(info.root_path), openedAt: Date.now() },
+      ...get().recents.filter((r) => r.path !== info.root_path),
+    ].slice(0, RECENTS_CAP);
+    const expandedPersisted = get().expandedPersisted;
+    const restored = expandedPersisted[hash] ?? [];
+
+    // Surgical merge: keep walker-populated tree/childrenIndex/walkDone but
+    // patch in canonical root path and the backend-issued walkSessionId so
+    // applyBatch can validate subsequent batches.
+    set((state) => {
+      const tree = new Map(state.tree);
+      const childrenIndex = new Map(state.childrenIndex);
+      if (path !== info.root_path) {
+        // Rare: backend canonicalised the path. Drop the stub key but DO NOT
+        // overwrite the canonical entries the walker may have already populated
+        // (the walker emits with `info.root_path` as the parent key).
+        tree.delete(path);
+        childrenIndex.delete(path);
+      }
+      if (!tree.has(info.root_path)) {
+        tree.set(info.root_path, {
+          path: info.root_path,
+          name: basenameOf(info.root_path),
+          kind: "dir",
+          size: null,
+          mtimeMs: null,
+        });
+      }
+      if (!childrenIndex.has(info.root_path)) {
+        childrenIndex.set(info.root_path, []);
+      }
+      return {
+        rootPath: info.root_path,
+        workspaceHash: hash,
+        walkSessionId: info.batch_id,
+        tree,
+        childrenIndex,
+        expanded: new Set(restored),
+        recents,
+      };
     });
     void saveWorkspacePersistence(persistSnapshot(get()));
   },
@@ -219,8 +252,22 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
 
   applyBatch(batch) {
     const state = get();
+    // walkSessionId check intentionally relaxed: backend cancels stale walkers
+    // via CancellationToken, so any batch that reaches us is for the current
+    // session. The previous strict check caused races when the
+    // backend-issued batch_id was set after the first batches arrived.
     if (state.walkSessionId !== null && batch.batchId !== state.walkSessionId) {
+      // Defensive: still drop if explicitly mismatched after session locked in.
       return;
+    }
+    // While walkSessionId is null (backend hasn't returned the new session
+    // id yet), drop batches whose nodes don't fall under the current rootPath.
+    // Prevents stale walker batches from a just-cancelled previous workspace
+    // from leaking into the freshly-reset tree.
+    if (state.walkSessionId === null && state.rootPath) {
+      const root = state.rootPath;
+      const inRoot = batch.nodes.every((n) => n.path.startsWith(root));
+      if (!inRoot) return;
     }
     const tree = new Map(state.tree);
     const childrenIndex = new Map(state.childrenIndex);

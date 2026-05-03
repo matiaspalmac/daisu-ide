@@ -5,6 +5,7 @@ import { Editor } from "../src/components/editor/Editor";
 vi.mock("@monaco-editor/react", () => ({
   Editor: () => <div data-testid="monaco-stub" />,
   default: () => <div data-testid="monaco-stub" />,
+  loader: { config: vi.fn() },
 }));
 vi.mock("../src/api/tauri", () => ({
   openFile: vi.fn(),

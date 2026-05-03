@@ -14,7 +14,32 @@ use crate::error::{AppError, AppResult};
 
 /// Names skipped at any depth during walks. Mirrors the `IGNORE_NAMES` constant
 /// in `commands/file_ops.rs`. Phase 4 surfaces this as a user setting.
-pub const IGNORE_NAMES: &[&str] = &["target", "node_modules", "dist", ".git"];
+pub const IGNORE_NAMES: &[&str] = &[
+    "target",
+    "node_modules",
+    "dist",
+    ".git",
+    ".next",
+    ".turbo",
+    ".cache",
+    "build",
+    "out",
+    ".vite",
+    ".parcel-cache",
+    ".nuxt",
+    "coverage",
+    ".nyc_output",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".tox",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".idea",
+    ".vscode",
+    ".gradle",
+    ".mvn",
+];
 
 /// Subdir under the workspace root that we skip explicitly (session restore).
 pub const SESSIONS_DIR: &str = ".daisu/sessions";
@@ -135,6 +160,7 @@ fn run_walk_blocking(
         }
     }
 
+    let nodes_in_final = buf.len();
     let final_batch = TreeBatch {
         batch_id,
         parent_path: None,
@@ -142,7 +168,13 @@ fn run_walk_blocking(
         done: true,
         error: None,
     };
-    let _ = blocking_send(&out, final_batch);
+    let send_result = blocking_send(&out, final_batch);
+    if cfg!(debug_assertions) {
+        eprintln!(
+            "daisu walker finished: final_nodes={nodes_in_final} send_ok={}",
+            send_result.is_ok()
+        );
+    }
     Ok(())
 }
 
@@ -261,7 +293,7 @@ pub fn spawn_workspace_watcher(
 
     let pending_for_loop = Arc::clone(&pending);
     let cancel_for_loop = cancel.clone();
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         let tick = Duration::from_millis(50);
         loop {
             if cancel_for_loop.is_cancelled() {

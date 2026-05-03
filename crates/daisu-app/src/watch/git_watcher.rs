@@ -54,7 +54,7 @@ pub fn watch_git_dir(
 
     let pending_for_loop = Arc::clone(&pending);
     let cancel_for_loop = cancel.clone();
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         let tick = Duration::from_millis(50);
         loop {
             if cancel_for_loop.is_cancelled() {

@@ -22,10 +22,32 @@ const SettingsSchema = z.object({
     formatOnSave: z.boolean().default(false),
   }).prefault({}),
   themes: z.object({
-    activeThemeId: z.string().default("daisu-dark"),
-    autoSwitchOnSystem: z.boolean().default(true),
-    systemDarkTheme: z.string().default("daisu-dark"),
+    activeThemeId: z.string().default("tron-dark"),
+    autoSwitchOnSystem: z.boolean().default(false),
+    systemDarkTheme: z.string().default("tron-dark"),
     systemLightTheme: z.string().default("daisu-light"),
+  }).prefault({}),
+  aiProvider: z.object({
+    mode: z.enum(["cloud", "local"]).default("cloud"),
+    id: z
+      .enum(["gemini", "openai", "claude", "lmstudio", "ollama"])
+      .default("gemini"),
+    apiKey: z.string().default(""),
+  }).prefault({}),
+  design: z.object({
+    activityBarSide: z.enum(["left", "right"]).default("left"),
+    activityBarVisible: z.boolean().default(true),
+    statusBarVisible: z.boolean().default(true),
+    sidebarSide: z.enum(["left", "right"]).default("left"),
+    sidebarVisible: z.boolean().default(true),
+    rightPanelSide: z.enum(["right", "left"]).default("right"),
+    rightPanelVisible: z.boolean().default(true),
+    terminalVisible: z.boolean().default(false),
+    statusBarPanelToggles: z.boolean().default(true),
+    statusBarUtility: z.boolean().default(true),
+    titleBarHamburger: z.boolean().default(true),
+    titleBarMenuStrip: z.boolean().default(true),
+    titleBarUserAvatar: z.boolean().default(true),
   }).prefault({}),
   keybindings: z.record(z.string(), z.string()).default({}),
 });

@@ -1,9 +1,12 @@
 import type { CSSProperties, JSX } from "react";
 import type { NodeApi, TreeApi } from "react-arborist";
-import { ChevronRight, File, Folder, FolderOpen } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 import clsx from "clsx";
 import type { FileEntry } from "../../api/tauri";
 import { useGit } from "../../stores/gitStore";
+import { useTabs } from "../../stores/tabsStore";
+import { FileIcon } from "@/lib/file-icon";
+import { cn } from "@/lib/cn";
 
 interface Props {
   node: NodeApi<FileEntry>;
@@ -12,32 +15,30 @@ interface Props {
   dragHandle?: ((el: HTMLDivElement | null) => void) | undefined;
 }
 
-const STATUS_BADGE: Record<string, string> = {
-  Modified: "M",
-  Untracked: "U",
-  Conflict: "C",
-  Staged: "S",
-};
-
 export function Node({ node, style, dragHandle }: Props): JSX.Element {
-  const Icon = node.isLeaf ? File : node.isOpen ? FolderOpen : Folder;
-  const iconLabel = node.isLeaf ? "File" : "Folder";
   const status = useGit((s) => s.status(node.data.path));
   const tintClass = status ? `daisu-git-${status.toLowerCase()}` : "";
-  const badge = status ? STATUS_BADGE[status] : null;
+  const showConflictDot = status === "Conflict";
 
   return (
     <div
       ref={dragHandle}
       style={style}
-      className={clsx(
+      className={cn(
         "daisu-tree-row",
         tintClass,
-        node.isSelected && "is-selected",
         node.isEditing && "is-editing",
+        node.isSelected
+          ? "is-selected bg-[var(--accent-soft)] text-[var(--accent)] shadow-[inset_2px_0_0_var(--accent)]"
+          : "hover:bg-[var(--accent-soft)]/40",
       )}
-      onDoubleClick={() => {
-        if (!node.isLeaf) node.toggle();
+      onClick={() => {
+        node.select();
+        if (node.isLeaf) {
+          void useTabs.getState().openTab(node.data.path);
+        } else {
+          node.toggle();
+        }
       }}
     >
       {!node.isLeaf && (
@@ -45,11 +46,17 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
           className={clsx("daisu-tree-chevron", node.isOpen && "is-open")}
           aria-hidden="true"
         >
-          <ChevronRight size={14} />
+          <ChevronRight size={14} strokeWidth={1.5} />
         </span>
       )}
       {node.isLeaf && <span className="daisu-tree-chevron-spacer" aria-hidden="true" />}
-      <Icon size={14} aria-label={iconLabel} className="daisu-tree-icon" />
+      {node.isLeaf ? (
+        <FileIcon name={node.data.name} size={14} />
+      ) : node.isOpen ? (
+        <FolderOpen size={14} aria-label="Folder" className="daisu-tree-icon text-[var(--fg-muted)]" />
+      ) : (
+        <Folder size={14} aria-label="Folder" className="daisu-tree-icon text-[var(--fg-muted)]" />
+      )}
       {node.isEditing ? (
         <input
           autoFocus
@@ -67,13 +74,11 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
       ) : (
         <span className="daisu-tree-name">{node.data.name}</span>
       )}
-      {badge && (
+      {showConflictDot && (
         <span
-          className="daisu-git-badge"
+          className="ml-auto mr-1 w-1 h-1 rounded-full bg-[var(--danger)] shadow-[0_0_4px_var(--danger)]"
           aria-label={`Git status ${status}`}
-        >
-          {badge}
-        </span>
+        />
       )}
     </div>
   );

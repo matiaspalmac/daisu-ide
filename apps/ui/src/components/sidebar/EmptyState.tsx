@@ -18,9 +18,13 @@ export function EmptyState(props: Props): JSX.Element {
     case "no-folder":
       return (
         <div className="daisu-empty-state" role="status">
-          <h3>{copy.sidebar.noFolderTitle}</h3>
-          <p>{copy.sidebar.noFolderBody}</p>
-          <button type="button" className="daisu-btn-primary" onClick={props.onOpenFolder}>
+          <h3 className="text-sm text-[var(--fg-secondary)]">{copy.sidebar.noFolderTitle}</h3>
+          <p className="text-xs text-[var(--fg-muted)]">{copy.sidebar.noFolderBody}</p>
+          <button
+            type="button"
+            onClick={props.onOpenFolder}
+            className="inline-flex items-center justify-center h-8 px-4 rounded-[var(--radius-md)] bg-[var(--accent)] text-[var(--fg-inverse)] hover:bg-[var(--accent-bright)] shadow-[var(--glow-cyan-md)] text-sm font-medium transition-colors cursor-pointer"
+          >
             {copy.buttons.openFolder}
           </button>
         </div>

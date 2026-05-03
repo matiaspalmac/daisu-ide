@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from "react";
+import { Home, Plus } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
 import {
   draggable,
@@ -28,6 +30,7 @@ export function TabBar(): JSX.Element | null {
   const closeAll = useTabs((s) => s.closeAll);
   const pin = useTabs((s) => s.pin);
   const unpin = useTabs((s) => s.unpin);
+  const newTab = useTabs((s) => s.newTab);
   const pushToast = useUI((s) => s.pushToast);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -49,6 +52,10 @@ export function TabBar(): JSX.Element | null {
       },
     });
   }, [reorder]);
+
+  const tabsSignature = tabs
+    .map((t) => `${t.id}:${t.name}:${t.pinned ? 1 : 0}:${t.content !== t.savedContent ? 1 : 0}`)
+    .join("|");
 
   useEffect(() => {
     const root = containerRef.current;
@@ -77,9 +84,9 @@ export function TabBar(): JSX.Element | null {
     obs.observe(root);
     recompute();
     return () => obs.disconnect();
-  }, [tabs]);
-
-  if (tabs.length === 0) return null;
+    // Re-run when tab COUNT or display-relevant fields change (id list, name,
+    // pinned, dirty). Skip content churn from Monaco onChange.
+  }, [tabsSignature]);
 
   const visibleTabs = tabs.filter((t) => !hiddenIds.includes(t.id));
   const hiddenTabs = tabs.filter((t) => hiddenIds.includes(t.id));
@@ -115,8 +122,31 @@ export function TabBar(): JSX.Element | null {
     }
   };
 
+  const inicioActive = activeTabId === null;
+
   return (
     <div ref={containerRef} className="daisu-tabbar" role="tablist" aria-label="Open tabs">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={inicioActive}
+        onClick={() => setActive(null)}
+        title="Inicio"
+        aria-label="Inicio"
+        className={cn(
+          "daisu-tab group relative",
+          inicioActive && "is-active",
+        )}
+      >
+        {inicioActive && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-px bg-[var(--accent)] shadow-[0_0_6px_var(--accent)]"
+          />
+        )}
+        <Home size={13} className="text-[var(--fg-muted)]" />
+        <span className="daisu-tab-name">Inicio</span>
+      </button>
       {visibleTabs.map((tab) => (
         <DraggableTab
           key={tab.id}
@@ -136,6 +166,15 @@ export function TabBar(): JSX.Element | null {
         }))}
         onPick={setActive}
       />
+      <button
+        type="button"
+        onClick={() => newTab()}
+        title="Nuevo archivo"
+        aria-label="Nuevo archivo"
+        className="w-8 h-8 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] border-l border-[var(--border-subtle)] flex-shrink-0"
+      >
+        <Plus size={14} />
+      </button>
     </div>
   );
 }
@@ -164,6 +203,10 @@ function DraggableTab({
     return combine(
       draggable({
         element: el,
+        // Pragmatic-DnD fires on any pointerdown by default; allow only the
+        // primary mouse button so right-click context menu and middle-click
+        // close are not swallowed by the drag start.
+        canDrag: ({ input }) => input.button === 0,
         getInitialData: () => ({ tabId: tab.id }),
       }),
       dropTargetForElements({
