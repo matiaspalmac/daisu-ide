@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 
 export type ToastLevel = "info" | "success" | "warning" | "error";
 
-export type ActivityIcon = "files" | "search" | "git" | "extensions" | "graph" | "info";
+export type ActivityIcon = "files" | "search" | "git";
 
 export type RightPanelMode = "chat" | "config" | "hidden";
 

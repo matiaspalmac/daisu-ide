@@ -1,11 +1,8 @@
 import type { JSX, KeyboardEvent } from "react";
 import { useRef } from "react";
 import {
-  Pulse,
-  PuzzlePiece,
   Files,
   GitBranch,
-  Globe,
   MagnifyingGlass,
   Gear,
   type Icon as PhosphorIcon,
@@ -83,24 +80,6 @@ export function ActivityBar(): JSX.Element {
       icon: GitBranch,
       label: "Control de fuente",
       action: placeholder("git", "Control de fuente"),
-    },
-    {
-      id: "extensions",
-      icon: PuzzlePiece,
-      label: "Extensiones",
-      action: placeholder("extensions", "Extensiones"),
-    },
-    {
-      id: "graph",
-      icon: Globe,
-      label: "Mapa proyecto",
-      action: placeholder("graph", "Mapa proyecto"),
-    },
-    {
-      id: "info",
-      icon: Pulse,
-      label: "Estado",
-      action: placeholder("info", "Estado"),
     },
   ];
 
