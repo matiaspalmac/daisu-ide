@@ -17,6 +17,9 @@ export function ToastViewport(): JSX.Element {
           }}
           duration={t.durationMs ?? 5000}
         >
+          <span className="daisu-toast-glyph" aria-hidden="true">
+            {t.level === "success" ? "成" : t.level === "warning" ? "警" : t.level === "error" ? "誤" : "情"}
+          </span>
           <RadixToast.Title className="daisu-toast-title">{t.message}</RadixToast.Title>
           {t.action && (
             <RadixToast.Action altText={t.action.label} asChild>
