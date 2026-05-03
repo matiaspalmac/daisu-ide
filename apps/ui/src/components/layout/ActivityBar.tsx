@@ -88,9 +88,9 @@ export function ActivityBar(): JSX.Element {
           title={it.label}
           aria-label={it.label}
           className={cn(
-            "w-10 h-10 grid place-items-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--accent-soft)] transition-colors",
+            "w-10 h-10 grid place-items-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--warn-soft)] transition-colors",
             active === it.id &&
-              "text-[var(--accent)] bg-[var(--accent-soft)] border-l-2 border-[var(--accent)] shadow-[var(--glow-cyan-sm)]",
+              "text-[var(--warn)] bg-[var(--warn-soft)] border-l-2 border-[var(--warn)] shadow-[var(--glow-orange-sm)]",
           )}
         >
           <it.icon size={18} strokeWidth={1.5} />
@@ -104,7 +104,7 @@ export function ActivityBar(): JSX.Element {
         title="Configuración"
         aria-label="Configuración"
         onClick={() => openSettings()}
-        className="w-10 h-10 grid place-items-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors"
+        className="w-10 h-10 grid place-items-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] hover:text-[var(--warn)] hover:bg-[var(--warn-soft)] transition-colors"
       >
         <Settings size={18} strokeWidth={1.5} />
       </button>
