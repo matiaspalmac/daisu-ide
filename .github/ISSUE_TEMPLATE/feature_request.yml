@@ -1,0 +1,51 @@
+name: Feature request
+description: Suggest a new capability or improvement
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a feature. Roadmap-aligned suggestions land faster — see the [roadmap in the README](https://github.com/matiaspalmac/daisu-ide/blob/main/README.md#roadmap).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the user pain first. The proposed shape comes next.
+      placeholder: When I have many open tabs, I cannot find a tab by name without scrolling horizontally.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: Add a Ctrl+P-style fuzzy tab switcher with keyboard navigation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else could solve this? Why is the proposal preferred?
+
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Roadmap milestone this fits
+      description: Best-guess fit, not binding.
+      options:
+        - M2 — polish + diagnostics
+        - M3 — agent foundations
+        - M4 — multi-agent orchestration
+        - M5 — extension host
+        - Unsure / cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Mockups, references to similar features in other editors, links to related issues.
