@@ -27,6 +27,33 @@ export default defineConfig(async () => ({
     minify: "esbuild",
     sourcemap: false,
     chunkSizeWarningLimit: 2048,
+    rollupOptions: {
+      output: {
+        // Split the heavy vendors out of the main bundle so app-code regressions
+        // are visible in the size budget without Monaco / icons / Radix masking
+        // them. Monaco workers and language modes are already separate via
+        // their `?worker` imports.
+        manualChunks(id: string): string | undefined {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("monaco-editor") || id.includes("@monaco-editor")) {
+            return "monaco";
+          }
+          if (id.includes("@phosphor-icons")) return "phosphor";
+          if (id.includes("@radix-ui")) return "radix";
+          if (id.includes("@tauri-apps")) return "tauri";
+          if (id.includes("react-arborist")) return "arborist";
+          if (id.includes("@atlaskit/pragmatic-drag-and-drop")) return "dnd";
+          if (
+            id.includes("/react/") ||
+            id.includes("/react-dom/") ||
+            id.includes("/scheduler/")
+          ) {
+            return "react";
+          }
+          return undefined;
+        },
+      },
+    },
   },
   test: {
     environment: "jsdom",

@@ -1,14 +1,25 @@
 [
   {
-    "name": "Main bundle (JS gzipped)",
-    "path": [
-      "apps/ui/dist/assets/index-*.js"
-    ],
-    "limit": "1.5 MB",
+    "name": "Main app bundle (JS gzipped)",
+    "path": "apps/ui/dist/assets/index-*.js",
+    "limit": "150 KB",
     "gzip": true
   },
   {
-    "name": "Frontend total — main + Monaco workers/modes (JS gzipped)",
+    "name": "Vendor chunks excluding Monaco (JS gzipped)",
+    "path": [
+      "apps/ui/dist/assets/react-*.js",
+      "apps/ui/dist/assets/phosphor-*.js",
+      "apps/ui/dist/assets/radix-*.js",
+      "apps/ui/dist/assets/arborist-*.js",
+      "apps/ui/dist/assets/dnd-*.js",
+      "apps/ui/dist/assets/tauri-*.js"
+    ],
+    "limit": "300 KB",
+    "gzip": true
+  },
+  {
+    "name": "Frontend total — main + vendors + Monaco workers/modes (JS gzipped)",
     "path": "apps/ui/dist/assets/*.js",
     "limit": "3.5 MB",
     "gzip": true
