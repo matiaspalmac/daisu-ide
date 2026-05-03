@@ -111,12 +111,6 @@ body,
   overflow: hidden;
 }
 
-.daisu-shell {
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  height: 100%;
-}
-
 .daisu-main-split {
   height: 100%;
   width: 100%;

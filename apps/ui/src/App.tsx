@@ -163,14 +163,14 @@ export function App(): JSX.Element {
   }, [hydrate, applyBatch, applyFsChange, openWorkspace, pushToast]);
 
   return (
-    <main className="daisu-shell grid grid-rows-[var(--titlebar-h)_auto_1fr_var(--statusbar-h)] h-screen overflow-hidden">
+    <main className="daisu-shell flex flex-col h-screen overflow-hidden">
       <TitleBar />
       <WebView2Banner />
-      <div className="grid grid-cols-[var(--activitybar-w)_1fr] min-h-0">
+      <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
         <ActivityBar />
         <Group
           orientation="horizontal"
-          className="daisu-main-split"
+          className="daisu-main-split flex-1"
           id="daisu-main-split"
         >
         {!sidebarCollapsed && (
