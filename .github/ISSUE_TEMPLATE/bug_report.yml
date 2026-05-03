@@ -1,0 +1,76 @@
+name: Bug report
+description: A reproducible problem with Daisu IDE
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Reproducible reports merge fixes faster.
+
+        Before opening: search [existing issues](https://github.com/matiaspalmac/daisu-ide/issues?q=is%3Aissue) to avoid duplicates.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: When I open a workspace with a CRLF file and toggle EOL to LF, the tab still shows CRLF in the status bar.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps. Include sample files or a repo link if relevant.
+      placeholder: |
+        1. Open workspace `C:\demo\sample`
+        2. Open `crlf.txt`
+        3. Click the EOL segment in the status bar
+        4. Select "LF"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Daisu version or commit SHA
+      placeholder: v0.0.6-m1-phase5 (or 07608a8)
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 Pro 23H2 build 22631.3007
+    validations:
+      required: true
+
+  - type: input
+    id: webview2
+    attributes:
+      label: WebView2 Runtime version
+      description: Settings → Apps → Microsoft Edge WebView2 Runtime
+      placeholder: 121.0.2277.83
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Console output, screen recordings, or screenshots that show the bug.
+      render: text
