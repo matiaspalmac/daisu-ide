@@ -5,23 +5,6 @@ import { ArrowUp, ChevronDown, Globe, Hash, History, MessageSquarePlus, Sparkles
 const HEADER_BTN =
   "w-6 h-6 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-[var(--radius-sm)] transition-colors";
 
-function DaisuMark({ size = 96 }: { size?: number }): JSX.Element {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.2}
-      aria-hidden="true"
-    >
-      <path d="M4 4 L20 20 M20 4 L4 20" strokeLinecap="round" />
-      <path d="M12 3 C16 7 16 17 12 21 C8 17 8 7 12 3 Z" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function AgentsPanel(): JSX.Element {
   const [text, setText] = useState("");
   const canSend = text.trim().length > 0;
@@ -46,17 +29,14 @@ export function AgentsPanel(): JSX.Element {
         </div>
       </header>
 
-      <div className="flex-1 min-h-0 grid place-items-center px-6 relative">
-        <DaisuMark size={96} />
-        <div className="absolute inset-0 grid place-items-center text-center px-6">
-          <div className="flex flex-col items-center gap-2">
-            <h3 className="text-sm font-medium text-[var(--fg-primary)]">
-              Comienza una conversación
-            </h3>
-            <p className="text-xs text-[var(--fg-secondary)] max-w-[240px]">
-              Escribe un mensaje para comenzar a chatear con la IA
-            </p>
-          </div>
+      <div className="flex-1 min-h-0 grid place-items-center px-6 text-center">
+        <div className="flex flex-col items-center gap-2">
+          <h3 className="text-sm font-medium text-[var(--fg-primary)]">
+            Comienza una conversación
+          </h3>
+          <p className="text-xs text-[var(--fg-secondary)] max-w-[240px]">
+            Escribe un mensaje para comenzar a chatear con la IA
+          </p>
         </div>
       </div>
 
