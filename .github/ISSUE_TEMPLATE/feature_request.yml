@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for proposing a feature. Roadmap-aligned suggestions land faster — see the [roadmap in the README](../../README.md#roadmap).
+        Thanks for proposing a feature. Roadmap-aligned suggestions land faster — see the [roadmap in the README](https://github.com/matiaspalmac/daisu-ide/blob/main/README.md#roadmap).
 
   - type: textarea
     id: problem

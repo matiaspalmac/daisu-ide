@@ -18,7 +18,7 @@ Closes #
 
 - [ ] `cargo fmt --all -- --check`
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings`
-- [ ] `cargo test --workspace`
+- [ ] `cargo test --workspace --all-features`
 - [ ] `pnpm typecheck`
 - [ ] `pnpm test`
 - [ ] Manual smoke (if UI-affecting): `pnpm tauri dev` and exercised the changed flow

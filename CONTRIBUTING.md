@@ -27,14 +27,14 @@ See [the README build section](./README.md#build-from-source) for prerequisites 
   test(app): add cancellation cases to streaming searcher
   ```
 
-- **One logical change per commit.** A commit that breaks a consumer must include the consumer migration in the same commit (Husky pre-commit runs project-wide typecheck — half-done store rewrites will fail to commit).
+- **One logical change per commit.** A commit that breaks a consumer must include the consumer migration in the same commit. Husky pre-commit runs `lint-staged`, which triggers `pnpm --filter @daisu/ui run typecheck` (project-wide for the UI workspace) when any `apps/ui/**/*.{ts,tsx}` file is staged, and `cargo fmt --all -- --check` when any `crates/**/*.rs` is staged. Stage all touched files together so a partial UI migration is caught at commit time. Run the full test gate before opening the PR.
 
 ## Test gate (required before opening a PR)
 
 ```powershell
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo test --workspace --all-features
 pnpm typecheck
 pnpm test
 ```
@@ -54,7 +54,7 @@ If `cargo fmt --check` fails, run `cargo fmt --all` and re-stage. **Do not bypas
 
 ## Architecture notes for contributors
 
-- **Stores break consumers in the same commit.** When you rename a Zustand store action or change a returned shape, every component that reads it must compile in the same commit. Husky pre-commit will refuse partial migrations.
+- **Stores break consumers in the same commit.** When you rename a Zustand store action or change a returned shape, every component that reads it must compile in the same commit. Husky pre-commit only runs the UI typecheck when UI files are staged, so the safest workflow is to stage every touched file together; otherwise CI catches partial migrations after push.
 - **Monaco namespace is injected, not imported at runtime.** Never write `import * as monaco from "monaco-editor"` outside a type-only context — it bundles the entire 1.2 MB namespace into the production chunk. The namespace is captured via `@monaco-editor/react`'s `onMount` callback and exposed through `apps/ui/src/lib/monaco-editor-ref.ts`.
 - **Backend commands return typed results via `AppResult<T>`.** Frontend wrappers in `apps/ui/src/api/tauri.ts` handle the snake_case ↔ camelCase remap.
 - **Tests use real fixtures, not heavy mocks.** Rust integration tests use `tempfile::tempdir()`. Frontend store tests stub the Tauri command layer at `apps/ui/src/api/tauri` only.

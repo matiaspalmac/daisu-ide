@@ -77,7 +77,7 @@ pnpm tauri build        # release build → target\release\daisu.exe
 ```powershell
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo test --workspace --all-features
 pnpm typecheck
 pnpm test
 ```
