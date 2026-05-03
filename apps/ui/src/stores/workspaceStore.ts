@@ -50,6 +50,9 @@ interface WorkspaceState {
   walkError: string | null;
   recents: RecentEntry[];
   expandedPersisted: Record<string, string[]>;
+  pinned: Set<string>;
+  pinnedPersisted: Record<string, string[]>;
+  togglePin: (path: string) => void;
 
   hydrate(): Promise<void>;
   openWorkspace(path: string): Promise<void>;
@@ -96,6 +99,7 @@ const INITIAL_RUNTIME = (): Pick<
   | "walkSessionId"
   | "walkDone"
   | "walkError"
+  | "pinned"
 > => ({
   rootPath: null,
   workspaceHash: null,
@@ -106,6 +110,7 @@ const INITIAL_RUNTIME = (): Pick<
   selectionAnchor: null,
   clipboard: null,
   walkSessionId: null,
+  pinned: new Set(),
   walkDone: false,
   walkError: null,
 });
@@ -150,20 +155,37 @@ function sortChildren(
 
 function persistSnapshot(state: WorkspaceState): WorkspacePersistence {
   const expandedPersisted = { ...state.expandedPersisted };
+  const pinnedPersisted = { ...(state.pinnedPersisted ?? {}) };
   if (state.workspaceHash) {
     expandedPersisted[state.workspaceHash] = [...state.expanded];
+    pinnedPersisted[state.workspaceHash] = [...state.pinned];
   }
-  return { recents: state.recents, expandedPersisted };
+  return { recents: state.recents, expandedPersisted, pinnedPersisted };
 }
 
 export const useWorkspace = create<WorkspaceState>((set, get) => ({
   ...INITIAL_RUNTIME(),
   recents: [],
   expandedPersisted: {},
+  pinnedPersisted: {},
+
+  togglePin(path) {
+    set((s) => {
+      const next = new Set(s.pinned);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return { pinned: next };
+    });
+    void saveWorkspacePersistence(persistSnapshot(get()));
+  },
 
   async hydrate() {
     const blob = await loadWorkspacePersistence();
-    set({ recents: blob.recents, expandedPersisted: blob.expandedPersisted });
+    set({
+      recents: blob.recents,
+      expandedPersisted: blob.expandedPersisted,
+      pinnedPersisted: blob.pinnedPersisted ?? {},
+    });
   },
 
   async openWorkspace(path) {
@@ -197,6 +219,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
     ].slice(0, RECENTS_CAP);
     const expandedPersisted = get().expandedPersisted;
     const restored = expandedPersisted[hash] ?? [];
+    const pinnedPersisted = get().pinnedPersisted ?? {};
+    const restoredPinned = pinnedPersisted[hash] ?? [];
 
     // Surgical merge: keep walker-populated tree/childrenIndex/walkDone but
     // patch in canonical root path and the backend-issued walkSessionId so
@@ -230,6 +254,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
         tree,
         childrenIndex,
         expanded: new Set(restored),
+        pinned: new Set(restoredPinned),
         recents,
       };
     });

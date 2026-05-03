@@ -1,18 +1,29 @@
 import type { JSX } from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
-  ChevronsDownUp,
+  ArrowsInLineVertical,
+  CaretDown,
+  CaretRight,
   FilePlus,
   FolderPlus,
-  RotateCcw,
-} from "lucide-react";
+  MagnifyingGlass,
+  PushPin,
+  PushPinSlash,
+  ArrowClockwise,
+  X,
+} from "@phosphor-icons/react";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useUI } from "../../stores/uiStore";
+import { useTabs } from "../../stores/tabsStore";
 import { FileTree } from "../sidebar/FileTree";
 import { EmptyState } from "../sidebar/EmptyState";
 import { RecentsDropdown } from "../sidebar/RecentsDropdown";
 import { TreeContextMenu, type TreeAction } from "../sidebar/ContextMenu";
+import { SearchInput } from "../search/SearchInput";
+import { ReplaceInput } from "../search/ReplaceInput";
+import { GlobFilters } from "../search/GlobFilters";
+import { ResultsList } from "../search/ResultsList";
 import { copy } from "../../lib/copy";
 import { translateError } from "../../lib/error-translate";
 
@@ -32,6 +43,21 @@ export function Sidebar(): JSX.Element {
   const copyAction = useWorkspace((s) => s.copy);
   const pasteInto = useWorkspace((s) => s.pasteInto);
   const pushToast = useUI((s) => s.pushToast);
+  const sidebarFilter = useUI((s) => s.sidebarFilter);
+  const setSidebarFilter = useUI((s) => s.setSidebarFilter);
+  const sidebarMode = useUI((s) => s.sidebarMode);
+  const setSidebarMode = useUI((s) => s.setSidebarMode);
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const pinned = useWorkspace((s) => s.pinned);
+  const togglePin = useWorkspace((s) => s.togglePin);
+  const openTab = useTabs((s) => s.openTab);
+  const tree = useWorkspace((s) => s.tree);
+
+  const pinnedList = useMemo(
+    () =>
+      [...pinned].map((p) => ({ path: p, name: tree.get(p)?.name ?? p.split(/[\\/]/).pop() ?? p })),
+    [pinned, tree],
+  );
 
   const handleOpenFolder = useCallback(async () => {
     try {
@@ -113,6 +139,9 @@ export function Sidebar(): JSX.Element {
               level: "info",
             });
             break;
+          case "togglePin":
+            if (selection.size === 1) togglePin([...selection][0]!);
+            break;
         }
       } catch (e) {
         pushToast({ message: translateError(e), level: "error" });
@@ -128,6 +157,7 @@ export function Sidebar(): JSX.Element {
       pasteInto,
       deleteToTrash,
       pushToast,
+      togglePin,
     ]
   );
 
@@ -161,56 +191,156 @@ export function Sidebar(): JSX.Element {
       className="daisu-sidebar relative h-full flex flex-col min-w-0 bg-[var(--bg-panel)]"
       aria-label="Workspace explorer"
     >
-      <div className="daisu-sidebar-header h-9 px-3 flex items-center justify-between border-b border-[var(--border-subtle)] text-[11px] uppercase tracking-[0.08em] text-[var(--fg-section-header)]">
-        <span>{copy.sidebar.explorerHeading.toUpperCase()}</span>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            title="Nuevo archivo"
-            aria-label="Nuevo archivo"
-            onClick={() => void handleAction("newFile")}
-            disabled={!rootPath}
-            className={headerBtnCls}
-          >
-            <FilePlus size={13} />
-          </button>
-          <button
-            type="button"
-            title="Nueva carpeta"
-            aria-label="Nueva carpeta"
-            onClick={() => void handleAction("newFolder")}
-            disabled={!rootPath}
-            className={headerBtnCls}
-          >
-            <FolderPlus size={13} />
-          </button>
-          <button
-            type="button"
-            title="Refrescar"
-            aria-label="Refrescar"
-            onClick={handleRefresh}
-            disabled={!rootPath}
-            className={headerBtnCls}
-          >
-            <RotateCcw size={13} />
-          </button>
-          <button
-            type="button"
-            title="Colapsar todo"
-            aria-label="Colapsar todo"
-            onClick={handleCollapseAll}
-            className={headerBtnCls}
-          >
-            <ChevronsDownUp size={13} />
-          </button>
-          <RecentsDropdown
-            recents={recents}
-            onOpenFolderPicker={handleOpenFolder}
-            onPickRecent={handlePickRecent}
-            onClearRecents={handleClearRecents}
-          />
+      <div className="daisu-sidebar-header">
+        <div className="daisu-sidebar-title">
+          <span className="daisu-glyph" aria-hidden="true">
+            {sidebarMode === "search" ? "検" : "木"}
+          </span>
+          <span className="daisu-sidebar-title-text">
+            {sidebarMode === "search" ? "SEARCH" : copy.sidebar.explorerHeading.toUpperCase()}
+          </span>
         </div>
+        {sidebarMode === "search" ? null : (
+          <div className="daisu-sidebar-actions">
+            <button
+              type="button"
+              title="Nuevo archivo"
+              aria-label="Nuevo archivo"
+              onClick={() => void handleAction("newFile")}
+              disabled={!rootPath}
+              className={headerBtnCls}
+            >
+              <FilePlus size={13} />
+            </button>
+            <button
+              type="button"
+              title="Nueva carpeta"
+              aria-label="Nueva carpeta"
+              onClick={() => void handleAction("newFolder")}
+              disabled={!rootPath}
+              className={headerBtnCls}
+            >
+              <FolderPlus size={13} />
+            </button>
+            <button
+              type="button"
+              title="Buscar en el proyecto (Ctrl+Shift+F)"
+              aria-label="Buscar"
+              onClick={() => setSidebarMode("search")}
+              disabled={!rootPath}
+              className={headerBtnCls}
+            >
+              <MagnifyingGlass size={13} />
+            </button>
+            <button
+              type="button"
+              title="Refrescar"
+              aria-label="Refrescar"
+              onClick={handleRefresh}
+              disabled={!rootPath}
+              className={headerBtnCls}
+            >
+              <ArrowClockwise size={13} />
+            </button>
+            <button
+              type="button"
+              title="Colapsar todo"
+              aria-label="Colapsar todo"
+              onClick={handleCollapseAll}
+              className={headerBtnCls}
+            >
+              <ArrowsInLineVertical size={13} />
+            </button>
+            <RecentsDropdown
+              recents={recents}
+              onOpenFolderPicker={handleOpenFolder}
+              onPickRecent={handlePickRecent}
+              onClearRecents={handleClearRecents}
+            />
+          </div>
+        )}
       </div>
+      {sidebarMode === "files" && rootPath && (
+        <div className="daisu-sidebar-filter">
+          <span className="daisu-glyph" aria-hidden="true">検</span>
+          <input
+            type="text"
+            placeholder="filtrar archivos…"
+            value={sidebarFilter}
+            onChange={(e) => setSidebarFilter(e.target.value)}
+            aria-label="Filtrar archivos en sidebar"
+          />
+          {sidebarFilter && (
+            <button
+              type="button"
+              className="daisu-sidebar-filter-clear"
+              onClick={() => setSidebarFilter("")}
+              aria-label="Limpiar filtro"
+            >
+              <X size={11} />
+            </button>
+          )}
+        </div>
+      )}
+      {sidebarMode === "files" && pinnedList.length > 0 && (
+        <div className="daisu-pinned">
+          <div className="daisu-pinned-header">
+            <span className="daisu-glyph" aria-hidden="true">印</span>
+            FIJADOS
+          </div>
+          <ul className="daisu-pinned-list">
+            {pinnedList.map((p) => (
+              <li key={p.path} className="daisu-pinned-row">
+                <button
+                  type="button"
+                  className="daisu-pinned-item"
+                  onClick={() => void openTab(p.path)}
+                  title={p.path}
+                >
+                  <PushPin size={11} />
+                  <span className="daisu-pinned-name">{p.name}</span>
+                </button>
+                <button
+                  type="button"
+                  className="daisu-pinned-unpin"
+                  onClick={() => togglePin(p.path)}
+                  aria-label={`Desfijar ${p.name}`}
+                  title="Desfijar"
+                >
+                  <PushPinSlash size={11} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {sidebarMode === "search" && (
+        <div className="daisu-sidebar-body flex-1 min-h-0 daisu-sidebar-search">
+          <div className="daisu-search-inputs">
+            <button
+              type="button"
+              className="daisu-search-expand"
+              onClick={() => setSearchExpanded((v) => !v)}
+              aria-expanded={searchExpanded}
+              aria-label={searchExpanded ? "Colapsar reemplazar y filtros" : "Expandir reemplazar y filtros"}
+              title={searchExpanded ? "Ocultar reemplazar y filtros" : "Mostrar reemplazar y filtros"}
+            >
+              {searchExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
+            </button>
+            <div className="daisu-search-inputs-stack">
+              <SearchInput />
+              {searchExpanded && (
+                <>
+                  <ReplaceInput />
+                  <GlobFilters />
+                </>
+              )}
+            </div>
+          </div>
+          <ResultsList />
+        </div>
+      )}
+      {sidebarMode === "files" && (
       <div className="daisu-sidebar-body flex-1 min-h-0">
         <TreeContextMenu
           target={selection.size > 0 ? "node" : "empty-area"}
@@ -242,6 +372,7 @@ export function Sidebar(): JSX.Element {
           </div>
         </TreeContextMenu>
       </div>
+      )}
     </aside>
   );
 }

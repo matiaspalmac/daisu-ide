@@ -12,7 +12,8 @@ export type TreeAction =
   | "delete"
   | "copyPath"
   | "copyRelativePath"
-  | "revealInExplorer";
+  | "revealInExplorer"
+  | "togglePin";
 
 interface Props {
   target: "node" | "empty-area";
@@ -54,6 +55,8 @@ export function TreeContextMenu(props: Props): JSX.Element {
             <>
               {item(copy.contextMenu.newFile, "newFile")}
               {item(copy.contextMenu.newFolder, "newFolder")}
+              <ContextMenu.Separator className="daisu-cmenu-separator" />
+              {item("Fijar / Desfijar", "togglePin", !oneSelected)}
               <ContextMenu.Separator className="daisu-cmenu-separator" />
               {item(copy.contextMenu.cut, "cut", !anySelected)}
               {item(copy.contextMenu.copy, "copy", !anySelected)}

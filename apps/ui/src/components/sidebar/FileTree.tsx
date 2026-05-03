@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { Tree, type MoveHandler, type RenameHandler, type TreeApi } from "react-arborist";
 import { useWorkspace } from "../../stores/workspaceStore";
+import { useUI } from "../../stores/uiStore";
 import { useTabs } from "../../stores/tabsStore";
 import type { FileEntry } from "../../api/tauri";
 import { Node } from "./Node";
@@ -14,6 +15,7 @@ export function FileTree(): JSX.Element | null {
   const moveNodes = useWorkspace((s) => s.moveNodes);
   const toggleExpand = useWorkspace((s) => s.toggleExpand);
   const selectNode = useWorkspace((s) => s.selectNode);
+  const sidebarFilter = useUI((s) => s.sidebarFilter);
   const openTab = useTabs((s) => s.openTab);
 
   const treeRef = useRef<TreeApi<FileEntry> | null>(null);
@@ -80,6 +82,10 @@ export function FileTree(): JSX.Element | null {
           indent={16}
           width={size.w || 240}
           height={size.h || 400}
+          searchTerm={sidebarFilter}
+          searchMatch={(node, term) =>
+            node.data.name.toLowerCase().includes(term.toLowerCase())
+          }
           onRename={onRename}
           onMove={onMove}
           onActivate={(node) => {

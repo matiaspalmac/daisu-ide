@@ -6,6 +6,7 @@ import { Store } from "@tauri-apps/plugin-store";
 export interface WorkspacePersistence {
   recents: { path: string; name: string; openedAt: number }[];
   expandedPersisted: Record<string, string[]>;
+  pinnedPersisted?: Record<string, string[]>;
 }
 
 const STORE_KEY = "workspace.json";
@@ -24,10 +25,10 @@ export async function loadWorkspacePersistence(): Promise<WorkspacePersistence> 
   try {
     const store = await getStore();
     const value = await store.get<WorkspacePersistence>(ROOT_KEY);
-    if (!value) return { recents: [], expandedPersisted: {} };
-    return value;
+    if (!value) return { recents: [], expandedPersisted: {}, pinnedPersisted: {} };
+    return { pinnedPersisted: {}, ...value };
   } catch {
-    return { recents: [], expandedPersisted: {} };
+    return { recents: [], expandedPersisted: {}, pinnedPersisted: {} };
   }
 }
 
