@@ -39,7 +39,12 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
           : "hover:bg-[var(--accent-soft)]/40",
       )}
       onClick={() => {
-        if (!node.isLeaf) node.toggle();
+        node.select();
+        if (node.isLeaf) {
+          node.activate();
+        } else {
+          node.toggle();
+        }
       }}
     >
       {!node.isLeaf && (

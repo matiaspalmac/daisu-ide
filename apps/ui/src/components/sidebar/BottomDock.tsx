@@ -56,7 +56,7 @@ export function BottomDock(): JSX.Element {
 
   return (
     <div
-      className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 inline-flex items-center gap-0.5 bg-[var(--bg-elevated)]/95 backdrop-blur-md rounded-full px-1.5 py-1 shadow-[0_4px_14px_rgba(0,0,0,0.55)]"
+      className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 inline-flex items-center gap-0.5 bg-[var(--bg-elevated)] rounded-full px-1 py-0.5 shadow-[0_2px_6px_rgba(0,0,0,0.5)] pointer-events-auto"
       role="toolbar"
       aria-label="Integraciones"
     >

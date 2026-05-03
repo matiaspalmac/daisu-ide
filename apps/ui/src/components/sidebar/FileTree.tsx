@@ -1,4 +1,4 @@
-import { useMemo, useRef, type JSX } from "react";
+import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { Tree, type MoveHandler, type RenameHandler, type TreeApi } from "react-arborist";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useTabs } from "../../stores/tabsStore";
@@ -17,6 +17,19 @@ export function FileTree(): JSX.Element | null {
   const openTab = useTabs((s) => s.openTab);
 
   const treeRef = useRef<TreeApi<FileEntry> | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(() => {
+      setSize({ w: el.clientWidth, h: el.clientHeight });
+    });
+    obs.observe(el);
+    setSize({ w: el.clientWidth, h: el.clientHeight });
+    return () => obs.disconnect();
+  }, []);
 
   const data = useMemo(() => {
     if (!rootPath) return [];
@@ -53,29 +66,36 @@ export function FileTree(): JSX.Element | null {
   }
 
   return (
-    <div className="daisu-filetree" role="tree" aria-label="Workspace file tree">
-      <Tree<FileEntry>
-        ref={treeRef}
-        data={data}
-        idAccessor="path"
-        rowHeight={22}
-        indent={16}
-        width="100%"
-        height={600}
-        onRename={onRename}
-        onMove={onMove}
-        onActivate={(node) => {
-          selectNode(node.id, "single");
-          if (node.isLeaf) {
-            void openTab(node.id);
-          }
-        }}
-        onToggle={(id) => toggleExpand(id)}
-        openByDefault={false}
-        initialOpenState={Object.fromEntries([...expanded].map((p) => [p, true]))}
-      >
-        {Node as never}
-      </Tree>
+    <div
+      ref={containerRef}
+      className="daisu-filetree h-full w-full"
+      role="tree"
+      aria-label="Workspace file tree"
+    >
+      {size.h > 0 && (
+        <Tree<FileEntry>
+          ref={treeRef}
+          data={data}
+          idAccessor="path"
+          rowHeight={22}
+          indent={16}
+          width={size.w}
+          height={size.h}
+          onRename={onRename}
+          onMove={onMove}
+          onActivate={(node) => {
+            selectNode(node.id, "single");
+            if (node.isLeaf) {
+              void openTab(node.id);
+            }
+          }}
+          onToggle={(id) => toggleExpand(id)}
+          openByDefault={false}
+          initialOpenState={Object.fromEntries([...expanded].map((p) => [p, true]))}
+        >
+          {Node as never}
+        </Tree>
+      )}
     </div>
   );
 }
