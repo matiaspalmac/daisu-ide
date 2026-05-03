@@ -74,9 +74,12 @@ export function Tab(props: Props): JSX.Element {
         type="button"
         aria-label="Close"
         className="daisu-tab-close hover:text-[var(--accent)]"
-        onClick={(e) => {
+        onMouseDown={(e) => {
+          // Stop the parent tab's mousedown handler so close does not also
+          // activate. Browser's onClick wouldn't help — the parent now
+          // listens on mousedown.
           e.stopPropagation();
-          onClose();
+          if (e.button === 0) onClose();
         }}
       >
         <X size={12} />

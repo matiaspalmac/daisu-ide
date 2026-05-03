@@ -64,7 +64,6 @@ export function TitleBar(): JSX.Element {
 
   return (
     <header
-      data-tauri-drag-region
       className="h-[var(--titlebar-h)] bg-[var(--bg-panel)] border-b border-[var(--border-subtle)] flex items-stretch text-[12px] text-[var(--fg-secondary)] select-none"
     >
       {/* Hamburger */}

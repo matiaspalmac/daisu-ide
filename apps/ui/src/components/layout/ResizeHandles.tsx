@@ -35,6 +35,19 @@ export function ResizeHandles(): JSX.Element {
           key={h.dir}
           className={h.cls}
           onMouseDown={(e) => {
+            // Skip when mousedown originates on an interactive child element
+            // (button, link, input, role=button). Without this guard the
+            // resize handler swallows the click on buttons that happen to
+            // sit within the 1-2px edge band.
+            const t = e.target as HTMLElement | null;
+            if (
+              t &&
+              t.closest(
+                "button, a, input, textarea, select, [role='button'], [role='tab'], [role='menuitem']",
+              )
+            ) {
+              return;
+            }
             e.preventDefault();
             void getCurrentWindow().startResizeDragging(h.dir);
           }}
