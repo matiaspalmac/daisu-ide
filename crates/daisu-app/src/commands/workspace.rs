@@ -74,7 +74,7 @@ pub fn open_workspace(
 
     let (batch_tx, mut batch_rx) = mpsc::channel::<crate::watch::workspace::TreeBatch>(16);
     let app_for_batches = app.clone();
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         while let Some(batch) = batch_rx.recv().await {
             let _ = app_for_batches.emit(TREE_BATCH_EVENT, &batch);
         }
@@ -82,7 +82,7 @@ pub fn open_workspace(
 
     let token_for_walker = token.clone();
     let root_for_walker = root.clone();
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         if let Err(e) = walk_workspace(
             root_for_walker,
             WalkOptions::default(),
@@ -105,19 +105,19 @@ pub fn open_workspace(
         token.clone(),
         Duration::from_millis(200),
     )?;
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         let _hold = watch_handle;
         token.cancelled().await;
     });
 
     let app_for_fs = app.clone();
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         while let Some(paths) = fs_rx.recv().await {
             let _ = app_for_fs.emit(FS_CHANGED_EVENT, FsChangedPayload { paths });
         }
     });
     let app_for_git = app.clone();
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         while git_rx.recv().await.is_some() {
             let _ = app_for_git.emit(GIT_INDEX_EVENT, ());
         }
@@ -135,7 +135,7 @@ pub fn open_workspace(
             Ok(watcher) => {
                 state.set_git_watcher(watcher);
                 let app_clone = app.clone();
-                tokio::spawn(async move {
+                tauri::async_runtime::spawn(async move {
                     while gw_rx.recv().await.is_some() {
                         let _ = app_clone.emit(GIT_CHANGED_EVENT, ());
                     }
