@@ -1,4 +1,4 @@
-import { useState, type JSX } from "react";
+import { useEffect, useState, type JSX } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useUI } from "../../stores/uiStore";
@@ -12,10 +12,31 @@ import { ThemeSettings } from "./categories/ThemeSettings";
 import { KeybindingSettings } from "./categories/KeybindingSettings";
 import { AdvancedSettings } from "./categories/AdvancedSettings";
 
+const VALID_CATEGORIES: SettingsCategoryId[] = [
+  "general",
+  "editor",
+  "themes",
+  "keybindings",
+  "advanced",
+];
+
 export function SettingsModal(): JSX.Element | null {
   const open = useUI((s) => s.settingsModalOpen);
   const closeSettings = useUI((s) => s.closeSettings);
+  const requestedCategory = useUI((s) => s.settingsActiveCategory);
   const [active, setActive] = useState<SettingsCategoryId>("general");
+
+  // Honor the deep-link from `openSettings("themes")` etc. by syncing the
+  // store's category every time the modal opens.
+  useEffect(() => {
+    if (!open) return;
+    const target = VALID_CATEGORIES.includes(
+      requestedCategory as SettingsCategoryId,
+    )
+      ? (requestedCategory as SettingsCategoryId)
+      : "general";
+    setActive(target);
+  }, [open, requestedCategory]);
 
   if (!open) return null;
 

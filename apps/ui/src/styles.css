@@ -39,13 +39,15 @@
   --success:        #4ADE80;
   --info:           #6FC3DF;
 
-  /* === Glow shadows — Tron signature === */
-  --glow-cyan-sm:   0 0 8px rgba(111, 195, 223, 0.35);
-  --glow-cyan-md:   0 0 14px rgba(111, 195, 223, 0.45), 0 0 28px rgba(111, 195, 223, 0.18);
-  --glow-cyan-lg:   0 0 20px rgba(111, 195, 223, 0.55), 0 0 40px rgba(111, 195, 223, 0.22);
-  --glow-orange-sm: 0 0 8px rgba(255, 165, 0, 0.35);
-  --glow-orange-md: 0 0 14px rgba(255, 165, 0, 0.45);
-  --glow-text-cyan: 0 0 4px rgba(111, 195, 223, 0.6);
+  /* === Glow shadows — Tron signature, tiered by interaction state === */
+  --glow-cyan-xs:    0 0 4px rgba(111, 195, 223, 0.20);   /* resting, brand presence */
+  --glow-cyan-sm:    0 0 8px rgba(111, 195, 223, 0.35);   /* hover */
+  --glow-cyan-md:    0 0 14px rgba(111, 195, 223, 0.45), 0 0 28px rgba(111, 195, 223, 0.18); /* active */
+  --glow-cyan-lg:    0 0 20px rgba(111, 195, 223, 0.55), 0 0 40px rgba(111, 195, 223, 0.22); /* focus rings */
+  --glow-cyan-focus: 0 0 0 1px var(--accent), 0 0 12px rgba(111, 195, 223, 0.55);
+  --glow-orange-sm:  0 0 8px rgba(255, 165, 0, 0.35);
+  --glow-orange-md:  0 0 14px rgba(255, 165, 0, 0.45);
+  --glow-text-cyan:  0 0 4px rgba(111, 195, 223, 0.6);
 
   /* === Radii — sharp Tron geometry === */
   --radius-none:    0;

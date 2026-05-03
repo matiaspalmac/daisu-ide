@@ -26,6 +26,9 @@ interface GitState {
   reset(): void;
 }
 
+// Monotonic counter so concurrent refreshes apply only the latest result.
+let refreshSeq = 0;
+
 export const useGit = create<GitState>((set, get) => ({
   workspacePath: null,
   info: null,
@@ -40,14 +43,18 @@ export const useGit = create<GitState>((set, get) => ({
   async refresh() {
     const path = get().workspacePath;
     if (!path) return;
+    const seq = ++refreshSeq;
     set({ loading: true });
     try {
       const info = await gitWorkspaceInfoCmd(path);
+      // Only the latest in-flight refresh writes; older results are dropped.
+      if (seq !== refreshSeq) return;
       set({ info });
     } catch {
+      if (seq !== refreshSeq) return;
       set({ info: null });
     } finally {
-      set({ loading: false });
+      if (seq === refreshSeq) set({ loading: false });
     }
   },
 

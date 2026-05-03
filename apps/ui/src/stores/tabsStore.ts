@@ -197,7 +197,20 @@ export const useTabs = create<TabsState>((set, get) => ({
       get().setActive(existing.id);
       return;
     }
-    const opened = await openFile(path);
+    let opened: Awaited<ReturnType<typeof openFile>>;
+    try {
+      opened = await openFile(path);
+    } catch (e) {
+      // Surface backend errors (permission denied, file gone, binary blob,
+      // etc.) so the click does not silently no-op.
+      const { useUI } = await import("./uiStore");
+      const { translateError } = await import("../lib/error-translate");
+      useUI.getState().pushToast({
+        message: translateError(e),
+        level: "error",
+      });
+      return;
+    }
     const tab: OpenTab = {
       id: uuid(),
       path: opened.path,

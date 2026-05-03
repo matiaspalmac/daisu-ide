@@ -58,6 +58,7 @@ export function WelcomeScreen(): JSX.Element {
   const newTab = useTabs((s) => s.newTab);
   const openTab = useTabs((s) => s.openTab);
   const openWorkspace = useWorkspace((s) => s.openWorkspace);
+  const recents = useWorkspace((s) => s.recents);
   const pushToast = useUI((s) => s.pushToast);
   const [tipIdx, setTipIdx] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -128,6 +129,36 @@ export function WelcomeScreen(): JSX.Element {
           ))}
         </div>
 
+        {recents.length > 0 && (
+          <div className="w-[512px] flex flex-col gap-2">
+            <span className="text-xs uppercase tracking-wider text-[var(--fg-muted)]">
+              Recientes
+            </span>
+            <ul className="flex flex-col gap-1">
+              {recents.slice(0, 5).map((r) => (
+                <li key={r.path}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void openWorkspace(r.path).catch((e) =>
+                        pushToast({ message: String(e), level: "error" }),
+                      );
+                    }}
+                    className="w-full flex items-center justify-between gap-3 px-3 py-1.5 rounded-[var(--radius-sm)] bg-transparent hover:bg-[var(--accent-soft)] text-left transition-colors"
+                  >
+                    <span className="text-sm text-[var(--fg-primary)] truncate">
+                      {r.name}
+                    </span>
+                    <span className="text-[10px] font-mono text-[var(--fg-muted)] truncate max-w-[280px]">
+                      {r.path}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="w-[512px] flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-wider text-[var(--fg-muted)]">Consejos</span>
@@ -136,7 +167,11 @@ export function WelcomeScreen(): JSX.Element {
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setTipIdx(i)}
+                  onClick={() => {
+                    setTipIdx(i);
+                    setPaused(true);
+                    window.setTimeout(() => setPaused(false), 8000);
+                  }}
                   aria-label={`Tip ${i + 1}`}
                   aria-current={i === tipIdx ? "true" : undefined}
                   className="w-4 h-4 grid place-items-center group"

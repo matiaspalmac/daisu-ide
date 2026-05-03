@@ -79,7 +79,9 @@ export function TabBar(): JSX.Element | null {
     obs.observe(root);
     recompute();
     return () => obs.disconnect();
-  }, [tabs]);
+    // Only re-subscribe when the SET of tabs changes, not on every keystroke
+    // (each Monaco onChange clones the tabs array even though length is stable).
+  }, [tabs.length]);
 
   const visibleTabs = tabs.filter((t) => !hiddenIds.includes(t.id));
   const hiddenTabs = tabs.filter((t) => hiddenIds.includes(t.id));
@@ -173,6 +175,10 @@ function DraggableTab({
     return combine(
       draggable({
         element: el,
+        // Pragmatic-DnD fires on any pointerdown by default; allow only the
+        // primary mouse button so right-click context menu and middle-click
+        // close are not swallowed by the drag start.
+        canDrag: ({ input }) => input.button === 0,
         getInitialData: () => ({ tabId: tab.id }),
       }),
       dropTargetForElements({
