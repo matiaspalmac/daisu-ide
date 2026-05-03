@@ -14,11 +14,13 @@ use tokio_util::sync::CancellationToken;
 
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
+use crate::watch::git_watcher::watch_git_dir;
 use crate::watch::workspace::{spawn_workspace_watcher, walk_workspace, WalkOptions};
 
 const TREE_BATCH_EVENT: &str = "workspace:tree-batch";
 const FS_CHANGED_EVENT: &str = "workspace:fs-changed";
 const GIT_INDEX_EVENT: &str = "workspace:git-index";
+const GIT_CHANGED_EVENT: &str = "git-changed";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct WorkspaceInfo {
@@ -121,6 +123,30 @@ pub fn open_workspace(
         }
     });
 
+    // Phase 5: dedicated git watcher on .git/index + .git/HEAD.
+    let git_dir = root.join(".git");
+    if git_dir.exists() {
+        let (gw_tx, mut gw_rx) = mpsc::channel::<()>(8);
+        let gw_cancel = state.git_cancel().clone();
+        match watch_git_dir(&root, gw_tx, &gw_cancel, Duration::from_millis(500)) {
+            Ok(handle) => {
+                state.set_git_watcher(handle);
+                let app_clone = app.clone();
+                tokio::spawn(async move {
+                    while gw_rx.recv().await.is_some() {
+                        let _ = app_clone.emit(GIT_CHANGED_EVENT, ());
+                    }
+                });
+            }
+            Err(err) => {
+                let _ = app.emit(
+                    "system:warning",
+                    format!("git watcher could not start: {err}"),
+                );
+            }
+        }
+    }
+
     Ok(WorkspaceInfo {
         root_path: root.display().to_string(),
         batch_id,
@@ -137,6 +163,10 @@ pub fn open_workspace(
 pub fn close_workspace(state: State<'_, AppState>) -> AppResult<()> {
     if let Some(prev) = state.take_walker_token() {
         prev.cancel();
+    }
+    state.drop_git_watcher();
+    if let Some(root) = state.root() {
+        crate::git::repo_handle::invalidate(&root);
     }
     state.set_root(None);
     Ok(())

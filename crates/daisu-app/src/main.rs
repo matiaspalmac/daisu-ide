@@ -34,6 +34,15 @@ fn main() {
             commands::themes::read_theme_json,
             commands::settings::export_settings,
             commands::settings::import_settings,
+            commands::file_ops::convert_eol,
+            commands::file_ops::read_file_with_encoding,
+            commands::search::search_workspace,
+            commands::search::cancel_search,
+            commands::search::replace_in_workspace,
+            commands::git::git_workspace_info,
+            commands::git::git_list_branches,
+            commands::git::git_checkout_branch,
+            commands::git::git_fetch_remote,
             commands::webview::detect_webview2
         ])
         .setup(|app| {
