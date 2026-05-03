@@ -11,7 +11,7 @@ import { IndentSegment } from "../statusbar/IndentSegment";
 import { LanguagePicker } from "../statusbar/LanguagePicker";
 
 const utilityCls =
-  "h-5 px-1.5 inline-flex items-center gap-1 text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-[var(--radius-sm)] transition-colors text-[11px]";
+  "h-5 px-1.5 inline-flex items-center gap-1 text-[var(--fg-muted)] hover:text-[var(--warn)] hover:bg-[var(--warn-soft)] rounded-[var(--radius-sm)] transition-colors text-[11px]";
 
 const panelToggleCls =
   "h-5 px-1.5 inline-flex items-center gap-1 text-[var(--warn)] hover:text-[var(--warn-bright)] hover:bg-[var(--warn-soft)] rounded-[var(--radius-sm)] transition-colors";
@@ -23,7 +23,7 @@ export function StatusBar(): JSX.Element {
 
   return (
     <footer
-      className="daisu-statusbar h-[26px] flex items-center px-3 gap-3 bg-[var(--bg-panel)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--fg-secondary)]"
+      className="daisu-statusbar h-[22px] flex items-center px-3 gap-3 bg-[var(--bg-panel)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--fg-secondary)]"
       aria-label="Status bar"
     >
       {/* Left: file info segments */}
@@ -43,15 +43,45 @@ export function StatusBar(): JSX.Element {
 
       {/* Right: utility cluster */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        <button type="button" className={utilityCls} title="Errores" aria-label="Errores">
+        <button
+          type="button"
+          className={utilityCls}
+          title="Errores"
+          aria-label="Errores"
+          onClick={() =>
+            useUI
+              .getState()
+              .pushToast({ message: "Panel de problemas en M3+", level: "info" })
+          }
+        >
           <CircleSlash size={12} />
           <span>0</span>
         </button>
-        <button type="button" className={utilityCls} title="Advertencias" aria-label="Advertencias">
+        <button
+          type="button"
+          className={utilityCls}
+          title="Advertencias"
+          aria-label="Advertencias"
+          onClick={() =>
+            useUI
+              .getState()
+              .pushToast({ message: "Panel de problemas en M3+", level: "info" })
+          }
+        >
           <TriangleAlert size={12} />
           <span>0</span>
         </button>
-        <button type="button" className={utilityCls} title="Notificaciones" aria-label="Notificaciones">
+        <button
+          type="button"
+          className={utilityCls}
+          title="Notificaciones"
+          aria-label="Notificaciones"
+          onClick={() =>
+            useUI
+              .getState()
+              .pushToast({ message: "Centro de notificaciones en M4+", level: "info" })
+          }
+        >
           <Bell size={12} />
         </button>
         <button

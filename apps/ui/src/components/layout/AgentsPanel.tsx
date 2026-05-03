@@ -1,6 +1,6 @@
-import type { JSX } from "react";
+import type { ChangeEvent, JSX } from "react";
 import { useState } from "react";
-import { ArrowUp, ChevronDown, Globe, Hash, History, MessageSquarePlus, Sparkles } from "lucide-react";
+import { ArrowUp, FileText, History, MessageSquarePlus } from "lucide-react";
 
 const HEADER_BTN =
   "w-6 h-6 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-[var(--radius-sm)] transition-colors";
@@ -23,8 +23,8 @@ export function AgentsPanel(): JSX.Element {
           <button type="button" title="Historial" aria-label="Historial" className={HEADER_BTN}>
             <History size={13} />
           </button>
-          <button type="button" title="Configuración" aria-label="Configuración" className={HEADER_BTN}>
-            <Sparkles size={13} />
+          <button type="button" title="Notas" aria-label="Notas" className={HEADER_BTN}>
+            <FileText size={13} />
           </button>
         </div>
       </header>
@@ -40,34 +40,30 @@ export function AgentsPanel(): JSX.Element {
         </div>
       </div>
 
-      <div className="border-t border-[var(--border-subtle)] p-3 flex flex-col gap-2">
+      <div className="border-t border-[var(--border-subtle)] p-3">
         <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-2 flex items-end gap-2 focus-within:border-[var(--border-strong)]">
           <textarea
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
+              setText(e.target.value);
+              const el = e.currentTarget;
+              el.style.height = "auto";
+              el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+            }}
             placeholder="Escribe un mensaje..."
             rows={1}
-            className="flex-1 bg-transparent border-0 outline-none resize-none text-sm text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] max-h-32"
+            className="flex-1 bg-transparent border-0 outline-none resize-none text-sm text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] max-h-32 overflow-y-auto"
           />
           <button
             type="button"
             disabled={!canSend}
+            aria-disabled={!canSend}
             aria-label="Enviar"
             className="w-7 h-7 grid place-items-center bg-[var(--warn)] text-[var(--fg-inverse)] rounded-[var(--radius-sm)] hover:bg-[var(--warn-bright)] shadow-[var(--glow-orange-sm)] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed"
           >
             <ArrowUp size={14} strokeWidth={2} />
           </button>
         </div>
-
-        <button
-          type="button"
-          className="self-start inline-flex items-center gap-1.5 text-xs text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-full px-2.5 py-1"
-        >
-          <Hash size={11} className="text-[var(--fg-muted)]" />
-          <Globe size={11} className="text-[var(--accent)]" />
-          <span className="font-mono">tencent/hy3-preview:free</span>
-          <ChevronDown size={11} />
-        </button>
       </div>
     </aside>
   );

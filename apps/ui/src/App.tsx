@@ -192,6 +192,7 @@ export function App(): JSX.Element {
           <Group
             orientation="vertical"
             id="daisu-center-split"
+            className="h-full w-full"
           >
             <Panel id="editor" defaultSize={searchOpen ? "70%" : "100%"} minSize="20%">
               <EditorArea />

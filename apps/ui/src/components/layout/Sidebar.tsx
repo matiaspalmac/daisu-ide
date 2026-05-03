@@ -13,7 +13,6 @@ import { FileTree } from "../sidebar/FileTree";
 import { EmptyState } from "../sidebar/EmptyState";
 import { RecentsDropdown } from "../sidebar/RecentsDropdown";
 import { TreeContextMenu, type TreeAction } from "../sidebar/ContextMenu";
-import { BottomDock } from "../sidebar/BottomDock";
 import { copy } from "../../lib/copy";
 import { translateError } from "../../lib/error-translate";
 
@@ -143,7 +142,7 @@ export function Sidebar(): JSX.Element {
           : null;
 
   const headerBtnCls =
-    "w-6 h-6 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-[var(--radius-sm)] transition-colors";
+    "w-7 h-7 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--warn)] hover:bg-[var(--warn-soft)] rounded-[var(--radius-sm)] transition-colors";
 
   const handleRefresh = useCallback((): void => {
     if (!rootPath) return;
@@ -162,9 +161,9 @@ export function Sidebar(): JSX.Element {
       className="daisu-sidebar relative h-full flex flex-col min-w-0 bg-[var(--bg-panel)]"
       aria-label="Workspace explorer"
     >
-      <div className="daisu-sidebar-header h-9 px-3 flex items-center justify-between border-b border-[var(--border-subtle)] text-[11px] uppercase tracking-[0.08em] text-[var(--fg-secondary)]">
+      <div className="daisu-sidebar-header h-9 px-3 flex items-center justify-between border-b border-[var(--border-subtle)] text-[11px] uppercase tracking-[0.08em] text-[var(--fg-section-header)]">
         <span>{copy.sidebar.explorerHeading.toUpperCase()}</span>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             title="Nuevo archivo"
@@ -240,7 +239,6 @@ export function Sidebar(): JSX.Element {
           </div>
         </TreeContextMenu>
       </div>
-      {rootPath && <BottomDock />}
     </aside>
   );
 }

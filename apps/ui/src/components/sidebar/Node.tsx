@@ -4,6 +4,7 @@ import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 import clsx from "clsx";
 import type { FileEntry } from "../../api/tauri";
 import { useGit } from "../../stores/gitStore";
+import { useTabs } from "../../stores/tabsStore";
 import { FileIcon } from "@/lib/file-icon";
 import { cn } from "@/lib/cn";
 
@@ -14,17 +15,10 @@ interface Props {
   dragHandle?: ((el: HTMLDivElement | null) => void) | undefined;
 }
 
-const STATUS_BADGE: Record<string, string> = {
-  Modified: "M",
-  Untracked: "U",
-  Conflict: "C",
-  Staged: "S",
-};
-
 export function Node({ node, style, dragHandle }: Props): JSX.Element {
   const status = useGit((s) => s.status(node.data.path));
   const tintClass = status ? `daisu-git-${status.toLowerCase()}` : "";
-  const badge = status ? STATUS_BADGE[status] : null;
+  const showConflictDot = status === "Conflict";
 
   return (
     <div
@@ -41,7 +35,7 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
       onClick={() => {
         node.select();
         if (node.isLeaf) {
-          node.activate();
+          void useTabs.getState().openTab(node.data.path);
         } else {
           node.toggle();
         }
@@ -52,7 +46,7 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
           className={clsx("daisu-tree-chevron", node.isOpen && "is-open")}
           aria-hidden="true"
         >
-          <ChevronRight size={14} />
+          <ChevronRight size={14} strokeWidth={1.5} />
         </span>
       )}
       {node.isLeaf && <span className="daisu-tree-chevron-spacer" aria-hidden="true" />}
@@ -80,13 +74,11 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
       ) : (
         <span className="daisu-tree-name">{node.data.name}</span>
       )}
-      {badge && (
+      {showConflictDot && (
         <span
-          className="daisu-git-badge"
+          className="ml-auto mr-1 w-1 h-1 rounded-full bg-[var(--danger)] shadow-[0_0_4px_var(--danger)]"
           aria-label={`Git status ${status}`}
-        >
-          {badge}
-        </span>
+        />
       )}
     </div>
   );

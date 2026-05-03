@@ -55,7 +55,15 @@ export function Tab(props: Props): JSX.Element {
       <FileIcon name={tab.name} size={13} />
       <span className={`daisu-tab-name${gitClass}`}>{tab.name}</span>
       {dirty && (
-        <span aria-hidden="true" className="daisu-tab-dirty text-[var(--accent)]">●</span>
+        <span
+          aria-hidden="true"
+          className={cn(
+            "daisu-tab-dirty text-[var(--accent)]",
+            active && "text-base shadow-[0_0_4px_var(--accent)] rounded-full",
+          )}
+        >
+          ●
+        </span>
       )}
       <button
         type="button"

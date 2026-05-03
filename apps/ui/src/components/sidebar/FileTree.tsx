@@ -84,10 +84,10 @@ export function FileTree(): JSX.Element | null {
           onRename={onRename}
           onMove={onMove}
           onActivate={(node) => {
+            // Selection only — file open is wired in Node.onClick to give
+            // single-click open semantics. Avoids duplicate-tab race when
+            // arborist's onActivate (dblclick/Enter) also fired openTab.
             selectNode(node.id, "single");
-            if (node.isLeaf) {
-              void openTab(node.id);
-            }
           }}
           onToggle={(id) => toggleExpand(id)}
           openByDefault={false}

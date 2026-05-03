@@ -2,16 +2,7 @@ import type { JSX } from "react";
 import { useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  Minus,
-  Search,
-  Square,
-  User,
-  X,
-} from "lucide-react";
+import { Menu, Minus, Search, Square, User, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,12 +16,6 @@ import { useTabs } from "../../stores/tabsStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { translateError } from "../../lib/error-translate";
 
-function workspaceName(rootPath: string | null): string {
-  if (!rootPath) return "Sin proyecto";
-  const parts = rootPath.split(/[\\/]/).filter(Boolean);
-  return parts[parts.length - 1] ?? rootPath;
-}
-
 export function TitleBar(): JSX.Element {
   const openSettings = useUI((s) => s.openSettings);
   const toggleSearch = useUI((s) => s.toggleSearchPanel);
@@ -39,7 +24,6 @@ export function TitleBar(): JSX.Element {
   const openTab = useTabs((s) => s.openTab);
   const saveActive = useTabs((s) => s.saveActive);
   const openWorkspace = useWorkspace((s) => s.openWorkspace);
-  const rootPath = useWorkspace((s) => s.rootPath);
 
   const handleOpen = useCallback(async (): Promise<void> => {
     try {
@@ -226,20 +210,13 @@ export function TitleBar(): JSX.Element {
         </DropdownMenu>
       </nav>
 
-      {/* Workspace breadcrumb */}
-      <div className="flex items-center gap-1 px-3 ml-2 text-[var(--fg-muted)]">
-        <ChevronLeft size={11} />
-        <span className="text-[var(--fg-primary)]">{workspaceName(rootPath)}</span>
-        <ChevronRight size={11} />
-      </div>
-
       {/* Spacer */}
       <div className="flex-1" data-tauri-drag-region />
 
-      {/* Command palette pill */}
+      {/* Command palette pill — wide centered */}
       <button
         type="button"
-        className="self-center mx-2 inline-flex items-center gap-2 h-6 px-3 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--fg-muted)] hover:border-[var(--border-strong)]"
+        className="self-center inline-flex items-center gap-2 h-7 w-[480px] max-w-[40vw] px-4 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--fg-muted)] hover:border-[var(--border-strong)] hover:text-[var(--fg-secondary)]"
         onClick={() =>
           pushToast({
             message: "Paleta de comandos disponible en M3",
@@ -248,9 +225,11 @@ export function TitleBar(): JSX.Element {
         }
         title="Paleta de comandos"
       >
-        <Search size={11} />
-        <span>Barra de comandos</span>
-        <span className="font-mono text-[10px] opacity-60 ml-2">Ctrl+Shift+P</span>
+        <Search size={12} />
+        <span className="flex-1 text-left">Barra de comandos</span>
+        <span className="font-mono text-[10px] px-1 py-px bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-[2px]">
+          Ctrl+Shift+P
+        </span>
       </button>
 
       {/* Spacer right */}

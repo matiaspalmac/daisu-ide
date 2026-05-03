@@ -1,4 +1,5 @@
-import type { JSX } from "react";
+import type { JSX, KeyboardEvent } from "react";
+import { useRef } from "react";
 import {
   Activity,
   Blocks,
@@ -78,19 +79,42 @@ export function ActivityBar(): JSX.Element {
     },
   ];
 
+  const buttonsRef = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const onKeyNav = (e: KeyboardEvent<HTMLButtonElement>, idx: number): void => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const dir = e.key === "ArrowDown" ? 1 : -1;
+    const next = (idx + dir + items.length) % items.length;
+    buttonsRef.current[next]?.focus();
+  };
+
   return (
-    <aside className="w-[var(--activitybar-w)] bg-[var(--bg-panel)] border-r border-[var(--border-subtle)] flex flex-col items-center py-2 gap-1">
-      {items.map((it) => (
+    <aside
+      role="tablist"
+      aria-orientation="vertical"
+      aria-label="Vistas de actividad"
+      className="w-[var(--activitybar-w)] bg-[var(--bg-panel)] border-r border-[var(--border-subtle)] flex flex-col items-center py-2 gap-1"
+    >
+      {items.map((it, idx) => (
         <button
           key={it.id}
           type="button"
+          role="tab"
+          aria-selected={active === it.id}
+          tabIndex={active === it.id ? 0 : -1}
+          ref={(el) => {
+            buttonsRef.current[idx] = el;
+          }}
           onClick={it.action}
+          onKeyDown={(e) => onKeyNav(e, idx)}
           title={it.label}
           aria-label={it.label}
           className={cn(
-            "w-10 h-10 grid place-items-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--warn-soft)] transition-colors",
+            "relative w-10 h-10 grid place-items-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--warn-soft)] transition-colors",
+            "after:content-[''] after:absolute after:right-0 after:top-1.5 after:bottom-1.5 after:w-[2px] after:bg-transparent",
             active === it.id &&
-              "text-[var(--warn)] bg-[var(--warn-soft)] border-l-2 border-[var(--warn)] shadow-[var(--glow-orange-sm)]",
+              "text-[var(--warn)] bg-[var(--warn-soft)] after:bg-[var(--warn)] after:shadow-[var(--glow-orange-sm)]",
           )}
         >
           <it.icon size={18} strokeWidth={1.5} />
