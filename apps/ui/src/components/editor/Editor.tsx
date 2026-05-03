@@ -20,6 +20,8 @@ export function Editor(): JSX.Element {
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    // Phase 5: cursor + selection listeners attach via useEditorCursorWiring()
+    // mounted in App.tsx; that hook polls getActiveEditor() until non-null.
     setActiveEditor(editor);
     setMonacoNamespace(monaco);
     flushPendingTheme();
