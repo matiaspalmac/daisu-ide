@@ -1,5 +1,11 @@
 import { useEffect, useRef, type JSX } from "react";
-import { Editor as MonacoEditor, loader, type Monaco, type OnMount } from "@monaco-editor/react";
+import {
+  Editor as MonacoEditor,
+  loader,
+  type BeforeMount,
+  type Monaco,
+  type OnMount,
+} from "@monaco-editor/react";
 import type * as monacoNs from "monaco-editor";
 import * as monacoLocal from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
@@ -16,6 +22,22 @@ let monacoLoaderConfigured = false;
 function setupMonacoEnvironment(): void {
   if (typeof window === "undefined" || monacoLoaderConfigured) return;
   monacoLoaderConfigured = true;
+  // Register the Tron/Daisu theme on the bundled Monaco namespace BEFORE any
+  // editor is created, so the very first <MonacoEditor theme=...> resolves
+  // to a defined theme. Without this, fast reopens land on vs-dark because
+  // the bundled namespace had no themes registered yet. Guarded for tests
+  // that mock monaco-editor without a full editor namespace.
+  try {
+    if (typeof monacoLocal.editor?.defineTheme === "function") {
+      monacoLocal.editor.defineTheme(
+        TRON_DARK_NAME,
+        TRON_DARK as monacoNs.editor.IStandaloneThemeData,
+      );
+      monacoLocal.editor.setTheme(TRON_DARK_NAME);
+    }
+  } catch {
+    /* test/SSR environments without a real Monaco namespace — best effort */
+  }
   self.MonacoEnvironment = {
     getWorker(_workerId, label) {
       switch (label) {
@@ -45,7 +67,9 @@ import {
   setActiveEditor,
   setMonacoNamespace,
 } from "../../lib/monaco-editor-ref";
-import { flushPendingTheme } from "../../hooks/useTheme";
+import { applyTheme, flushPendingTheme } from "../../hooks/useTheme";
+import { useSettings } from "../../stores/settingsStore";
+import { TRON_DARK, TRON_DARK_NAME } from "../../lib/monaco-tron-theme";
 
 type IStandaloneCodeEditor = monacoNs.editor.IStandaloneCodeEditor;
 
@@ -57,9 +81,20 @@ export function Editor(): JSX.Element {
   const prevActiveRef = useRef<string | null>(null);
   const activeTabId = useTabs((s) => s.activeTabId);
 
+  const handleBeforeMount: BeforeMount = (monaco) => {
+    // Register Tron BEFORE editor creation so the `theme` prop resolves to a
+    // defined theme. Otherwise @monaco-editor/react falls back to vs-dark.
+    monaco.editor.defineTheme(TRON_DARK_NAME, TRON_DARK);
+  };
+
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    monaco.editor.setTheme(TRON_DARK_NAME);
+    // Re-apply the active theme imperatively in case the user switched
+    // workspaces and the Editor remounted — useTheme effect won't re-fire
+    // since activeThemeId hasn't changed.
+    void applyTheme(useSettings.getState().settings.themes.activeThemeId);
     // Phase 5: cursor + selection listeners attach via useEditorCursorWiring()
     // mounted in App.tsx; that hook polls getActiveEditor() until non-null.
     setActiveEditor(editor);
@@ -102,6 +137,11 @@ export function Editor(): JSX.Element {
     if (!tab) return;
     const model = getOrCreateModel(monaco, tab) as monacoNs.editor.ITextModel;
     editor.setModel(model);
+    // Defensive: ensure the active theme is applied each time we swap models.
+    // Some workspace re-open paths leave Monaco on its vs-dark default until a
+    // setTheme call is made post-create, so we re-assert here.
+    monaco.editor.setTheme(TRON_DARK_NAME);
+    void applyTheme(useSettings.getState().settings.themes.activeThemeId);
     if (tab.cursorState) {
       editor.restoreViewState(tab.cursorState);
     }
@@ -121,19 +161,40 @@ export function Editor(): JSX.Element {
     <MonacoEditor
       height="100%"
       width="100%"
-      theme="vs-dark"
+      theme={TRON_DARK_NAME}
+      beforeMount={handleBeforeMount}
       onMount={handleMount}
       options={{
         minimap: { enabled: false },
         fontSize: 13,
-        fontFamily: "Cascadia Code, Consolas, monospace",
+        fontFamily: "'Cascadia Code', 'JetBrains Mono', Consolas, monospace",
+        fontLigatures: true,
+        lineHeight: 1.55,
+        letterSpacing: 0.2,
         smoothScrolling: true,
         cursorSmoothCaretAnimation: "on",
+        cursorBlinking: "smooth",
+        cursorWidth: 2,
         automaticLayout: true,
         scrollBeyondLastLine: false,
         wordWrap: "off",
         renderLineHighlight: "all",
         bracketPairColorization: { enabled: true },
+        guides: {
+          indentation: true,
+          highlightActiveIndentation: true,
+          bracketPairs: "active",
+        },
+        padding: { top: 10, bottom: 10 },
+        roundedSelection: false,
+        renderWhitespace: "selection",
+        scrollbar: {
+          verticalScrollbarSize: 10,
+          horizontalScrollbarSize: 10,
+          useShadows: false,
+        },
+        overviewRulerBorder: false,
+        stickyScroll: { enabled: true },
       }}
     />
   );

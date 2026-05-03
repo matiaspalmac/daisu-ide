@@ -50,8 +50,16 @@ describe("<Node>", () => {
     // (#888) would fail.
     const svg = container.querySelector(".daisu-tree-row svg");
     expect(svg).toBeInTheDocument();
-    expect(svg?.getAttribute("color") ?? svg?.getAttribute("stroke")).toBe(
-      "#61DAFB",
+    // Phosphor sets `color` via inline style; fall back to color/stroke
+    // attributes for forward-compat in case the lib changes.
+    const styleColor = (svg as SVGElement | null)?.style.color ?? null;
+    const inkColor =
+      styleColor ||
+      svg?.getAttribute("color") ||
+      svg?.getAttribute("stroke") ||
+      svg?.getAttribute("fill");
+    expect(inkColor?.toLowerCase().replace(/\s/g, "")).toMatch(
+      /#61dafb|rgb\(97,218,251\)/,
     );
   });
 
