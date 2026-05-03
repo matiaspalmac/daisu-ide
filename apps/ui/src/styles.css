@@ -827,3 +827,81 @@ body,
   justify-content: center;
   min-width: 0;
 }
+
+.daisu-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+}
+.daisu-search-input { flex: 1; min-width: 0; }
+.daisu-search-globs {
+  display: flex;
+  gap: 12px;
+  padding: 0 12px 8px;
+}
+.daisu-search-glob-label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: #888;
+}
+.daisu-search-results { flex: 1; overflow-y: auto; }
+.daisu-search-summary {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #888;
+  border-top: 1px solid var(--daisu-border, #2b2b2b);
+  border-bottom: 1px solid var(--daisu-border, #2b2b2b);
+}
+.daisu-search-truncated { color: #e2c08d; }
+.daisu-search-empty {
+  padding: 24px;
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+}
+.daisu-search-file-header {
+  background: transparent;
+  border: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  color: var(--daisu-fg, #ccc);
+  font-size: 12px;
+  cursor: pointer;
+}
+.daisu-search-file-header:hover { background: rgba(255,255,255,0.04); }
+.daisu-search-file-name { font-weight: 500; }
+.daisu-search-file-count { color: #888; }
+.daisu-search-file-hits { display: flex; flex-direction: column; }
+.daisu-result-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 12px 2px 24px;
+  font-family: Cascadia Code, Consolas, monospace;
+  font-size: 12px;
+}
+.daisu-result-line.is-excluded { opacity: 0.45; }
+.daisu-result-line-btn {
+  background: transparent;
+  border: 0;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  cursor: pointer;
+  color: var(--daisu-fg, #ccc);
+  width: 100%;
+  text-align: left;
+}
+.daisu-result-line-btn:hover { background: rgba(255,255,255,0.04); }
+.daisu-result-line-no { color: #888; min-width: 32px; text-align: right; }
+.daisu-result-line-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.daisu-modal-list { margin: 0; padding: 0 0 0 18px; }
+.daisu-modal-list-more { color: #888; list-style: none; }
