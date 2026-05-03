@@ -32,7 +32,11 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
           ? "is-selected bg-[var(--accent-soft)] text-[var(--accent)] border-l-2 border-[var(--accent)]"
           : "hover:bg-[var(--accent-soft)]/40",
       )}
-      onClick={() => {
+      onMouseDown={(e) => {
+        // Use mousedown (fires BEFORE the browser's blur/focus shuffle) so a
+        // single click works when Monaco currently owns focus. Skip middle/right
+        // clicks — react-arborist context menu still gets those.
+        if (e.button !== 0) return;
         node.select();
         if (node.isLeaf) {
           void useTabs.getState().openTab(node.data.path);

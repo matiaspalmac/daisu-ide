@@ -106,7 +106,10 @@ export function ActivityBar(): JSX.Element {
           ref={(el) => {
             buttonsRef.current[idx] = el;
           }}
-          onClick={it.action}
+          onMouseDown={(e) => {
+            if (e.button !== 0) return;
+            it.action();
+          }}
           onKeyDown={(e) => onKeyNav(e, idx)}
           title={it.label}
           aria-label={it.label}
@@ -127,7 +130,10 @@ export function ActivityBar(): JSX.Element {
         type="button"
         title="Configuración"
         aria-label="Configuración"
-        onClick={() => openSettings()}
+        onMouseDown={(e) => {
+          if (e.button !== 0) return;
+          openSettings();
+        }}
         className="w-10 h-10 grid place-items-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] hover:text-[var(--warn)] hover:bg-[var(--warn-soft)] transition-colors"
       >
         <Settings size={18} strokeWidth={1.5} />

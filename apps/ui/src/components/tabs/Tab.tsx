@@ -25,6 +25,12 @@ export function Tab(props: Props): JSX.Element {
     if (e.button === 1) {
       e.preventDefault();
       onClose();
+      return;
+    }
+    if (e.button === 0) {
+      // Activate on mousedown (not click) so it works on the very first press
+      // when Monaco currently has focus.
+      onActivate();
     }
   };
 
@@ -32,7 +38,6 @@ export function Tab(props: Props): JSX.Element {
     <div
       ref={dragHandleRef}
       className={cn("daisu-tab group relative", active && "is-active")}
-      onClick={onActivate}
       onMouseDown={handleMouseDown}
       role="tab"
       aria-selected={active}
