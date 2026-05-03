@@ -795,3 +795,20 @@ body,
   font-size: 12px;
   padding: 8px;
 }
+
+.daisu-branch-segment {
+  gap: 6px;
+}
+.daisu-icon-btn-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 2px;
+}
+.daisu-icon-btn-sm:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
