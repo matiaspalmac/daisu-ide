@@ -21,8 +21,8 @@ describe("settingsStore", () => {
   });
 
   it("starts with default theme settings", () => {
-    expect(useSettings.getState().settings.themes.activeThemeId).toBe("daisu-dark");
-    expect(useSettings.getState().settings.themes.autoSwitchOnSystem).toBe(true);
+    expect(useSettings.getState().settings.themes.activeThemeId).toBe("tron-dark");
+    expect(useSettings.getState().settings.themes.autoSwitchOnSystem).toBe(false);
   });
 
   it("set updates a partial category", async () => {

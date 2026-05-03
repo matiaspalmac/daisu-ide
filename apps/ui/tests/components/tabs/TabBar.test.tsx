@@ -20,9 +20,13 @@ beforeEach(() => useTabs.getState().reset());
 afterEach(() => vi.clearAllMocks());
 
 describe("<TabBar>", () => {
-  it("renders nothing when no tabs", () => {
+  it("renders only the new-tab button when no tabs", () => {
     const { container } = render(<TabBar />);
-    expect(container.querySelector(".daisu-tabbar")).toBeNull();
+    const bar = container.querySelector(".daisu-tabbar");
+    expect(bar).not.toBeNull();
+    // Only the trailing "+" button should be present.
+    expect(bar?.querySelector("[data-tab-id]")).toBeNull();
+    expect(bar?.querySelector('button[aria-label="Nuevo archivo"]')).not.toBeNull();
   });
 
   it("renders one tab per OpenTab", () => {
