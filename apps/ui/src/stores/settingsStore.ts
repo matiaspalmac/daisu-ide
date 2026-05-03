@@ -22,9 +22,9 @@ const SettingsSchema = z.object({
     formatOnSave: z.boolean().default(false),
   }).prefault({}),
   themes: z.object({
-    activeThemeId: z.string().default("daisu-dark"),
-    autoSwitchOnSystem: z.boolean().default(true),
-    systemDarkTheme: z.string().default("daisu-dark"),
+    activeThemeId: z.string().default("tron-dark"),
+    autoSwitchOnSystem: z.boolean().default(false),
+    systemDarkTheme: z.string().default("tron-dark"),
     systemLightTheme: z.string().default("daisu-light"),
   }).prefault({}),
   keybindings: z.record(z.string(), z.string()).default({}),

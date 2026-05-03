@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from "react";
+import { Plus } from "lucide-react";
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
 import {
   draggable,
@@ -28,6 +29,7 @@ export function TabBar(): JSX.Element | null {
   const closeAll = useTabs((s) => s.closeAll);
   const pin = useTabs((s) => s.pin);
   const unpin = useTabs((s) => s.unpin);
+  const newTab = useTabs((s) => s.newTab);
   const pushToast = useUI((s) => s.pushToast);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -78,8 +80,6 @@ export function TabBar(): JSX.Element | null {
     recompute();
     return () => obs.disconnect();
   }, [tabs]);
-
-  if (tabs.length === 0) return null;
 
   const visibleTabs = tabs.filter((t) => !hiddenIds.includes(t.id));
   const hiddenTabs = tabs.filter((t) => hiddenIds.includes(t.id));
@@ -136,6 +136,15 @@ export function TabBar(): JSX.Element | null {
         }))}
         onPick={setActive}
       />
+      <button
+        type="button"
+        onClick={() => newTab()}
+        title="Nuevo archivo"
+        aria-label="Nuevo archivo"
+        className="w-8 h-8 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] border-l border-[var(--border-subtle)] flex-shrink-0"
+      >
+        <Plus size={14} />
+      </button>
     </div>
   );
 }
