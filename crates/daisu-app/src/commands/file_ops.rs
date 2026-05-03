@@ -21,11 +21,21 @@ pub async fn write_file_at(path: &Path, contents: &str) -> AppResult<()> {
     Ok(())
 }
 
-#[derive(serde::Serialize)]
+#[derive(Debug, serde::Serialize)]
 pub struct OpenedFile {
     pub path: String,
     pub contents: String,
     pub language: String,
+    pub eol: String,
+    pub encoding: String,
+}
+
+fn detect_eol(contents: &str) -> &'static str {
+    if contents.contains("\r\n") {
+        "CRLF"
+    } else {
+        "LF"
+    }
 }
 
 /// Names skipped at any depth. Hard-coded for Phase 2; Phase 4 will surface
@@ -428,11 +438,86 @@ pub async fn open_file(path: String) -> AppResult<OpenedFile> {
     let pb = PathBuf::from(&path);
     let contents = read_file_at(&pb).await?;
     let language = detect_language(&pb);
+    let eol = detect_eol(&contents).to_string();
+    let encoding = "UTF-8".to_string();
     Ok(OpenedFile {
         path,
         contents,
         language,
+        eol,
+        encoding,
     })
+}
+
+/// Inner pure function for testing.
+///
+/// # Errors
+/// Returns [`AppError::Internal`] for unknown target EOL or I/O failure.
+pub async fn convert_eol_inner(path: &Path, target: &str) -> AppResult<()> {
+    let bytes = tokio::fs::read(path).await?;
+    let text = std::str::from_utf8(&bytes).map_err(|_| AppError::InvalidUtf8)?;
+    let normalized = text.replace("\r\n", "\n");
+    let new_text = match target {
+        "LF" => normalized,
+        "CRLF" => normalized.replace('\n', "\r\n"),
+        other => {
+            return Err(AppError::Internal(format!("unknown EOL target: {other}")));
+        }
+    };
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = path
+        .file_name()
+        .map_or_else(|| "file".to_string(), |s| s.to_string_lossy().into_owned());
+    let tmp = parent.join(format!(".{file_name}.eol.tmp"));
+    tokio::fs::write(&tmp, new_text.as_bytes()).await?;
+    tokio::fs::rename(&tmp, path).await?;
+    Ok(())
+}
+
+/// Inner pure function for testing.
+///
+/// # Errors
+/// Returns [`AppError::Internal`] for unknown encoding labels or I/O failure.
+pub async fn read_file_with_encoding_inner(path: &Path, encoding: &str) -> AppResult<OpenedFile> {
+    let bytes = tokio::fs::read(path).await?;
+    let enc = encoding_rs::Encoding::for_label(encoding.as_bytes())
+        .ok_or_else(|| AppError::Internal(format!("unknown encoding: {encoding}")))?;
+    let (cow, _, had_errors) = enc.decode(&bytes);
+    if had_errors {
+        return Err(AppError::Internal(format!(
+            "decode {encoding} produced replacement chars"
+        )));
+    }
+    let contents = cow.into_owned();
+    let language = detect_language(path);
+    let eol = detect_eol(&contents).to_string();
+    Ok(OpenedFile {
+        path: path.display().to_string(),
+        contents,
+        language,
+        eol,
+        encoding: encoding.to_string(),
+    })
+}
+
+/// Tauri command form of [`convert_eol_inner`].
+///
+/// # Errors
+/// Propagates errors from [`convert_eol_inner`].
+#[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
+pub async fn convert_eol(path: String, target: String) -> AppResult<()> {
+    convert_eol_inner(Path::new(&path), &target).await
+}
+
+/// Tauri command form of [`read_file_with_encoding_inner`].
+///
+/// # Errors
+/// Propagates errors from [`read_file_with_encoding_inner`].
+#[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
+pub async fn read_file_with_encoding(path: String, encoding: String) -> AppResult<OpenedFile> {
+    read_file_with_encoding_inner(Path::new(&path), &encoding).await
 }
 
 /// Save UTF-8 contents to a file path via Tauri command.
