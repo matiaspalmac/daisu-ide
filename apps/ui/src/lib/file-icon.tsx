@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { memo, type JSX } from "react";
 import {
   BookOpen,
   Braces,
@@ -76,7 +76,7 @@ const SPECIAL: Record<string, IconSpec> = {
 
 const FALLBACK: IconSpec = { Icon: File, color: "#888" };
 
-export function FileIcon({
+function FileIconImpl({
   name,
   size = 14,
 }: {
@@ -87,3 +87,5 @@ export function FileIcon({
   const spec = SPECIAL[name] ?? EXT_MAP[ext] ?? FALLBACK;
   return <spec.Icon size={size} color={spec.color} strokeWidth={1.5} />;
 }
+
+export const FileIcon = memo(FileIconImpl);

@@ -1,32 +1,28 @@
 import type { JSX } from "react";
 import {
   BarChart3,
+  BookOpen,
   Bookmark,
   Box,
   CheckSquare,
-  FileBox,
+  FileCode2,
+  GitBranch,
   Hexagon,
   History,
-  Layout,
-  Link,
   MessageSquare,
-  MoreHorizontal,
   Music2,
-  Share2,
   type LucideIcon,
 } from "lucide-react";
 import { useUI } from "../../stores/uiStore";
 
 const ROW_1: LucideIcon[] = [
   Music2,
-  FileBox,
+  FileCode2,
   History,
   Bookmark,
   MessageSquare,
-  Layout,
-  Share2,
-  Link,
-  MoreHorizontal,
+  BookOpen,
+  GitBranch,
 ];
 const ROW_2: LucideIcon[] = [CheckSquare, Box, Hexagon, BarChart3];
 

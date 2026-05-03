@@ -12,7 +12,6 @@ import {
   User,
   X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -256,17 +255,6 @@ export function TitleBar(): JSX.Element {
 
       {/* Spacer right */}
       <div className="flex-1" data-tauri-drag-region />
-
-      {/* Sign-in CTA — disabled */}
-      <Button
-        variant="warn"
-        size="sm"
-        disabled
-        className="self-center mr-2"
-        title="Próximamente"
-      >
-        Iniciar Sesión
-      </Button>
 
       {/* User avatar — placeholder */}
       <button
