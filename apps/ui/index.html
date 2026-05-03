@@ -4,8 +4,39 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Daisu IDE</title>
+    <style>
+      /* Inline so the splash paints before any JS or CSS chunk loads. Removed
+         by main.tsx once the React tree is ready. */
+      html, body { margin: 0; background: #0E0E13; }
+      #daisu-splash {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(circle at 50% 42%, #1C1C25 0%, #14141B 60%, #0A0A0F 100%);
+        color: #D4A574;
+        z-index: 99999;
+        opacity: 0;
+        animation: daisu-splash-in 320ms ease-out forwards;
+        pointer-events: none;
+      }
+      #daisu-splash[data-leaving="1"] {
+        animation: daisu-splash-out 320ms ease-out forwards;
+      }
+      #daisu-splash > span {
+        font-family: "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", "Times New Roman", serif;
+        font-size: 96px;
+        font-weight: 300;
+        letter-spacing: -0.02em;
+        text-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
+        opacity: 0.92;
+      }
+      @keyframes daisu-splash-in  { to { opacity: 1; } }
+      @keyframes daisu-splash-out { to { opacity: 0; } }
+    </style>
   </head>
   <body>
+    <div id="daisu-splash"><span aria-hidden="true">大</span></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

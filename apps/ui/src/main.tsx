@@ -13,3 +13,13 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+// Tear down the inline boot splash once React paints. 320ms hold + 320ms
+// fade out feels like a deliberate breath, not a stutter.
+const splash = document.getElementById("daisu-splash");
+if (splash) {
+  window.setTimeout(() => {
+    splash.dataset["leaving"] = "1";
+    window.setTimeout(() => splash.remove(), 320);
+  }, 320);
+}
