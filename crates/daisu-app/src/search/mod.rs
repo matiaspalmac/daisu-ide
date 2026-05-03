@@ -4,6 +4,7 @@
 
 pub mod matcher;
 pub mod registry;
+pub mod replacer;
 pub mod searcher;
 pub mod walker;
 
@@ -63,4 +64,25 @@ pub struct SearchHitEvent {
 pub struct SearchProgressEvent {
     pub request_id: String,
     pub files_searched: u32,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct ReplaceRequest {
+    pub options: SearchOptions,
+    pub replacement: String,
+    pub hits: Vec<SearchHit>,
+    pub excluded_hit_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ReplaceError {
+    pub path: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ReplaceResults {
+    pub files_modified: u32,
+    pub total_replacements: u32,
+    pub errors: Vec<ReplaceError>,
 }
