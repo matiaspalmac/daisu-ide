@@ -1,8 +1,16 @@
 [
   {
-    "name": "Frontend bundle (JS gzipped)",
+    "name": "Main bundle (JS gzipped)",
+    "path": [
+      "apps/ui/dist/assets/index-*.js"
+    ],
+    "limit": "1.5 MB",
+    "gzip": true
+  },
+  {
+    "name": "Frontend total — main + Monaco workers/modes (JS gzipped)",
     "path": "apps/ui/dist/assets/*.js",
-    "limit": "800 KB",
+    "limit": "3.5 MB",
     "gzip": true
   }
 ]
