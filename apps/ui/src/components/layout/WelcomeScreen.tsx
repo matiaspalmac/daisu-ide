@@ -1,13 +1,13 @@
 import type { JSX } from "react";
-import { useCallback, useEffect, useState } from "react";
-import { CornerDownRight, FileText, FilePlus, FolderOpen, RotateCcw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FilePlus, FileText, FolderOpen, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useTabs, getScratchUntitled } from "../../stores/tabsStore";
 import { useUI } from "../../stores/uiStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { translateError } from "../../lib/error-translate";
 
-interface CardSpec {
+interface ActionSpec {
   kbd: string;
   Icon: typeof FilePlus;
   label: string;
@@ -21,38 +21,38 @@ interface Tip {
 
 const TIPS: Tip[] = [
   {
-    title: "Ctrl+Shift+P abre la paleta de comandos",
-    body: "Accede a todas las funciones de Daisu escribiendo lo que necesitas hacer.",
-  },
-  {
-    title: "Ctrl+/ comenta código rápidamente",
-    body: "Comenta o descomenta líneas sin escribir los símbolos manualmente.",
+    title: "Ctrl+Shift+P abre la paleta",
+    body: "Todo el IDE a un atajo. Escribí lo que necesitás hacer.",
   },
   {
     title: "Ctrl+B alterna la barra lateral",
-    body: "Maximiza el área del editor cuando necesites concentrarte.",
+    body: "Maximiza el editor cuando necesites concentrarte.",
   },
   {
-    title: "Ctrl+Shift+F busca en todo el proyecto",
-    body: "Busca cualquier texto a través de los archivos del workspace.",
+    title: "Ctrl+/ comenta líneas",
+    body: "Comenta o descomenta sin escribir símbolos.",
   },
   {
-    title: "Ctrl+W cierra la pestaña activa",
-    body: "Cierra rápidamente la pestaña en la que estás trabajando.",
+    title: "Ctrl+Shift+F busca en el proyecto",
+    body: "Busca cualquier texto en todo el workspace.",
+  },
+  {
+    title: "F2 renombra archivos",
+    body: "Selecciona en el árbol y presiona F2 para renombrar.",
   },
   {
     title: "Tabs arrastrables",
-    body: "Reordena tus pestañas arrastrándolas dentro de la barra de pestañas.",
-  },
-  {
-    title: "Click derecho en explorador",
-    body: "Abre el menú contextual con acciones de archivo (renombrar, eliminar, etc).",
-  },
-  {
-    title: "F2 para renombrar",
-    body: "Selecciona un archivo en el árbol y presiona F2 para renombrarlo en línea.",
+    body: "Reordená pestañas arrastrándolas dentro de la barra.",
   },
 ];
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 6) return "buenas noches — momento tranquilo para escribir";
+  if (h < 12) return "buenos días — café y un editor que no se mete en el medio";
+  if (h < 19) return "buenas tardes — bienvenido de vuelta";
+  return "buenas noches — código y silencio";
+}
 
 export function WelcomeScreen(): JSX.Element {
   const newTab = useTabs((s) => s.newTab);
@@ -61,17 +61,15 @@ export function WelcomeScreen(): JSX.Element {
   const openWorkspace = useWorkspace((s) => s.openWorkspace);
   const recents = useWorkspace((s) => s.recents);
   const pushToast = useUI((s) => s.pushToast);
-  const [tipIdx, setTipIdx] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [tipIdx, setTipIdx] = useState(() => Math.floor(Math.random() * TIPS.length));
   const [scratchCount, setScratchCount] = useState(() => getScratchUntitled().length);
 
   useEffect(() => {
-    if (paused) return;
     const id = window.setInterval(() => {
       setTipIdx((i) => (i + 1) % TIPS.length);
-    }, 5000);
+    }, 12000);
     return () => window.clearInterval(id);
-  }, [paused]);
+  }, []);
 
   const handleOpenFile = useCallback(async (): Promise<void> => {
     try {
@@ -91,49 +89,32 @@ export function WelcomeScreen(): JSX.Element {
     }
   }, [openWorkspace, pushToast]);
 
-  const cards: CardSpec[] = [
+  const actions: ActionSpec[] = [
     { kbd: "Ctrl+N", Icon: FilePlus, label: "Nuevo archivo", onClick: () => newTab() },
     { kbd: "Ctrl+O", Icon: FileText, label: "Abrir archivo", onClick: handleOpenFile },
     { kbd: "Ctrl+K O", Icon: FolderOpen, label: "Abrir carpeta", onClick: handleOpenFolder },
   ];
 
   const tip = TIPS[tipIdx]!;
+  const greetingText = useMemo(greeting, []);
 
   return (
-    <section
-      className="h-full grid place-items-center overflow-auto"
-      style={{ backgroundImage: "var(--body-gradient)", backgroundColor: "var(--bg-base)" }}
-    >
-      <div
-        className="flex flex-col items-center gap-12 py-12"
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-      >
-        <div className="grid grid-cols-3 gap-4">
-          {cards.map((c) => (
-            <button
-              key={c.kbd}
-              type="button"
-              onClick={() => void c.onClick()}
-              className="group relative w-40 h-28 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-4 flex flex-col items-center justify-center gap-2 hover:border-[var(--border-strong)] hover:shadow-[var(--glow-cyan-sm)] hover:-translate-y-px transition-all overflow-hidden"
-            >
-              <span
-                aria-hidden="true"
-                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent)]/40 to-transparent group-hover:via-[var(--accent)]"
-              />
-              <span className="absolute top-2 right-2 inline-flex items-center gap-1 bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/30 rounded-[var(--radius-sm)] px-1.5 py-0.5 font-mono text-[10px]">
-                <CornerDownRight size={9} />
-                {c.kbd}
-              </span>
-              <c.Icon size={26} strokeWidth={1.2} className="text-[var(--fg-secondary)]" />
-              <span className="text-sm text-[var(--fg-primary)]">{c.label}</span>
-            </button>
-          ))}
-        </div>
+    <section className="daisu-welcome" aria-label="Pantalla de bienvenida">
+      <div className="daisu-welcome-inner">
+        <header>
+          <div className="daisu-welcome-mark">
+            <span className="daisu-welcome-glyph" aria-hidden="true">
+              大
+            </span>
+            <span className="daisu-welcome-wordmark">daisu</span>
+          </div>
+          <p className="daisu-welcome-greeting">{greetingText}</p>
+        </header>
 
         {scratchCount > 0 && (
           <button
             type="button"
+            className="daisu-welcome-recover"
             onClick={() => {
               const n = recoverScratch();
               setScratchCount(0);
@@ -142,79 +123,60 @@ export function WelcomeScreen(): JSX.Element {
                 level: "success",
               });
             }}
-            className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)] bg-[var(--warn-soft)] border border-[var(--warn)]/40 text-[var(--warn)] hover:shadow-[var(--glow-orange-sm)] transition-shadow"
           >
-            <RotateCcw size={14} />
-            <span className="text-sm">
-              Recuperar {scratchCount} pestaña(s) Untitled sin guardar
-            </span>
+            <ArrowCounterClockwise size={13} />
+            Recuperar {scratchCount} pestaña(s) sin guardar
           </button>
         )}
 
-        {recents.length > 0 && (
-          <div className="w-[512px] flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-wider text-[var(--fg-muted)]">
-              Recientes
-            </span>
-            <ul className="flex flex-col gap-1">
-              {recents.slice(0, 5).map((r) => (
-                <li key={r.path}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void openWorkspace(r.path).catch((e) =>
-                        pushToast({ message: String(e), level: "error" }),
-                      );
-                    }}
-                    className="w-full flex items-center justify-between gap-3 px-3 py-1.5 rounded-[var(--radius-sm)] bg-transparent hover:bg-[var(--accent-soft)] text-left transition-colors"
-                  >
-                    <span className="text-sm text-[var(--fg-primary)] truncate">
-                      {r.name}
-                    </span>
-                    <span className="text-[10px] font-mono text-[var(--fg-muted)] truncate max-w-[280px]">
-                      {r.path}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <div className="daisu-welcome-actions">
+          {actions.map((a) => (
+            <button
+              key={a.kbd}
+              type="button"
+              className="daisu-welcome-action"
+              onClick={() => void a.onClick()}
+            >
+              <span className="daisu-welcome-action-icon">
+                <a.Icon size={16} />
+              </span>
+              <span className="daisu-welcome-action-label">{a.label}</span>
+              <span className="daisu-welcome-action-kbd">{a.kbd}</span>
+            </button>
+          ))}
+        </div>
 
-        <div className="w-[512px] flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wider text-[var(--fg-muted)]">Consejos</span>
-            <div className="flex gap-1">
-              {TIPS.map((_, i) => (
+        {recents.length > 0 && (
+          <div>
+            <p className="daisu-welcome-section-title">
+              <span className="daisu-glyph" aria-hidden="true">履</span>
+              Recientes
+            </p>
+            <div className="daisu-welcome-recents">
+              {recents.slice(0, 5).map((r) => (
                 <button
-                  key={i}
+                  key={r.path}
                   type="button"
+                  className="daisu-welcome-recent"
                   onClick={() => {
-                    setTipIdx(i);
-                    setPaused(true);
-                    window.setTimeout(() => setPaused(false), 8000);
+                    void openWorkspace(r.path).catch((e) =>
+                      pushToast({ message: String(e), level: "error" }),
+                    );
                   }}
-                  aria-label={`Tip ${i + 1}`}
-                  aria-current={i === tipIdx ? "true" : undefined}
-                  className="w-4 h-4 grid place-items-center group"
                 >
-                  <span
-                    className={
-                      "w-1.5 h-1.5 rounded-full transition-all " +
-                      (i === tipIdx
-                        ? "bg-[var(--accent)] shadow-[var(--glow-cyan-sm)]"
-                        : "bg-[var(--fg-muted)]/40 group-hover:bg-[var(--fg-muted)]")
-                    }
-                  />
+                  <span className="daisu-welcome-recent-name">{r.name}</span>
+                  <span className="daisu-welcome-recent-path">{r.path}</span>
                 </button>
               ))}
             </div>
           </div>
-          <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-4 text-center">
-            <p className="text-sm text-[var(--fg-primary)]">{tip.title}</p>
-            <p className="text-xs text-[var(--fg-secondary)] mt-1">{tip.body}</p>
-          </div>
-        </div>
+        )}
+
+        <p className="daisu-welcome-tip" aria-live="polite">
+          <span className="daisu-welcome-tip-prefix" aria-hidden="true">訓</span>
+          <span className="sr-only">tip:</span>
+          {tip.title}. <span style={{ color: "var(--fg-muted)" }}>{tip.body}</span>
+        </p>
       </div>
     </section>
   );
