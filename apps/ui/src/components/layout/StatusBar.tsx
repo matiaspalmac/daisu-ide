@@ -1,9 +1,10 @@
 import type { JSX } from "react";
-import { PanelLeft, PanelRight, Settings } from "lucide-react";
+import { useMemo } from "react";
+import { GitBranch, Sidebar, SidebarSimple, Gear } from "@phosphor-icons/react";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useUI } from "../../stores/uiStore";
 import { useSettings } from "../../stores/settingsStore";
-import { BranchSegment } from "../statusbar/BranchSegment";
+import { useGit } from "../../stores/gitStore";
 import { SearchProgress } from "../statusbar/SearchProgress";
 import { CursorSegment } from "../statusbar/CursorSegment";
 import { EolSegment } from "../statusbar/EolSegment";
@@ -22,6 +23,13 @@ export function StatusBar(): JSX.Element {
   const toggleSidebar = useUI((s) => s.toggleSidebar);
   const toggleAgents = useUI((s) => s.toggleAgentsPanel);
   const design = useSettings((s) => s.settings.design);
+  const rootPath = useWorkspace((s) => s.rootPath);
+  const gitInfo = useGit((s) => s.info);
+  const projectName = useMemo(() => {
+    if (!rootPath) return null;
+    const parts = rootPath.split(/[\\/]/).filter(Boolean);
+    return parts[parts.length - 1] ?? rootPath;
+  }, [rootPath]);
 
   return (
     <footer
@@ -37,9 +45,33 @@ export function StatusBar(): JSX.Element {
         <IndentSegment />
       </div>
 
-      {/* Center: branch + search progress */}
-      <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
-        <BranchSegment />
+      {/* Center: workspace pill + search progress */}
+      <div className="flex-1 flex items-center justify-center gap-3 min-w-0">
+        {projectName && (
+          <div className="daisu-workspace-pill daisu-workspace-pill-sm">
+            <span className="daisu-glyph" aria-hidden="true">場</span>
+            <span className="daisu-workspace-name">{projectName}</span>
+            {gitInfo?.branch && (
+              <>
+                <span className="daisu-workspace-sep" aria-hidden="true">·</span>
+                <span className="daisu-workspace-branch">
+                  <GitBranch size={10} />
+                  {gitInfo.branch}
+                  {gitInfo.ahead > 0 && (
+                    <span className="daisu-workspace-ahead" title={`${gitInfo.ahead} commits adelante`}>
+                      ↑{gitInfo.ahead}
+                    </span>
+                  )}
+                  {gitInfo.behind > 0 && (
+                    <span className="daisu-workspace-behind" title={`${gitInfo.behind} commits atrás`}>
+                      ↓{gitInfo.behind}
+                    </span>
+                  )}
+                </span>
+              </>
+            )}
+          </div>
+        )}
         <SearchProgress />
       </div>
 
@@ -54,7 +86,7 @@ export function StatusBar(): JSX.Element {
           aria-label="Configuración"
           onClick={() => openSettings()}
         >
-          <Settings size={12} />
+          <Gear size={12} />
         </button>
         <span className="h-3 w-px bg-[var(--border-subtle)] mx-1" aria-hidden="true" />
         </>
@@ -68,7 +100,7 @@ export function StatusBar(): JSX.Element {
           aria-label="Panel lateral"
           onClick={() => toggleSidebar()}
         >
-          <PanelLeft size={12} />
+          <Sidebar size={12} />
         </button>
         <button
           type="button"
@@ -77,13 +109,11 @@ export function StatusBar(): JSX.Element {
           aria-label="Panel de chat"
           onClick={() => toggleAgents()}
         >
-          <PanelRight size={12} />
+          <SidebarSimple size={12} />
         </button>
         </>
         )}
       </div>
-      {/* Workspace name retained from rootPath for screen readers but not visually rendered. */}
-      <span className="sr-only">{useWorkspace.getState().rootPath ?? ""}</span>
     </footer>
   );
 }

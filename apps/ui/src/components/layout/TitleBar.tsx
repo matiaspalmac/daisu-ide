@@ -1,8 +1,8 @@
 import type { JSX } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { Menu, Minus, Square, User, X } from "lucide-react";
+import { Crosshair, List, Minus, Square, User, X } from "@phosphor-icons/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,17 @@ import { useWorkspace } from "../../stores/workspaceStore";
 import { useSettings } from "../../stores/settingsStore";
 import { translateError } from "../../lib/error-translate";
 
+function periodInfo(d: Date): { glyph: string; label: string } {
+  const h = d.getHours();
+  if (h >= 5 && h < 12) return { glyph: "朝", label: "mañana" };
+  if (h >= 12 && h < 18) return { glyph: "昼", label: "tarde" };
+  if (h >= 18 && h < 21) return { glyph: "夕", label: "atardecer" };
+  return { glyph: "夜", label: "noche" };
+}
+function formatClock(d: Date): string {
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
 export function TitleBar(): JSX.Element {
   const openSettings = useUI((s) => s.openSettings);
   const toggleSearch = useUI((s) => s.toggleSearchPanel);
@@ -25,7 +36,17 @@ export function TitleBar(): JSX.Element {
   const openTab = useTabs((s) => s.openTab);
   const saveActive = useTabs((s) => s.saveActive);
   const openWorkspace = useWorkspace((s) => s.openWorkspace);
+  const focusMode = useUI((s) => s.focusMode);
+  const toggleFocusMode = useUI((s) => s.toggleFocusMode);
   const design = useSettings((s) => s.settings.design);
+
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const clock = formatClock(now);
+  const period = periodInfo(now);
 
   const handleOpen = useCallback(async (): Promise<void> => {
     try {
@@ -75,7 +96,7 @@ export function TitleBar(): JSX.Element {
 
   return (
     <header
-      className="h-[var(--titlebar-h)] bg-[var(--bg-panel)] border-b border-[var(--border-subtle)] flex items-stretch text-[12px] text-[var(--fg-secondary)] select-none"
+      className="h-[var(--titlebar-h)] bg-[var(--bg-panel)] border-b border-[var(--border-subtle)] flex items-stretch text-[12px] text-[var(--fg-secondary)] select-none relative"
     >
       {/* Hamburger */}
       {design.titleBarHamburger && (
@@ -86,7 +107,7 @@ export function TitleBar(): JSX.Element {
           title="Menú"
           aria-label="Menú"
         >
-          <Menu size={14} strokeWidth={1.5} />
+          <List size={14} />
         </button>
       )}
 
@@ -224,8 +245,30 @@ export function TitleBar(): JSX.Element {
       </nav>
       )}
 
-      {/* Spacer (drag region) */}
+      {/* Centered clock — absolute so it stays centered regardless of side widths */}
+      <div
+        className="daisu-titlebar-clock"
+        title={`${period.label} — ${clock}`}
+        aria-label={`Hora actual ${clock}, ${period.label}`}
+      >
+        <span className="daisu-titlebar-clock-glyph" aria-hidden="true">{period.glyph}</span>
+        <span className="daisu-titlebar-clock-time">{clock}</span>
+      </div>
+
+      {/* Drag spacer */}
       <div className="flex-1" data-tauri-drag-region />
+
+      {/* Focus mode toggle */}
+      <button
+        type="button"
+        className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+        onClick={() => toggleFocusMode()}
+        title={focusMode ? "Salir de modo enfoque (静)" : "Modo enfoque (静)"}
+        aria-label="Modo enfoque"
+        aria-pressed={focusMode}
+      >
+        {focusMode ? <span className="daisu-glyph" style={{ fontSize: 14, opacity: 1 }}>静</span> : <Crosshair size={13} />}
+      </button>
 
       {/* User avatar — placeholder */}
       {design.titleBarUserAvatar && (
@@ -235,7 +278,7 @@ export function TitleBar(): JSX.Element {
           title="Cuenta"
           aria-label="Cuenta"
         >
-          <User size={14} strokeWidth={1.5} />
+          <User size={14} />
         </button>
       )}
 
