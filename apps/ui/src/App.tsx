@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useEffect } from "react";
-import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
+import { Group, Panel, Separator } from "react-resizable-panels";
 import { listen } from "@tauri-apps/api/event";
 import { TitleBar } from "./components/layout/TitleBar";
 import { Toolbar } from "./components/layout/Toolbar";
@@ -23,11 +23,10 @@ import { useEditorCursorWiring } from "./hooks/useEditorCursor";
 import { useGit } from "./stores/gitStore";
 import { copy } from "./lib/copy";
 
-// Note: react-resizable-panels v4 uses percentage-string sizing.
-// We use useDefaultLayout({ groupId, storage }) to persist sizes to
-// localStorage instead of syncing to Zustand on every drag (avoids
-// feedback loops). Approximate percent defaults assume a ~1280px window:
-//   240/1280 ≈ 19% sidebar, 320/1280 ≈ 25% agents.
+// react-resizable-panels v4 uses percentage-string sizing on each Panel
+// `defaultSize` prop. Layout persistence (useDefaultLayout) was dropped
+// in P1 hotfix due to v4 layout-data assertion crashes on fresh storage;
+// re-introduce after upstream fix (or migrate persistence) in P6+.
 
 export function App(): JSX.Element {
   useKeybindings();
@@ -42,15 +41,6 @@ export function App(): JSX.Element {
   const saveTabsSession = useTabs((s) => s.saveSession);
   const closeAllTabs = useTabs((s) => s.closeAll);
   const workspaceHash = useWorkspace((s) => s.workspaceHash);
-
-  const mainSplit = useDefaultLayout({
-    groupId: "daisu-main-split",
-    storage: typeof window !== "undefined" ? window.localStorage : memoryStorage,
-  });
-  const centerSplit = useDefaultLayout({
-    groupId: "daisu-center-split",
-    storage: typeof window !== "undefined" ? window.localStorage : memoryStorage,
-  });
 
   useEffect(() => {
     loadSettings().catch(() => undefined);
@@ -178,8 +168,6 @@ export function App(): JSX.Element {
         orientation="horizontal"
         className="daisu-main-split"
         id="daisu-main-split"
-        defaultLayout={mainSplit.defaultLayout}
-        onLayoutChange={mainSplit.onLayoutChange}
       >
         {!sidebarCollapsed && (
           <>
@@ -189,12 +177,10 @@ export function App(): JSX.Element {
             <Separator className="daisu-resize-handle" />
           </>
         )}
-        <Panel id="center" minSize="30%">
+        <Panel id="center" defaultSize="56%" minSize="30%">
           <Group
             orientation="vertical"
             id="daisu-center-split"
-            defaultLayout={centerSplit.defaultLayout}
-            onLayoutChange={centerSplit.onLayoutChange}
           >
             <Panel id="editor" defaultSize={searchOpen ? "70%" : "100%"} minSize="20%">
               <EditorArea />
@@ -240,13 +226,3 @@ function CloseConfirmModalConnected(): JSX.Element | null {
   );
 }
 
-// In-memory storage fallback for non-browser environments (SSR / tests).
-const memoryStorage: Pick<Storage, "getItem" | "setItem"> = (() => {
-  const map = new Map<string, string>();
-  return {
-    getItem: (key: string) => map.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      map.set(key, value);
-    },
-  };
-})();
