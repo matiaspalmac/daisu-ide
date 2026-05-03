@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Bell, CircleSlash, PanelLeft, PanelRight, Settings, TriangleAlert } from "lucide-react";
+import { PanelLeft, PanelRight, Settings } from "lucide-react";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useUI } from "../../stores/uiStore";
 import { useSettings } from "../../stores/settingsStore";
@@ -47,47 +47,6 @@ export function StatusBar(): JSX.Element {
       <div className="flex items-center gap-1 flex-shrink-0">
         {design.statusBarUtility && (
         <>
-        <button
-          type="button"
-          className={utilityCls}
-          title="Errores"
-          aria-label="Errores"
-          onClick={() =>
-            useUI
-              .getState()
-              .pushToast({ message: "Panel de problemas en M3+", level: "info" })
-          }
-        >
-          <CircleSlash size={12} />
-          <span>0</span>
-        </button>
-        <button
-          type="button"
-          className={utilityCls}
-          title="Advertencias"
-          aria-label="Advertencias"
-          onClick={() =>
-            useUI
-              .getState()
-              .pushToast({ message: "Panel de problemas en M3+", level: "info" })
-          }
-        >
-          <TriangleAlert size={12} />
-          <span>0</span>
-        </button>
-        <button
-          type="button"
-          className={utilityCls}
-          title="Notificaciones"
-          aria-label="Notificaciones"
-          onClick={() =>
-            useUI
-              .getState()
-              .pushToast({ message: "Centro de notificaciones en M4+", level: "info" })
-          }
-        >
-          <Bell size={12} />
-        </button>
         <button
           type="button"
           className={utilityCls}
