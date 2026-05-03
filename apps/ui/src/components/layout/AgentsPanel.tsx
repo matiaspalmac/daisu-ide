@@ -1,13 +1,31 @@
-import type { ChangeEvent, JSX } from "react";
+import type { ChangeEvent, JSX, KeyboardEvent } from "react";
 import { useState } from "react";
 import { ArrowUp, FileText, History, MessageSquarePlus } from "lucide-react";
+import { useUI } from "../../stores/uiStore";
 
 const HEADER_BTN =
   "w-6 h-6 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-[var(--radius-sm)] transition-colors";
 
 export function AgentsPanel(): JSX.Element {
   const [text, setText] = useState("");
+  const pushToast = useUI((s) => s.pushToast);
   const canSend = text.trim().length > 0;
+
+  const send = (): void => {
+    if (!canSend) return;
+    pushToast({
+      message: "Chat con agentes disponible en M4 — provider configurado en M3",
+      level: "info",
+    });
+    setText("");
+  };
+
+  const onKey = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  };
 
   return (
     <aside
@@ -50,7 +68,8 @@ export function AgentsPanel(): JSX.Element {
               el.style.height = "auto";
               el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
             }}
-            placeholder="Escribe un mensaje..."
+            onKeyDown={onKey}
+            placeholder="Escribe un mensaje... (Shift+Enter = nueva línea)"
             rows={1}
             className="flex-1 bg-transparent border-0 outline-none resize-none text-sm text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] max-h-32 overflow-y-auto"
           />
@@ -59,6 +78,10 @@ export function AgentsPanel(): JSX.Element {
             disabled={!canSend}
             aria-disabled={!canSend}
             aria-label="Enviar"
+            onMouseDown={(e) => {
+              if (e.button !== 0) return;
+              send();
+            }}
             className="w-7 h-7 grid place-items-center bg-[var(--warn)] text-[var(--fg-inverse)] rounded-[var(--radius-sm)] hover:bg-[var(--warn-bright)] shadow-[var(--glow-orange-sm)] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed"
           >
             <ArrowUp size={14} strokeWidth={2} />

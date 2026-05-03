@@ -82,6 +82,11 @@ export function ActivityBar(): JSX.Element {
   const buttonsRef = useRef<Array<HTMLButtonElement | null>>([]);
 
   const onKeyNav = (e: KeyboardEvent<HTMLButtonElement>, idx: number): void => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      items[idx]?.action();
+      return;
+    }
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     e.preventDefault();
     const dir = e.key === "ArrowDown" ? 1 : -1;

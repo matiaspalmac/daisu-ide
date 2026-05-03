@@ -67,30 +67,54 @@ export function Editor(): JSX.Element {
     };
   }, []);
 
-  // Force-blur Monaco when mousedown/pointerdown happens OUTSIDE its DOM.
-  // Monaco has no public blur() API (issues #307/#548) and aggressively
-  // captures focus on every keystroke + mouseenter. Capture-phase listener
-  // fires BEFORE Monaco's own document handlers and any focus-restore logic.
+  // Force-blur Monaco when mousedown/pointerdown happens OUTSIDE its DOM,
+  // AND block Monaco from re-focusing for the next ~150ms. Monaco has no
+  // public blur() API (issues #307/#548) and aggressively re-grabs focus on
+  // every change, fighting the user's outside click and producing the
+  // "needs-double-click" symptom. The capture-phase guard runs BEFORE
+  // Monaco's own document listeners and the focusin block kills any
+  // synchronous re-focus the runtime tries to perform during the same tick.
   useEffect(() => {
-    const blurEditor = (e: MouseEvent | PointerEvent): void => {
+    let blockUntil = 0;
+
+    const editorContains = (target: EventTarget | null): boolean => {
       const editor = editorRef.current;
-      if (!editor) return;
-      const editorEl = editor.getDomNode();
+      const editorEl = editor?.getDomNode();
+      if (!editorEl || !target) return false;
+      return editorEl.contains(target as Node);
+    };
+
+    const blurEditor = (e: MouseEvent | PointerEvent): void => {
+      if (editorContains(e.target)) return;
+      blockUntil = performance.now() + 150;
+      const editor = editorRef.current;
+      const editorEl = editor?.getDomNode();
       if (!editorEl) return;
-      const target = e.target as Node | null;
-      if (target && editorEl.contains(target)) return;
-      // Try the inner hidden textarea first (Monaco's actual focus target).
       const ta = editorEl.querySelector("textarea.inputarea") as HTMLTextAreaElement | null;
       if (ta) ta.blur();
-      // Belt-and-suspenders: nuke any focused element inside the editor DOM.
       const active = document.activeElement as HTMLElement | null;
       if (active && editorEl.contains(active)) active.blur();
     };
+
+    const guardFocusIn = (e: FocusEvent): void => {
+      if (performance.now() >= blockUntil) return;
+      if (!editorContains(e.target)) return;
+      const editor = editorRef.current;
+      const editorEl = editor?.getDomNode();
+      if (!editorEl) return;
+      const ta = editorEl.querySelector("textarea.inputarea") as HTMLTextAreaElement | null;
+      if (ta) ta.blur();
+      const active = document.activeElement as HTMLElement | null;
+      if (active && editorEl.contains(active)) active.blur();
+    };
+
     document.addEventListener("mousedown", blurEditor, true);
     document.addEventListener("pointerdown", blurEditor, true);
+    document.addEventListener("focusin", guardFocusIn, true);
     return () => {
       document.removeEventListener("mousedown", blurEditor, true);
       document.removeEventListener("pointerdown", blurEditor, true);
+      document.removeEventListener("focusin", guardFocusIn, true);
     };
   }, []);
 
