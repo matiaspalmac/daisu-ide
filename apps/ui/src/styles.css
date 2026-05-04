@@ -122,6 +122,38 @@
   }
 }
 
+/* Daisu Nocturne unified scrollbar.
+ * Thin sumi-ink track, kintsugi-gold thumb, no arrows. Chrome/Edge
+ * (webkit) get pseudo-elements; Firefox uses scrollbar-color. Any
+ * container that opts out of scrollbars sets `scrollbar-width: none`
+ * and `::-webkit-scrollbar { display: none }` locally — those overrides
+ * still win against the global rule. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong, rgba(212, 165, 116, 0.32));
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+  transition: background var(--motion-fast) var(--ease-out);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 html, body, #root {
   margin: 0;
   height: 100%;
@@ -625,14 +657,23 @@ body {
 .daisu-input-number { width: 80px; min-width: 0; }
 
 .daisu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background: var(--bg-elevated);
   color: var(--fg-primary);
   border: 1px solid var(--border-subtle);
-  height: 22px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 12px;
   font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   border-radius: var(--radius-sm);
+  transition: background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
 }
 .daisu-btn:hover {
   background: var(--accent-soft);
@@ -2135,9 +2176,14 @@ body.daisu-focus-mode header[class*="titlebar-h"]:hover { opacity: 1; }
 .daisu-agent-composer {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 6px;
   padding: 8px;
   border-top: 1px solid var(--border-subtle);
+}
+.daisu-agent-composer-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 .daisu-agent-input {
   width: 100%;

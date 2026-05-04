@@ -158,26 +158,28 @@ export function ChatPanel(): JSX.Element {
           rows={3}
           disabled={isStreaming}
         />
-        {isStreaming ? (
-          <button
-            type="button"
-            className="daisu-btn daisu-btn-danger"
-            onClick={() => void cancel()}
-            title="Cancelar (Esc)"
-          >
-            <Stop size={12} weight="fill" />
-            Cancelar
-          </button>
-        ) : (
-          <button
-            type="submit"
-            className="daisu-btn daisu-btn-primary"
-            disabled={!draft.trim()}
-          >
-            <PaperPlaneRight size={12} weight="fill" />
-            Enviar
-          </button>
-        )}
+        <div className="daisu-agent-composer-actions">
+          {isStreaming ? (
+            <button
+              type="button"
+              className="daisu-btn daisu-btn-danger"
+              onClick={() => void cancel()}
+              title="Cancelar (Esc)"
+            >
+              <Stop size={12} weight="fill" />
+              Cancelar
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="daisu-btn daisu-btn-primary"
+              disabled={!draft.trim()}
+            >
+              <PaperPlaneRight size={12} weight="fill" />
+              Enviar
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

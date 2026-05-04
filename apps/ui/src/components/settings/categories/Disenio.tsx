@@ -1,5 +1,12 @@
 import type { JSX } from "react";
 import { useSettings } from "../../../stores/settingsStore";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../ui/select";
 
 type Side = "left" | "right";
 
@@ -68,21 +75,25 @@ function DesignCard(props: DesignCardProps): JSX.Element {
         <h4 className="text-sm font-medium text-[var(--fg-primary)]">{props.title}</h4>
         <p className="text-xs text-[var(--fg-secondary)] mt-0.5">{props.desc}</p>
       </div>
-      <div className="flex items-end justify-between mt-auto gap-2">
+      <div className="flex items-center justify-between mt-auto gap-2">
         {props.selectKey && props.selectOptions ? (
-          <select
+          <Select
             value={design[props.selectKey]}
-            onChange={(e) => onSelect(e.target.value as Side)}
-            className="daisu-select max-w-[140px] text-xs bg-[var(--bg-base)] border-[var(--border-subtle)]"
+            onValueChange={(v) => onSelect(v as Side)}
           >
-            {props.selectOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="flex-1 min-w-0 h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {props.selectOptions.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
-          <span />
+          <span className="flex-1" />
         )}
         {props.toggleKey && (
           <button
@@ -91,16 +102,18 @@ function DesignCard(props: DesignCardProps): JSX.Element {
             aria-pressed={isOn}
             aria-label={`Toggle ${props.title}`}
             className={
-              "inline-flex h-5 w-9 items-center rounded-full transition-colors px-0.5 " +
+              "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors " +
               (isOn
-                ? "bg-[var(--warn)] shadow-[var(--glow-orange-sm)]"
+                ? "bg-[var(--accent)]"
                 : "bg-[var(--bg-base)] border border-[var(--border-subtle)]")
             }
           >
             <span
               className={
-                "block h-4 w-4 rounded-full bg-white transition-transform " +
-                (isOn ? "translate-x-4" : "translate-x-0")
+                "block h-3.5 w-3.5 rounded-full transition-transform shadow-sm " +
+                (isOn
+                  ? "translate-x-[18px] bg-[var(--bg-base)]"
+                  : "translate-x-[3px] bg-[var(--fg-primary)]")
               }
             />
           </button>
