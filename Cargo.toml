@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/daisu-app"]
+members = ["crates/daisu-app", "crates/daisu-agent"]
 
 [workspace.package]
 version = "0.2.0"
@@ -27,6 +27,16 @@ walkdir = "2.5"
 trash = "5"
 tokio-util = "0.7"
 sha1 = "0.11"
+async-trait = "0.1"
+tokio-stream = "0.1"
+futures = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+eventsource-stream = "0.2"
+async-stream = "0.3"
+keyring = "3"
+rusqlite = { version = "0.32", features = ["bundled"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"
