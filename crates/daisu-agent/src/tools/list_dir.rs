@@ -44,7 +44,7 @@ impl Tool for ListDir {
             for entry in std::fs::read_dir(&path_for_blocking)? {
                 let entry = entry?;
                 let name = entry.file_name().to_string_lossy().into_owned();
-                if name.starts_with('.') {
+                if name.starts_with('.') || is_os_hidden(&entry).unwrap_or(false) {
                     continue;
                 }
                 let file_type = entry.file_type()?;
@@ -63,4 +63,18 @@ impl Tool for ListDir {
             "entries": entries,
         }))
     }
+}
+
+#[cfg(target_os = "windows")]
+fn is_os_hidden(entry: &std::fs::DirEntry) -> AgentResult<bool> {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_HIDDEN: u32 = 0x2;
+    const FILE_ATTRIBUTE_SYSTEM: u32 = 0x4;
+    let attrs = entry.metadata()?.file_attributes();
+    Ok(attrs & (FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM) != 0)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_os_hidden(_entry: &std::fs::DirEntry) -> AgentResult<bool> {
+    Ok(false)
 }

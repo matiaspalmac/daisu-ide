@@ -25,12 +25,28 @@ pub struct ToolCall {
     pub arguments: Value,
 }
 
+/// Outcome of a tool dispatch.
+///
+/// Serialised externally-tagged so every variant becomes a JSON object
+/// with a single `kind` field — this keeps the TS union exhaustive and
+/// avoids the serde-internal-tag restriction on tuple variants.
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "kind", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum ToolResult {
-    Ok(Value),
+    Ok { value: Value },
     Denied { reason: String },
-    Error(String),
+    Error { message: String },
+}
+
+impl ToolResult {
+    fn ok(value: Value) -> Self {
+        Self::Ok { value }
+    }
+    fn err(message: impl Into<String>) -> Self {
+        Self::Error {
+            message: message.into(),
+        }
+    }
 }
 
 #[async_trait]
@@ -77,7 +93,7 @@ impl ToolRegistry {
         scope: &str,
     ) -> ToolResult {
         let Some(tool) = self.get(&call.name) else {
-            return ToolResult::Error(format!("unknown tool: {}", call.name));
+            return ToolResult::err(format!("unknown tool: {}", call.name));
         };
         let descriptor = tool.descriptor();
 
@@ -103,17 +119,17 @@ impl ToolRegistry {
                                 reason: "user denied".into(),
                             };
                         }
-                        Err(e) => return ToolResult::Error(e.to_string()),
+                        Err(e) => return ToolResult::err(e.to_string()),
                     }
                 }
-                Err(e) => return ToolResult::Error(e.to_string()),
+                Err(e) => return ToolResult::err(e.to_string()),
             }
         }
 
         match tool.execute(call.arguments, cwd).await {
-            Ok(value) => ToolResult::Ok(value),
+            Ok(value) => ToolResult::ok(value),
             Err(AgentError::PermissionDenied { reason, .. }) => ToolResult::Denied { reason },
-            Err(e) => ToolResult::Error(e.to_string()),
+            Err(e) => ToolResult::err(e.to_string()),
         }
     }
 }
@@ -123,9 +139,10 @@ impl Default for ToolRegistry {
         let mut reg = Self::new();
         reg.register(Arc::new(super::read_file::ReadFile));
         reg.register(Arc::new(super::list_dir::ListDir));
-        // Stubs — descriptors registered, executors panic until phase
-        // 2 wave 2 lands. They MUST exist so descriptors() and the
-        // dispatcher can be exercised end-to-end.
+        // Stubs — descriptors registered, executors return a typed
+        // ToolExecution error until phase 2 wave 2 lands. They MUST
+        // exist so descriptors() and the dispatcher can be exercised
+        // end-to-end without panicking.
         for stub in [
             ("grep", PermissionTier::Auto),
             ("find_files", PermissionTier::Auto),
@@ -186,23 +203,54 @@ impl Tool for StubTool {
 }
 
 /// Resolve a path argument relative to `cwd` and forbid escaping.
-/// Returned [`PathBuf`] is canonicalised when possible (best-effort —
-/// non-existent files are allowed for write tools later).
+///
+/// Strategy:
+/// 1. Build the candidate path (absolute or `cwd`-joined).
+/// 2. Lexically normalise it: every `..` must be balanced by a prior
+///    component, otherwise the path escapes regardless of whether
+///    `canonicalize` happens to succeed.
+/// 3. Canonicalise both candidate and `cwd` when possible. If the
+///    candidate doesn't exist yet (write tools), fall back to the
+///    normalised lexical path joined onto the canonical `cwd`.
+/// 4. Verify the resulting absolute path starts with `cwd`.
 pub(crate) fn resolve_within(cwd: &Path, raw: &str) -> AgentResult<PathBuf> {
     let candidate = if Path::new(raw).is_absolute() {
         PathBuf::from(raw)
     } else {
         cwd.join(raw)
     };
-    let canonical = candidate
-        .canonicalize()
-        .unwrap_or_else(|_| candidate.clone());
+    let normalised = lexical_normalise(&candidate).ok_or_else(|| AgentError::PermissionDenied {
+        tool: String::new(),
+        reason: format!("path escapes workspace: {raw}"),
+    })?;
     let cwd_canonical = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
-    if !canonical.starts_with(&cwd_canonical) {
+    let resolved = normalised
+        .canonicalize()
+        .unwrap_or_else(|_| normalised.clone());
+    if !resolved.starts_with(&cwd_canonical) && !normalised.starts_with(&cwd_canonical) {
         return Err(AgentError::PermissionDenied {
             tool: String::new(),
             reason: format!("path escapes workspace: {raw}"),
         });
     }
-    Ok(canonical)
+    Ok(resolved)
+}
+
+/// Lexically resolve `..` and `.` segments. Returns `None` when the
+/// path tries to walk above its root (which always escapes).
+fn lexical_normalise(path: &Path) -> Option<PathBuf> {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        use std::path::Component;
+        match component {
+            Component::ParentDir => {
+                if !out.pop() {
+                    return None;
+                }
+            }
+            Component::CurDir => {}
+            other => out.push(other.as_os_str()),
+        }
+    }
+    Some(out)
 }

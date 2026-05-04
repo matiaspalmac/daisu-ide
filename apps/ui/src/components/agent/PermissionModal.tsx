@@ -94,7 +94,8 @@ export function PermissionModal(): JSX.Element | null {
           <button
             type="button"
             className="daisu-btn"
-            onClick={() => void decide("denyalways")}
+            onClick={() => void decide("deny")}
+            title="Denegar esta vez (sin persistir el rechazo)"
           >
             Denegar y editar
           </button>

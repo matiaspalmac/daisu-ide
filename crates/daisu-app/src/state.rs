@@ -19,8 +19,9 @@ pub struct AppState {
     git_watcher: parking_lot::Mutex<Option<RecommendedWatcher>>,
     /// Shared, stateless tool registry. Built once at startup.
     pub tool_registry: Arc<ToolRegistry>,
-    /// Per-workspace permission gates. Created lazily on first
-    /// `agent_tool_dispatch` call for a given workspace path.
+    /// Per-workspace permission gates, keyed by canonicalised path.
+    /// Created lazily on first `agent_tool_dispatch` call. The cache is
+    /// bounded by `MAX_GATES`; oldest entries evict in insertion order.
     pub permission_gates: parking_lot::Mutex<HashMap<PathBuf, Arc<PermissionGate>>>,
 }
 
@@ -123,5 +124,26 @@ impl AppState {
     /// Drop the active git watcher (stops it). Called from `close_workspace`.
     pub fn drop_git_watcher(&self) {
         *self.git_watcher.lock() = None;
+    }
+
+    /// Drop a cached permission gate. Called from `close_workspace` so
+    /// per-workspace state doesn't accumulate forever in long sessions.
+    pub fn drop_permission_gate(&self, workspace: &PathBuf) {
+        self.permission_gates.lock().remove(workspace);
+    }
+
+    /// Insert a permission gate under a workspace key, evicting the
+    /// oldest entry once the cache exceeds `MAX_GATES`. Bounded so users
+    /// who jump between many projects don't grow the cache without
+    /// limit.
+    pub fn cache_permission_gate(&self, workspace: PathBuf, gate: Arc<PermissionGate>) {
+        const MAX_GATES: usize = 16;
+        let mut guard = self.permission_gates.lock();
+        if guard.len() >= MAX_GATES {
+            if let Some(stale) = guard.keys().next().cloned() {
+                guard.remove(&stale);
+            }
+        }
+        guard.insert(workspace, gate);
     }
 }

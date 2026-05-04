@@ -41,13 +41,14 @@ pub trait EventEmitter: Send + Sync {
     fn emit(&self, event: &str, payload: &PermissionRequestEvent) -> Result<(), String>;
 }
 
-/// No-op emitter for tests / non-Tauri callers. Always denies in
-/// practice because the modal can never be shown.
+/// No-op emitter for tests / non-Tauri callers. Always errors so
+/// `request_approval` fails fast instead of leaving a request parked
+/// in `pending` forever waiting for a UI that doesn't exist.
 pub struct NoopEmitter;
 
 impl EventEmitter for NoopEmitter {
     fn emit(&self, _event: &str, _payload: &PermissionRequestEvent) -> Result<(), String> {
-        Ok(())
+        Err("no UI listener attached (NoopEmitter)".into())
     }
 }
 
@@ -105,9 +106,16 @@ impl PermissionGate {
     }
 
     /// Park the future on a oneshot, emit the UI event, and wait for
-    /// `resolve` to be called with the user's choice. If the emitter
-    /// fails (no listener), we synthesise a [`Decision::Deny`].
+    /// `resolve` to be called with the user's choice.
+    ///
+    /// If the emitter fails (no UI listener), the pending row is removed
+    /// and an `Internal` error bubbles up so the caller can surface the
+    /// failure. A 5-minute timeout protects against a UI that registered
+    /// but never responds (modal closed without picking, IPC stalled,
+    /// etc.); on timeout the request is treated as a one-shot deny so
+    /// the tool doesn't run silently.
     pub async fn request_approval(&self, req: PermissionRequest) -> AgentResult<Decision> {
+        const APPROVAL_TIMEOUT_SECS: u64 = 300;
         let request_id = Uuid::new_v4().to_string();
         let (tx, rx) = oneshot::channel();
         {
@@ -134,9 +142,20 @@ impl PermissionGate {
             )));
         }
 
-        let decision = rx
-            .await
-            .map_err(|_| AgentError::Internal("permission channel dropped".into()))?;
+        let timeout =
+            tokio::time::timeout(std::time::Duration::from_secs(APPROVAL_TIMEOUT_SECS), rx).await;
+        let decision = match timeout {
+            Ok(Ok(d)) => d,
+            Ok(Err(_)) => {
+                return Err(AgentError::Internal("permission channel dropped".into()));
+            }
+            Err(_) => {
+                if let Ok(mut pending) = self.pending.lock() {
+                    pending.remove(&request_id);
+                }
+                Decision::Deny
+            }
+        };
 
         if decision.persists() {
             self.persist(&req.tool_name, &req.scope, decision)?;

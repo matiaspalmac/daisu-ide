@@ -23,9 +23,9 @@ export interface ToolDispatchRequest {
 }
 
 export type ToolResult =
-  | { kind: "ok"; fields: unknown }
+  | { kind: "ok"; value: unknown }
   | { kind: "denied"; reason: string }
-  | { kind: "error"; fields: string };
+  | { kind: "error"; message: string };
 
 export interface PermissionRequestPayload {
   request_id: string;

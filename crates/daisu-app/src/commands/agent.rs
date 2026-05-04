@@ -217,6 +217,27 @@ fn workspace_db_path(workspace: &std::path::Path) -> PathBuf {
     workspace.join(".daisu").join("agent.db")
 }
 
+/// Validate that the workspace path the frontend sent is an existing
+/// directory and canonicalise it before any IO. Rejects symlink games
+/// and non-existent paths so `MemoryStore::open` never gets handed a
+/// crafted location outside the user's real filesystem.
+fn validate_workspace(raw: &str) -> AppResult<PathBuf> {
+    if raw.trim().is_empty() {
+        return Err(AppError::Internal("empty workspace path".into()));
+    }
+    let candidate = PathBuf::from(raw);
+    let canonical = candidate
+        .canonicalize()
+        .map_err(|e| AppError::Internal(format!("workspace canonicalize: {e}")))?;
+    if !canonical.is_dir() {
+        return Err(AppError::Internal(format!(
+            "workspace is not a directory: {}",
+            canonical.display()
+        )));
+    }
+    Ok(canonical)
+}
+
 fn gate_for_workspace(
     state: &AppState,
     handle: &tauri::AppHandle,
@@ -256,7 +277,7 @@ pub async fn agent_tool_dispatch(
     handle: tauri::AppHandle,
     req: ToolDispatchRequest,
 ) -> AppResult<ToolResult> {
-    let workspace = PathBuf::from(&req.workspace_path);
+    let workspace = validate_workspace(&req.workspace_path)?;
     let state = handle.state::<AppState>();
     let gate = gate_for_workspace(&state, &handle, &workspace)?;
     let registry = state.tool_registry.clone();
@@ -281,7 +302,7 @@ pub fn agent_permission_resolve(
     req: PermissionResolveRequest,
 ) -> AppResult<bool> {
     let state = handle.state::<AppState>();
-    let workspace = PathBuf::from(&req.workspace_path);
+    let workspace = validate_workspace(&req.workspace_path)?;
     let gate = gate_for_workspace(&state, &handle, &workspace)?;
     Ok(gate.resolve(&req.request_id, req.decision))
 }
@@ -298,7 +319,7 @@ pub fn agent_permission_list_allowlist(
     req: AllowlistListRequest,
 ) -> AppResult<Vec<AllowlistEntry>> {
     let state = handle.state::<AppState>();
-    let workspace = PathBuf::from(&req.workspace_path);
+    let workspace = validate_workspace(&req.workspace_path)?;
     let gate = gate_for_workspace(&state, &handle, &workspace)?;
     gate.list_allowlist().map_err(map_agent)
 }
@@ -316,7 +337,7 @@ pub fn agent_permission_clear_allowlist(
     req: AllowlistClearRequest,
 ) -> AppResult<usize> {
     let state = handle.state::<AppState>();
-    let workspace = PathBuf::from(&req.workspace_path);
+    let workspace = validate_workspace(&req.workspace_path)?;
     let gate = gate_for_workspace(&state, &handle, &workspace)?;
     gate.clear_allowlist(req.tool_name.as_deref())
         .map_err(map_agent)
