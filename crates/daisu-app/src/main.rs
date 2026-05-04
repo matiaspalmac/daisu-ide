@@ -47,7 +47,12 @@ fn main() {
             commands::discord::discord_connect,
             commands::discord::discord_set_activity,
             commands::discord::discord_clear_activity,
-            commands::discord::discord_disconnect
+            commands::discord::discord_disconnect,
+            commands::agent::agent_provider_list,
+            commands::agent::agent_key_set,
+            commands::agent::agent_key_clear,
+            commands::agent::agent_key_has,
+            commands::agent::agent_provider_test
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {

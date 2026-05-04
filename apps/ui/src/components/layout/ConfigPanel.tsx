@@ -4,7 +4,7 @@ import { useUI } from "../../stores/uiStore";
 import { useSettings } from "../../stores/settingsStore";
 
 type ProviderMode = "cloud" | "local";
-type ProviderId = "gemini" | "openai" | "claude" | "lmstudio" | "ollama";
+type ProviderId = "gemini" | "openai" | "anthropic" | "lmstudio" | "ollama";
 
 interface ProviderSpec {
   id: ProviderId;
@@ -27,7 +27,7 @@ const CLOUD_PROVIDERS: ProviderSpec[] = [
     placeholder: "sk-...",
   },
   {
-    id: "claude",
+    id: "anthropic",
     label: "Claude",
     helper: "Obtén tu API key desde console.anthropic.com",
     placeholder: "sk-ant-...",

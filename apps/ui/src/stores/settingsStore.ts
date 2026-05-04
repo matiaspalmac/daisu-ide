@@ -28,10 +28,14 @@ const SettingsSchema = z.object({
     systemLightTheme: z.string().default("daisu-light"),
   }).prefault({}),
   aiProvider: z.object({
-    mode: z.enum(["cloud", "local"]).default("cloud"),
+    mode: z.enum(["cloud", "local"]).default("local"),
     id: z
-      .enum(["gemini", "openai", "claude", "lmstudio", "ollama"])
-      .default("gemini"),
+      .enum(["gemini", "openai", "anthropic", "lmstudio", "ollama"])
+      .default("ollama"),
+    model: z.string().default("llama3.2"),
+    ollamaBaseUrl: z.string().default("http://localhost:11434"),
+    lmstudioBaseUrl: z.string().default("http://localhost:1234/v1"),
+    temperature: z.number().min(0).max(2).default(0.7),
     apiKey: z.string().default(""),
   }).prefault({}),
   design: z.object({

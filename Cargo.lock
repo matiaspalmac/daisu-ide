@@ -597,8 +597,10 @@ dependencies = [
 name = "daisu-app"
 version = "0.2.0"
 dependencies = [
+ "daisu-agent",
  "discord-rich-presence",
  "encoding_rs",
+ "futures",
  "git2",
  "grep-matcher",
  "grep-regex",

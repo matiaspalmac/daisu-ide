@@ -7,6 +7,7 @@ import {
   Palette,
   Gear,
   Plugs,
+  Robot,
   Shield,
   Code,
   Wrench,
@@ -19,6 +20,7 @@ export type SettingsCategoryId =
   | "themes"
   | "design"
   | "chat"
+  | "ai"
   | "integrations"
   | "security"
   | "keybindings"
@@ -38,6 +40,7 @@ const CATEGORIES: CategoryItem[] = [
   { id: "themes", label: "Apariencia", icon: Palette },
   { id: "design", label: "Diseño", icon: SquaresFour },
   { id: "chat", label: "Chat", icon: Chat },
+  { id: "ai", label: "Agente", icon: Robot },
   { id: "integrations", label: "Integraciones", icon: Plugs },
   { id: "security", label: "Seguridad", icon: Shield },
   { id: "info", label: "Información", icon: Info },

@@ -1899,3 +1899,70 @@ body.daisu-focus-mode header[class*="titlebar-h"]:hover { opacity: 1; }
   border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
+
+/* AI / agent settings panel */
+.daisu-radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 16px;
+}
+.daisu-radio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-out),
+    background var(--motion-fast) var(--ease-out);
+}
+.daisu-radio-row:hover {
+  border-color: var(--border-bright);
+}
+.daisu-radio-row.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.daisu-radio-row input[type="radio"] {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+.daisu-radio-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.daisu-radio-row-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fg-primary);
+  font-weight: 500;
+}
+.daisu-radio-row-desc {
+  font-size: 11px;
+  color: var(--fg-secondary);
+}
+.daisu-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.daisu-field-row .daisu-input {
+  flex: 1;
+}
+.daisu-test-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--fg-secondary);
+}
+.daisu-test-status.is-ok { color: var(--success); }
+.daisu-test-status.is-fail { color: var(--danger); }
