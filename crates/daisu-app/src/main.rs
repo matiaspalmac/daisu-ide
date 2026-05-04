@@ -63,7 +63,10 @@ fn main() {
             commands::agent::agent_tool_dispatch,
             commands::agent::agent_permission_resolve,
             commands::agent::agent_permission_list_allowlist,
-            commands::agent::agent_permission_clear_allowlist
+            commands::agent::agent_permission_clear_allowlist,
+            commands::agent::agent_index_rebuild,
+            commands::agent::agent_index_search,
+            commands::agent::agent_index_status
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {

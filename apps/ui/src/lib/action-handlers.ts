@@ -93,6 +93,7 @@ export const ACTION_HANDLERS: Record<string, (ctx: ActionContext) => void> = {
   },
   "palette.openFiles": () => usePalette.getState().togglePalette("files"),
   "palette.openCommands": () => usePalette.getState().togglePalette("commands"),
+  "palette.openSymbols": () => usePalette.getState().togglePalette("symbols"),
 };
 
 export function runAction(id: string): void {

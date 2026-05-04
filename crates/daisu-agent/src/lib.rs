@@ -8,6 +8,7 @@
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
 
 pub mod error;
+pub mod index;
 pub mod keychain;
 pub mod memory;
 pub mod permission;

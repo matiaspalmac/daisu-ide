@@ -18,6 +18,9 @@ missing_panics_doc = "allow"
 unnecessary_literal_bound = "allow"
 duration_suboptimal_units = "allow"
 doc_markdown = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
 
 [dependencies]
 async-trait.workspace = true
@@ -35,3 +38,10 @@ keyring.workspace = true
 rusqlite.workspace = true
 uuid.workspace = true
 chrono.workspace = true
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true
+tree-sitter-typescript.workspace = true
+tree-sitter-python.workspace = true
+tree-sitter-go.workspace = true
+sha1.workspace = true
+ignore = "0.4"

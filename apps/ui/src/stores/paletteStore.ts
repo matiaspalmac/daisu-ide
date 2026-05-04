@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type PaletteMode = "files" | "commands";
+export type PaletteMode = "files" | "commands" | "symbols";
 
 interface PaletteState {
   open: boolean;
