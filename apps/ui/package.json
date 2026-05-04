@@ -38,7 +38,6 @@
     "clsx": "2.1.1",
     "fuzzysort": "^3.1.0",
     "i18next": "^26.0.8",
-    "i18next-browser-languagedetector": "^8.2.1",
     "monaco-editor": "^0.52.0",
     "nanoid": "5.0.0",
     "react": "^19.0.0",

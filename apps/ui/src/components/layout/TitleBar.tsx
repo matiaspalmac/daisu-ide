@@ -58,7 +58,7 @@ export function TitleBar(): JSX.Element {
       const selected = await openDialog({
         multiple: false,
         directory: false,
-        title: "Open file",
+        title: t("menu.openFile"),
       });
       if (typeof selected === "string") {
         await openTab(selected);

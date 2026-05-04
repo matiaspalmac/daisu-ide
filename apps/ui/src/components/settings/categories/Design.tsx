@@ -51,6 +51,7 @@ interface DesignSettings {
 }
 
 function DesignCard(props: DesignCardProps): JSX.Element {
+  const { t } = useTranslation();
   const design = useSettings((s) => s.settings.design) as DesignSettings;
   const setSetting = useSettings((s) => s.set);
 
@@ -96,7 +97,7 @@ function DesignCard(props: DesignCardProps): JSX.Element {
             type="button"
             onClick={onToggle}
             aria-pressed={isOn}
-            aria-label={`Toggle ${props.title}`}
+            aria-label={t("settings.design.toggleAria", { name: props.title })}
             className={
               "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors " +
               (isOn

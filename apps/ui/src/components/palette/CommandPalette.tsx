@@ -177,7 +177,7 @@ export function CommandPalette(): JSX.Element | null {
         <Dialog.Overlay className="daisu-palette-overlay" />
         <Dialog.Content
           className="daisu-palette"
-          aria-label={`Paleta de ${headerLabel}`}
+          aria-label={t("commandPalette.ariaLabel", { kind: headerLabel })}
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             inputRef.current?.focus();
@@ -205,7 +205,7 @@ export function CommandPalette(): JSX.Element | null {
           </div>
           <ul className="daisu-palette-list" ref={listRef} role="listbox">
             {results.length === 0 && (
-              <li className="daisu-palette-empty">Sin coincidencias</li>
+              <li className="daisu-palette-empty">{t("commandPalette.noMatches")}</li>
             )}
             {results.map((r, i) => (
               <li

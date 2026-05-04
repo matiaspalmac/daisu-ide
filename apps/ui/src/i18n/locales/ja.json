@@ -110,11 +110,13 @@
       "security": "API キーの OS キーチェーン保存とプラグイン権限は M3 で対応。",
       "info": "バージョン、ライセンス、システム情報。M3 で詳細化。"
     },
+    "sidebarAria": "設定カテゴリ",
     "design": {
       "title": "デザイン",
       "subtitle": "インターフェース要素の配置をカスタマイズ",
       "components": "コンポーネント",
       "panelButtons": "パネルボタン",
+      "toggleAria": "{{name}} を切り替え",
       "side": {
         "left": "左",
         "right": "右"
@@ -370,7 +372,9 @@
   },
   "commandPalette": {
     "files": "ファイル",
-    "commands": "コマンド"
+    "commands": "コマンド",
+    "ariaLabel": "{{kind}} パレット",
+    "noMatches": "一致なし"
   },
   "agentSaved": "保存しました",
   "errorPrefix": "エラー: {{msg}}"

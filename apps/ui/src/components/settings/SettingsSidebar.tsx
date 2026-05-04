@@ -75,7 +75,7 @@ interface Props {
 export function SettingsSidebar(props: Props): JSX.Element {
   const { t } = useTranslation();
   return (
-    <nav className="daisu-settings-sidebar" aria-label="Settings categories">
+    <nav className="daisu-settings-sidebar" aria-label={t("settings.sidebarAria")}>
       {CATEGORIES.map((c) => (
         <button
           key={c.id}

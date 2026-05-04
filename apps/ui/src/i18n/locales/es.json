@@ -110,11 +110,13 @@
       "security": "Almacenamiento de API keys via OS keychain + permisos de plugins en M3.",
       "info": "Versión, licencias y sistema. Detallado en M3."
     },
+    "sidebarAria": "Categorías de configuración",
     "design": {
       "title": "Diseño",
       "subtitle": "Personaliza la disposición de los componentes de la interfaz",
       "components": "Componentes",
       "panelButtons": "Botones de paneles",
+      "toggleAria": "Alternar {{name}}",
       "side": {
         "left": "Izquierda",
         "right": "Derecha"
@@ -370,7 +372,9 @@
   },
   "commandPalette": {
     "files": "Archivos",
-    "commands": "Comandos"
+    "commands": "Comandos",
+    "ariaLabel": "Paleta de {{kind}}",
+    "noMatches": "Sin coincidencias"
   },
   "agentSaved": "Guardado",
   "errorPrefix": "Error: {{msg}}"

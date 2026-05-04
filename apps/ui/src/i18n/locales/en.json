@@ -110,11 +110,13 @@
       "security": "API key storage via OS keychain + plugin permissions in M3.",
       "info": "Version, licenses and system. Detailed in M3."
     },
+    "sidebarAria": "Settings categories",
     "design": {
       "title": "Design",
       "subtitle": "Customize how interface components are arranged",
       "components": "Components",
       "panelButtons": "Panel buttons",
+      "toggleAria": "Toggle {{name}}",
       "side": {
         "left": "Left",
         "right": "Right"
@@ -370,7 +372,9 @@
   },
   "commandPalette": {
     "files": "Files",
-    "commands": "Commands"
+    "commands": "Commands",
+    "ariaLabel": "{{kind}} palette",
+    "noMatches": "No matches"
   },
   "agentSaved": "Saved",
   "errorPrefix": "Error: {{msg}}"
