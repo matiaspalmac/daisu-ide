@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { GitBranch, Sidebar, SidebarSimple, Gear } from "@phosphor-icons/react";
+import { GitBranch, Sidebar, SidebarSimple, Gear, Warning, XCircle } from "@phosphor-icons/react";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useUI } from "../../stores/uiStore";
 import { useSettings } from "../../stores/settingsStore";
@@ -25,7 +25,9 @@ export function StatusBar(): JSX.Element {
   const openSettings = useUI((s) => s.openSettings);
   const toggleSidebar = useUI((s) => s.toggleSidebar);
   const toggleAgents = useUI((s) => s.toggleAgentsPanel);
+  const pushToast = useUI((s) => s.pushToast);
   const design = useSettings((s) => s.settings.design);
+  const isFleet = design.layoutMode === "fleet";
   const rootPath = useWorkspace((s) => s.rootPath);
   const gitInfo = useGit((s) => s.info);
   const projectName = useMemo(() => {
@@ -36,16 +38,19 @@ export function StatusBar(): JSX.Element {
 
   return (
     <footer
-      className="daisu-statusbar h-[24px] flex items-center px-3 gap-3 bg-[var(--bg-panel)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--fg-secondary)]"
+      className={
+        "daisu-statusbar h-[24px] flex items-center px-3 gap-3 bg-[var(--bg-panel)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--fg-secondary)]" +
+        (isFleet ? " daisu-statusbar--slim" : "")
+      }
       aria-label={t("statusBar.aria")}
     >
       {/* Left: file info segments */}
       <div className="flex items-center gap-3 flex-shrink min-w-0">
         <CursorSegment />
-        <LanguagePicker />
-        <EncodingSegment />
-        <EolSegment />
-        <IndentSegment />
+        {!isFleet && <LanguagePicker />}
+        {!isFleet && <EncodingSegment />}
+        {!isFleet && <EolSegment />}
+        {!isFleet && <IndentSegment />}
       </div>
 
       {/* Center: workspace pill + search progress */}
@@ -80,8 +85,22 @@ export function StatusBar(): JSX.Element {
 
       {/* Right: utility cluster */}
       <div className="flex items-center gap-1 flex-shrink-0">
+        <button
+          type="button"
+          className={utilityCls}
+          title={t("status.problemsTooltip")}
+          aria-label={t("status.problems")}
+          onClick={() =>
+            pushToast({ message: t("status.problemsComingSoon"), level: "info" })
+          }
+        >
+          <XCircle size={11} />
+          <span>0</span>
+          <Warning size={11} />
+          <span>0</span>
+        </button>
         <McpStatusChip />
-        {design.statusBarUtility && (
+        {!isFleet && design.statusBarUtility && (
         <>
         <button
           type="button"
@@ -95,7 +114,7 @@ export function StatusBar(): JSX.Element {
         <span className="h-3 w-px bg-[var(--border-subtle)] mx-1" aria-hidden="true" />
         </>
         )}
-        {design.statusBarPanelToggles && (
+        {!isFleet && design.statusBarPanelToggles && (
         <>
         <button
           type="button"

@@ -2208,3 +2208,168 @@ body.daisu-focus-mode header[class*="titlebar-h"]:hover { opacity: 1; }
 .daisu-btn-danger:hover {
   background: rgba(184, 115, 106, 0.85);
 }
+
+/* === Fleet layout preset === */
+body.daisu-layout-fleet {
+  --titlebar-h: 28px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+body.daisu-layout-fleet .daisu-titlebar {
+  font-size: 11px;
+}
+body.daisu-layout-fleet .daisu-titlebar-menubar {
+  display: none;
+}
+body.daisu-layout-fleet .daisu-titlebar-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  max-width: 60%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+body.daisu-layout-fleet .daisu-titlebar-center .daisu-glyph {
+  font-size: 12px;
+  opacity: 0.7;
+  color: var(--accent);
+}
+body.daisu-layout-fleet .daisu-titlebar-breadcrumb {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+body.daisu-layout-fleet .daisu-titlebar-crumb {
+  background: transparent;
+  border: 0;
+  padding: 1px 4px;
+  font: inherit;
+  color: inherit;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+body.daisu-layout-fleet .daisu-titlebar-crumb:hover {
+  background: var(--accent-soft);
+  color: var(--fg-primary);
+}
+body.daisu-layout-fleet .daisu-titlebar-crumb-sep {
+  display: inline-flex;
+  align-items: center;
+  color: var(--fg-muted);
+  opacity: 0.6;
+}
+body.daisu-layout-fleet .daisu-tabbar {
+  height: 28px;
+  min-height: 28px;
+}
+body.daisu-layout-fleet .daisu-tabbar.daisu-tabbar--hidden {
+  display: none;
+}
+body.daisu-layout-fleet .daisu-tab {
+  height: 26px;
+  font-size: 12px;
+  padding: 0 8px;
+  border-right: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  margin: 1px 2px;
+}
+body.daisu-layout-fleet .daisu-tab.is-active {
+  background: var(--bg-elevated);
+}
+body.daisu-layout-fleet .daisu-tab .daisu-tab-close {
+  opacity: 0;
+  visibility: visible;
+  transition: opacity 120ms;
+}
+body.daisu-layout-fleet .daisu-tab:hover .daisu-tab-close,
+body.daisu-layout-fleet .daisu-tab.is-active .daisu-tab-close {
+  opacity: 1;
+}
+body.daisu-layout-fleet .daisu-statusbar--slim {
+  height: 22px;
+  font-size: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  gap: 8px;
+}
+body.daisu-layout-fleet .daisu-sidebar {
+  border-left: 1px solid var(--border-subtle);
+}
+body.daisu-layout-fleet .daisu-agents-panel {
+  padding-top: 4px;
+}
+
+/* Item 3 — slim panel headers */
+body.daisu-layout-fleet .daisu-sidebar-header,
+body.daisu-layout-fleet .daisu-agents-header {
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  color: var(--fg-muted);
+  padding: 8px 10px;
+  border-bottom: 0;
+}
+body.daisu-layout-fleet .daisu-agents-header {
+  height: auto;
+  min-height: 28px;
+}
+
+/* Item 10 — sidebar filter prominence */
+body.daisu-layout-fleet .daisu-sidebar-filter input {
+  height: 30px;
+  font-size: 12px;
+}
+
+/* Item 4 — auto-hide overlay scrollbars */
+body.daisu-layout-fleet *::-webkit-scrollbar-thumb {
+  background: transparent;
+  transition: background 150ms;
+}
+body.daisu-layout-fleet *:hover::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.35);
+}
+
+/* Item 6 — subtler indent guides */
+body.daisu-layout-fleet .monaco-editor .lines-content .core-guide,
+body.daisu-layout-fleet .monaco-editor .lines-content .core-guide-indent,
+body.daisu-layout-fleet .monaco-editor .indent-guide {
+  opacity: 0.15 !important;
+}
+
+/* Item 8 — center quick file picker */
+body.daisu-layout-fleet .daisu-palette {
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+body.daisu-layout-fleet .daisu-palette[data-state="open"] {
+  animation: none;
+}
+
+/* Item 11 — subtle focus ring */
+body.daisu-layout-fleet *:focus-visible {
+  outline: 1px solid var(--border-strong) !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Item 12 — snappy 120ms on commonly animated chrome */
+body.daisu-layout-fleet .daisu-tab,
+body.daisu-layout-fleet .daisu-tab-close,
+body.daisu-layout-fleet .daisu-icon-btn,
+body.daisu-layout-fleet .daisu-status-segment,
+body.daisu-layout-fleet .daisu-palette-overlay,
+body.daisu-layout-fleet .daisu-palette-row,
+body.daisu-layout-fleet .daisu-titlebar-crumb,
+body.daisu-layout-fleet .daisu-sidebar-filter input,
+body.daisu-layout-fleet button {
+  transition-duration: 120ms !important;
+}

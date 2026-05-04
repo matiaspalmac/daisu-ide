@@ -120,6 +120,71 @@ function DesignCard(props: DesignCardProps): JSX.Element {
   );
 }
 
+function LayoutPicker(): JSX.Element {
+  const { t } = useTranslation();
+  const layoutMode = useSettings((s) => s.settings.design.layoutMode);
+  const setSetting = useSettings((s) => s.set);
+
+  const options: Array<{ value: "classic" | "fleet"; title: string; desc: string }> = [
+    {
+      value: "classic",
+      title: t("settings.design.layout.classic"),
+      desc: t("settings.design.layout.classicDesc"),
+    },
+    {
+      value: "fleet",
+      title: t("settings.design.layout.fleet"),
+      desc: t("settings.design.layout.fleetDesc"),
+    },
+  ];
+
+  return (
+    <section className="mb-8">
+      <h3 className="text-sm font-medium mb-3 text-[var(--fg-primary)]">
+        {t("settings.design.layout.title")}
+      </h3>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+        {options.map((opt) => {
+          const active = layoutMode === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                if (opt.value === "fleet") {
+                  void setSetting("design", {
+                    layoutMode: "fleet",
+                    sidebarSide: "right",
+                    rightPanelSide: "left",
+                    activityBarVisible: false,
+                  });
+                  void setSetting("editor", { keySoundEnabled: true });
+                } else {
+                  void setSetting("design", {
+                    layoutMode: "classic",
+                    sidebarSide: "left",
+                    rightPanelSide: "right",
+                  });
+                }
+              }}
+              aria-pressed={active}
+              className={
+                "text-left bg-[var(--bg-elevated)] border rounded-[var(--radius-md)] p-4 flex flex-col gap-1 min-h-[100px] transition-colors " +
+                (active
+                  ? "border-[var(--accent)]"
+                  : "border-[var(--border-subtle)] hover:border-[var(--border-strong)]")
+              }
+            >
+              <h4 className="text-sm font-medium text-[var(--fg-primary)]">{opt.title}</h4>
+              <p className="text-xs text-[var(--fg-secondary)]">{opt.desc}</p>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function Design(): JSX.Element {
   const { t } = useTranslation();
   const sideOptions: Array<{ value: Side; label: string }> = [
@@ -135,6 +200,8 @@ export function Design(): JSX.Element {
           {t("settings.design.subtitle")}
         </p>
       </header>
+
+      <LayoutPicker />
 
       <section className="mb-8">
         <h3 className="text-sm font-medium mb-3 text-[var(--fg-primary)]">

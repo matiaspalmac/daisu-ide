@@ -60,6 +60,15 @@
     "focusExit": "Salir de modo enfoque (静)",
     "focusLabel": "Modo enfoque",
     "clockLabel": "Hora actual {{clock}}, {{period}}",
+    "projectBreadcrumb": "{{project}} · {{file}}",
+    "projectBreadcrumbBare": "{{project}}",
+    "menuAria": "Menú",
+    "smartMode": "Modo inteligente",
+    "smartModeComingSoon": "Conmutador de modo inteligente disponible en M4.",
+    "crumbProjectTooltip": "Espacios de trabajo recientes",
+    "crumbFolderTooltip": "Carpetas hermanas",
+    "crumbFolderEmpty": "Navegación por carpeta disponible en M4.",
+    "crumbFileTooltip": "Buscar archivos (Ctrl+P)",
     "period": {
       "morning": "mañana",
       "afternoon": "tarde",
@@ -122,6 +131,13 @@
         "right": "Derecha"
       },
       "footer": "Cambios aplican en vivo. Persisten en almacenamiento local.",
+      "layout": {
+        "title": "Layout",
+        "classic": "Clásico",
+        "classicDesc": "Layout estilo VS Code. Árbol de archivos a la izquierda, chat a la derecha, barra de título completa con menú.",
+        "fleet": "Fleet",
+        "fleetDesc": "Layout compacto estilo JetBrains Fleet. Archivos a la derecha, agente a la izquierda, barra de título delgada."
+      },
       "cards": {
         "activityBar": {
           "title": "Barra de actividad",
@@ -360,7 +376,10 @@
     "sidebar": "Panel lateral",
     "sidebarTooltip": "Panel lateral (Ctrl+B)",
     "chatPanel": "Panel de chat",
-    "chatPanelTooltip": "Panel de chat (Ctrl+Shift+B)"
+    "chatPanelTooltip": "Panel de chat (Ctrl+Shift+B)",
+    "problems": "Problemas",
+    "problemsTooltip": "Problemas",
+    "problemsComingSoon": "Panel de problemas disponible en M4."
   },
   "activity": {
     "explorer": "Explorador",
@@ -573,5 +592,17 @@
     "ctxRevealInExplorer": "Mostrar en Explorador",
     "searchHeading": "BUSCAR",
     "explorerHeading": "EXPLORADOR"
+  },
+  "editorKeySound": {
+    "heading": "Sonidos de tecleo",
+    "description": "Clics suaves de teclado mecánico sintetizados al escribir en el editor. Web Audio puro — sin descargar archivos.",
+    "enable": "Activar sonidos de tecleo",
+    "volume": "Volumen (0–1)",
+    "pack": "Paquete de sonido",
+    "packs": {
+      "soft": "Suave",
+      "typewriter": "Máquina de escribir",
+      "mechanical": "Mecánico"
+    }
   }
 }

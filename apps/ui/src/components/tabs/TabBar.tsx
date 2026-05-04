@@ -18,6 +18,7 @@ import { Tab } from "./Tab";
 import { TabContextMenu, type TabAction } from "./TabContextMenu";
 import { TabOverflowDropdown } from "./TabOverflowDropdown";
 import { useUI } from "../../stores/uiStore";
+import { useSettings } from "../../stores/settingsStore";
 
 const OVERFLOW_BUDGET_PX = 64;
 
@@ -34,6 +35,10 @@ export function TabBar(): JSX.Element | null {
   const unpin = useTabs((s) => s.unpin);
   const newTab = useTabs((s) => s.newTab);
   const pushToast = useUI((s) => s.pushToast);
+  const layoutMode = useSettings((s) => s.settings.design.layoutMode);
+  const isFleet = layoutMode === "fleet";
+  const fleetHide =
+    isFleet && tabs.length === 1 && !(tabs[0]?.pinned ?? false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
@@ -127,7 +132,12 @@ export function TabBar(): JSX.Element | null {
   const inicioActive = activeTabId === null;
 
   return (
-    <div ref={containerRef} className="daisu-tabbar" role="tablist" aria-label={t("tabBar.openTabsAria")}>
+    <div
+      ref={containerRef}
+      className={cn("daisu-tabbar", fleetHide && "daisu-tabbar--hidden")}
+      role="tablist"
+      aria-label={t("tabBar.openTabsAria")}
+    >
       <button
         type="button"
         role="tab"

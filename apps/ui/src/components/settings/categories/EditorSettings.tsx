@@ -53,6 +53,32 @@ export function EditorSettings(): JSX.Element {
         label="Bracket pair colorization"
       />
       <ToggleField category="editor" field="formatOnSave" label="Format on save" />
+
+      <h3 className="daisu-settings-section-title">{t("editorKeySound.heading")}</h3>
+      <p className="daisu-field-desc">{t("editorKeySound.description")}</p>
+      <ToggleField
+        category="editor"
+        field="keySoundEnabled"
+        label={t("editorKeySound.enable")}
+      />
+      <NumberField
+        category="editor"
+        field="keySoundVolume"
+        label={t("editorKeySound.volume")}
+        min={0}
+        max={1}
+        step={0.05}
+      />
+      <SelectField
+        category="editor"
+        field="keySoundPack"
+        label={t("editorKeySound.pack")}
+        options={[
+          { value: "soft", label: t("editorKeySound.packs.soft") },
+          { value: "typewriter", label: t("editorKeySound.packs.typewriter") },
+          { value: "mechanical", label: t("editorKeySound.packs.mechanical") },
+        ]}
+      />
     </div>
   );
 }

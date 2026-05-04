@@ -34,7 +34,7 @@ export function AgentsPanel(): JSX.Element {
       className="daisu-agents-panel h-full flex flex-col bg-[var(--bg-panel)] border-l border-[var(--border-subtle)]"
       aria-label={t("chat.panelAria")}
     >
-      <header className="h-9 px-3 flex items-center justify-between border-b border-[var(--border-subtle)] text-[11px] uppercase tracking-[0.08em] text-[var(--fg-secondary)]">
+      <header className="daisu-agents-header h-9 px-3 flex items-center justify-between border-b border-[var(--border-subtle)] text-[11px] uppercase tracking-[0.08em] text-[var(--fg-secondary)]">
         <span className="flex items-center">
           <span className="daisu-glyph" aria-hidden="true">話</span>
           {t("chat.label")}

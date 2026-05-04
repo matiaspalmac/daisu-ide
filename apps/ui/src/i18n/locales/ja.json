@@ -60,6 +60,15 @@
     "focusExit": "集中モードを終了 (静)",
     "focusLabel": "集中モード",
     "clockLabel": "現在時刻 {{clock}}、{{period}}",
+    "projectBreadcrumb": "{{project}}／{{file}}",
+    "projectBreadcrumbBare": "{{project}}",
+    "menuAria": "メニュー",
+    "smartMode": "スマートモード",
+    "smartModeComingSoon": "スマートモード切替は M4 で対応予定です。",
+    "crumbProjectTooltip": "最近のワークスペース",
+    "crumbFolderTooltip": "兄弟フォルダ",
+    "crumbFolderEmpty": "フォルダナビゲーションは M4 で対応予定です。",
+    "crumbFileTooltip": "ファイル検索 (Ctrl+P)",
     "period": {
       "morning": "朝",
       "afternoon": "昼",
@@ -122,6 +131,13 @@
         "right": "右"
       },
       "footer": "変更はリアルタイムで反映され、ローカルに保存されます。",
+      "layout": {
+        "title": "レイアウト",
+        "classic": "クラシック",
+        "classicDesc": "VS Code 風のレイアウト。左にファイルツリー、右にチャット、メニュー付きのフルタイトルバー。",
+        "fleet": "Fleet",
+        "fleetDesc": "JetBrains Fleet 風のコンパクトなレイアウト。右にファイル、左にエージェント、細いタイトルバー。"
+      },
       "cards": {
         "activityBar": {
           "title": "アクティビティバー",
@@ -360,7 +376,10 @@
     "sidebar": "サイドバー",
     "sidebarTooltip": "サイドバー (Ctrl+B)",
     "chatPanel": "チャットパネル",
-    "chatPanelTooltip": "チャットパネル (Ctrl+Shift+B)"
+    "chatPanelTooltip": "チャットパネル (Ctrl+Shift+B)",
+    "problems": "問題",
+    "problemsTooltip": "問題",
+    "problemsComingSoon": "問題パネルは M4 で対応予定です。"
   },
   "activity": {
     "explorer": "エクスプローラ",
@@ -573,5 +592,17 @@
     "ctxRevealInExplorer": "エクスプローラで表示",
     "searchHeading": "検索",
     "explorerHeading": "エクスプローラ"
+  },
+  "editorKeySound": {
+    "heading": "タイピング音",
+    "description": "エディタ入力時に合成されたメカニカルキーボードの柔らかいクリック音。Web Audio のみ — アセット不要。",
+    "enable": "タイピング音を有効化",
+    "volume": "音量（0–1）",
+    "pack": "サウンドパック",
+    "packs": {
+      "soft": "ソフト",
+      "typewriter": "タイプライター",
+      "mechanical": "メカニカル"
+    }
   }
 }
