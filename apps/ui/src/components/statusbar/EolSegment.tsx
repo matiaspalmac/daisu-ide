@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useTabs } from "../../stores/tabsStore";
 import { useUI } from "../../stores/uiStore";
@@ -6,7 +7,8 @@ import { convertEolCmd, openFile } from "../../api/tauri";
 import { translateError } from "../../lib/error-translate";
 
 export function EolSegment(): JSX.Element | null {
-  const tab = useTabs((s) => s.tabs.find((t) => t.id === s.activeTabId) ?? null);
+  const { t } = useTranslation();
+  const tab = useTabs((s) => s.tabs.find((tt) => tt.id === s.activeTabId) ?? null);
   const pushToast = useUI((s) => s.pushToast);
   if (!tab || !tab.path) return null;
   const path = tab.path;
@@ -31,7 +33,7 @@ export function EolSegment(): JSX.Element | null {
             : t,
         ),
       }));
-      pushToast({ message: `EOL converted to ${target}`, level: "success" });
+      pushToast({ message: t("statusbarSegment.eolConverted", { target }), level: "success" });
     } catch (err) {
       pushToast({ message: translateError(err), level: "error" });
     }
@@ -43,7 +45,7 @@ export function EolSegment(): JSX.Element | null {
         <button
           type="button"
           className="daisu-status-segment daisu-status-clickable"
-          title="End of line"
+          title={t("statusbarSegment.eolTitle")}
         >
           {tab.eol}
         </button>

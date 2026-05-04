@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { Crosshair, List, Minus, Square, User, X } from "@phosphor-icons/react";
+import { Brain, CaretRight, Crosshair, List, Minus, Square, User, X } from "@phosphor-icons/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUI } from "../../stores/uiStore";
+import { usePalette } from "../../stores/paletteStore";
 import { useTabs } from "../../stores/tabsStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useSettings } from "../../stores/settingsStore";
@@ -43,6 +44,38 @@ export function TitleBar(): JSX.Element {
   const focusMode = useUI((s) => s.focusMode);
   const toggleFocusMode = useUI((s) => s.toggleFocusMode);
   const design = useSettings((s) => s.settings.design);
+  const layoutMode = design.layoutMode;
+  const isFleet = layoutMode === "fleet";
+  const rootPath = useWorkspace((s) => s.rootPath);
+  const recents = useWorkspace((s) => s.recents);
+  const openWorkspaceAction = useWorkspace((s) => s.openWorkspace);
+  const openPalette = usePalette((s) => s.openPalette);
+  const activeTabId = useTabs((s) => s.activeTabId);
+  const activeTabName = useTabs((s) => s.tabs.find((tt) => tt.id === s.activeTabId)?.name ?? null);
+  const activeTabPath = useTabs((s) => s.tabs.find((tt) => tt.id === s.activeTabId)?.path ?? null);
+
+  const projectName = useMemo(() => {
+    if (!rootPath) return null;
+    const parts = rootPath.split(/[\\/]/).filter(Boolean);
+    return parts[parts.length - 1] ?? rootPath;
+  }, [rootPath]);
+
+  const breadcrumb = useMemo(() => {
+    if (!projectName) return null;
+    if (activeTabId && activeTabName) {
+      return t("titlebar.projectBreadcrumb", { project: projectName, file: activeTabName });
+    }
+    return t("titlebar.projectBreadcrumbBare", { project: projectName });
+  }, [projectName, activeTabId, activeTabName, t]);
+
+  const folderSegment = useMemo<string | null>(() => {
+    if (!rootPath || !activeTabPath) return null;
+    if (!activeTabPath.startsWith(rootPath)) return null;
+    const rel = activeTabPath.slice(rootPath.length).replace(/^[\\/]/, "");
+    const parts = rel.split(/[\\/]/);
+    if (parts.length < 2) return null;
+    return parts[parts.length - 2] ?? null;
+  }, [rootPath, activeTabPath]);
 
   const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
@@ -101,10 +134,67 @@ export function TitleBar(): JSX.Element {
 
   return (
     <header
-      className="h-[var(--titlebar-h)] bg-[var(--bg-panel)] border-b border-[var(--border-subtle)] flex items-stretch text-[12px] text-[var(--fg-secondary)] select-none relative"
+      className="daisu-titlebar h-[var(--titlebar-h)] bg-[var(--bg-panel)] border-b border-[var(--border-subtle)] flex items-stretch text-[12px] text-[var(--fg-secondary)] select-none relative"
     >
+      {/* Fleet-mode consolidated hamburger menu */}
+      {isFleet && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+              title={t("titlebar.menu")}
+              aria-label={t("titlebar.menu")}
+            >
+              <List size={14} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onSelect={() => newTab()}>
+              {t("menu.newFile")}
+              <DropdownMenuShortcut>Ctrl+N</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void handleOpen()}>
+              {t("menu.openFile")}
+              <DropdownMenuShortcut>Ctrl+O</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void handleOpenFolder()}>
+              {t("menu.openFolder")}
+              <DropdownMenuShortcut>Ctrl+K O</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => void handleSave()}>
+              {t("menu.save")}
+              <DropdownMenuShortcut>Ctrl+S</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => useUI.getState().toggleSidebar()}>
+              {t("menu.toggleSidebar")}
+              <DropdownMenuShortcut>Ctrl+B</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => toggleSearch()}>
+              {t("menu.toggleSearch")}
+              <DropdownMenuShortcut>Ctrl+Shift+F</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => useUI.getState().toggleAgentsPanel()}>
+              {t("menu.toggleChatPanel")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => openSettings()}>
+              {t("menu.settings")}
+              <DropdownMenuShortcut>Ctrl+,</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => void win?.close()}>
+              {t("menu.exit")}
+              <DropdownMenuShortcut>Alt+F4</DropdownMenuShortcut>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
       {/* Hamburger */}
-      {design.titleBarHamburger && (
+      {!isFleet && design.titleBarHamburger && (
         <button
           type="button"
           className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
@@ -117,8 +207,8 @@ export function TitleBar(): JSX.Element {
       )}
 
       {/* Menu strip */}
-      {design.titleBarMenuStrip && (
-      <nav className="flex items-stretch">
+      {!isFleet && design.titleBarMenuStrip && (
+      <nav className="daisu-titlebar-menubar flex items-stretch">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -251,14 +341,75 @@ export function TitleBar(): JSX.Element {
       )}
 
       {/* Centered clock — absolute so it stays centered regardless of side widths */}
-      <div
-        className="daisu-titlebar-clock"
-        title={`${periodLabel} — ${clock}`}
-        aria-label={t("titlebar.clockLabel", { clock, period: periodLabel })}
-      >
-        <span className="daisu-titlebar-clock-glyph" aria-hidden="true">{period.glyph}</span>
-        <span className="daisu-titlebar-clock-time">{clock}</span>
-      </div>
+      {!isFleet && (
+        <div
+          className="daisu-titlebar-clock"
+          title={`${periodLabel} — ${clock}`}
+          aria-label={t("titlebar.clockLabel", { clock, period: periodLabel })}
+        >
+          <span className="daisu-titlebar-clock-glyph" aria-hidden="true">{period.glyph}</span>
+          <span className="daisu-titlebar-clock-time">{clock}</span>
+        </div>
+      )}
+
+      {isFleet && breadcrumb && projectName && (
+        <div className="daisu-titlebar-center" aria-label={breadcrumb}>
+          <span className="daisu-glyph" aria-hidden="true">場</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="daisu-titlebar-crumb"
+                title={t("titlebar.crumbProjectTooltip")}
+              >
+                {projectName}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {recents.length === 0 && (
+                <DropdownMenuItem disabled>{t("explorer.recentNone")}</DropdownMenuItem>
+              )}
+              {recents.slice(0, 8).map((r) => (
+                <DropdownMenuItem key={r.path} onSelect={() => void openWorkspaceAction(r.path)}>
+                  {r.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {folderSegment && (
+            <>
+              <span className="daisu-titlebar-crumb-sep" aria-hidden="true"><CaretRight size={10} /></span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="daisu-titlebar-crumb"
+                    title={t("titlebar.crumbFolderTooltip")}
+                  >
+                    {folderSegment}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem disabled>{t("titlebar.crumbFolderEmpty")}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+          {activeTabName && (
+            <>
+              <span className="daisu-titlebar-crumb-sep" aria-hidden="true"><CaretRight size={10} /></span>
+              <button
+                type="button"
+                className="daisu-titlebar-crumb"
+                title={t("titlebar.crumbFileTooltip")}
+                onClick={() => openPalette("files")}
+              >
+                {activeTabName}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Drag spacer */}
       <div className="flex-1" data-tauri-drag-region />
@@ -275,8 +426,23 @@ export function TitleBar(): JSX.Element {
         {focusMode ? <span className="daisu-glyph" style={{ fontSize: 14, opacity: 1 }}>静</span> : <Crosshair size={13} />}
       </button>
 
+      {/* Smart mode toggle (fleet placeholder) */}
+      {isFleet && (
+        <button
+          type="button"
+          className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+          onClick={() =>
+            pushToast({ message: t("titlebar.smartModeComingSoon"), level: "info" })
+          }
+          title={t("titlebar.smartMode")}
+          aria-label={t("titlebar.smartMode")}
+        >
+          <Brain size={14} />
+        </button>
+      )}
+
       {/* User avatar — placeholder */}
-      {design.titleBarUserAvatar && (
+      {!isFleet && design.titleBarUserAvatar && (
         <button
           type="button"
           className="w-8 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"

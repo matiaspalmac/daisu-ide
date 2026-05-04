@@ -60,7 +60,7 @@ export function SettingsModal(): JSX.Element | null {
         <Dialog.Overlay className="daisu-modal-overlay" />
         <Dialog.Content
           className="daisu-settings-modal"
-          aria-label="Settings"
+          aria-label={t("settings.title")}
           aria-describedby={undefined}
         >
           <header className="daisu-settings-header">

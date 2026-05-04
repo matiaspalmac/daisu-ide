@@ -29,7 +29,6 @@ import { useTheme } from "./hooks/useTheme";
 import { useGitWatcher } from "./hooks/useGitWatcher";
 import { useEditorCursorWiring } from "./hooks/useEditorCursor";
 import { useGit } from "./stores/gitStore";
-import { copy } from "./lib/copy";
 import { isTauri } from "./lib/tauri-env";
 import i18n, { setLanguage, type AppLanguage } from "./i18n";
 import { probeOllama, pickBestModel } from "./lib/ollama-detect";
@@ -56,6 +55,14 @@ export function App(): JSX.Element {
   }, [focusMode]);
   const loadSettings = useSettings((s) => s.load);
   const design = useSettings((s) => s.settings.design);
+  const layoutMode = design.layoutMode;
+  useEffect(() => {
+    const isFleet = layoutMode === "fleet";
+    document.body.classList.toggle("daisu-layout-fleet", isFleet);
+    return () => {
+      document.body.classList.remove("daisu-layout-fleet");
+    };
+  }, [layoutMode]);
   const restoreTabs = useTabs((s) => s.restoreSession);
   const saveTabsSession = useTabs((s) => s.saveSession);
   const closeAllTabs = useTabs((s) => s.closeAll);
@@ -239,7 +246,7 @@ export function App(): JSX.Element {
         try {
           await openWorkspace(path);
         } catch {
-          pushToast({ message: copy.toasts.droppedNonDir, level: "warning" });
+          pushToast({ message: i18n.t("explorer.droppedNonDir"), level: "warning" });
         }
       })
     );
@@ -256,6 +263,7 @@ export function App(): JSX.Element {
   const sidebarOnRight = design.sidebarSide === "right";
   const rightPanelOnLeft = design.rightPanelSide === "left";
   const activityBarOnRight = design.activityBarSide === "right";
+  const activityBarVisible = design.activityBarVisible;
 
   const sidebarRef = usePanelRef();
   const agentsRef = usePanelRef();
@@ -316,7 +324,7 @@ export function App(): JSX.Element {
       <TitleBar />
       <WebView2Banner />
       <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
-        {design.activityBarVisible && !activityBarOnRight && !focusMode && <ActivityBar />}
+        {activityBarVisible && !activityBarOnRight && !focusMode && <ActivityBar />}
         <Group
           orientation="horizontal"
           className="daisu-main-split flex-1"
@@ -330,7 +338,7 @@ export function App(): JSX.Element {
         {!rightPanelOnLeft && rightPanel}
         {sidebarOnRight && sidebarPanel}
         </Group>
-        {design.activityBarVisible && activityBarOnRight && !focusMode && <ActivityBar />}
+        {activityBarVisible && activityBarOnRight && !focusMode && <ActivityBar />}
       </div>
       {design.statusBarVisible && !focusMode && <StatusBar />}
       <ToastViewport />

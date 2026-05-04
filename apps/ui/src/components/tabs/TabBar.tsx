@@ -18,6 +18,7 @@ import { Tab } from "./Tab";
 import { TabContextMenu, type TabAction } from "./TabContextMenu";
 import { TabOverflowDropdown } from "./TabOverflowDropdown";
 import { useUI } from "../../stores/uiStore";
+import { useSettings } from "../../stores/settingsStore";
 
 const OVERFLOW_BUDGET_PX = 64;
 
@@ -34,6 +35,13 @@ export function TabBar(): JSX.Element | null {
   const unpin = useTabs((s) => s.unpin);
   const newTab = useTabs((s) => s.newTab);
   const pushToast = useUI((s) => s.pushToast);
+  const layoutMode = useSettings((s) => s.settings.design.layoutMode);
+  const isFleet = layoutMode === "fleet";
+  const fleetHide =
+    isFleet &&
+    tabs.length === 1 &&
+    !(tabs[0]?.pinned ?? false) &&
+    activeTabId === tabs[0]?.id;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
@@ -117,7 +125,7 @@ export function TabBar(): JSX.Element | null {
         break;
       case "revealInExplorer":
         pushToast({
-          message: "Reveal in Explorer arrives in Phase 4.",
+          message: t("tabBar.revealComing"),
           level: "info",
         });
         break;
@@ -127,14 +135,19 @@ export function TabBar(): JSX.Element | null {
   const inicioActive = activeTabId === null;
 
   return (
-    <div ref={containerRef} className="daisu-tabbar" role="tablist" aria-label="Open tabs">
+    <div
+      ref={containerRef}
+      className={cn("daisu-tabbar", fleetHide && "daisu-tabbar--hidden")}
+      role="tablist"
+      aria-label={t("tabBar.openTabsAria")}
+    >
       <button
         type="button"
         role="tab"
         aria-selected={inicioActive}
         onClick={() => setActive(null)}
-        title="Inicio"
-        aria-label="Inicio"
+        title={t("tabBar.home")}
+        aria-label={t("tabBar.home")}
         className={cn(
           "daisu-tab group relative",
           inicioActive && "is-active",
@@ -147,7 +160,7 @@ export function TabBar(): JSX.Element | null {
           />
         )}
         <House size={13} className="text-[var(--fg-muted)]" />
-        <span className="daisu-tab-name">Inicio</span>
+        <span className="daisu-tab-name">{t("tabBar.home")}</span>
       </button>
       {visibleTabs.map((tab) => (
         <DraggableTab

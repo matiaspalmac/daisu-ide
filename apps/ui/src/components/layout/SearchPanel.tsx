@@ -1,4 +1,5 @@
 import { useEffect, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { X } from "@phosphor-icons/react";
 import { SearchInput } from "../search/SearchInput";
@@ -15,6 +16,7 @@ import type {
 } from "../../api/tauri";
 
 export function SearchPanel(): JSX.Element {
+  const { t } = useTranslation();
   const open = useUI((s) => s.searchPanelOpen);
   const ingestHits = useSearch((s) => s.ingestHits);
   const ingestProgress = useSearch((s) => s.ingestProgress);
@@ -106,17 +108,17 @@ export function SearchPanel(): JSX.Element {
   if (!open) return <></>;
 
   return (
-    <section className="daisu-search-panel" aria-label="Workspace search">
+    <section className="daisu-search-panel" aria-label={t("searchPanel.aria")}>
       <header className="daisu-search-header">
         <span style={{ display: "inline-flex", alignItems: "center" }}>
           <span className="daisu-glyph" aria-hidden="true">検</span>
-          Search
+          {t("searchPanel.title")}
         </span>
         <button
           type="button"
           className="daisu-icon-btn-sm"
           onClick={() => toggleSearch()}
-          aria-label="Close search panel"
+          aria-label={t("searchPanel.closeAria")}
         >
           <X size={12} />
         </button>

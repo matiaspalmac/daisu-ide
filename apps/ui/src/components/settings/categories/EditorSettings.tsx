@@ -1,13 +1,15 @@
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { ToggleField } from "../controls/ToggleField";
 import { SelectField } from "../controls/SelectField";
 import { NumberField } from "../controls/NumberField";
 import { TextField } from "../controls/TextField";
 
 export function EditorSettings(): JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className="daisu-settings-panel">
-      <h2 className="daisu-settings-panel-title">Editor</h2>
+      <h2 className="daisu-settings-panel-title">{t("settingsEditor.title")}</h2>
       <NumberField category="editor" field="fontSize" label="Font size" min={8} max={48} />
       <TextField category="editor" field="fontFamily" label="Font family" />
       <NumberField category="editor" field="tabSize" label="Tab size" min={1} max={16} />
@@ -51,6 +53,32 @@ export function EditorSettings(): JSX.Element {
         label="Bracket pair colorization"
       />
       <ToggleField category="editor" field="formatOnSave" label="Format on save" />
+
+      <h3 className="daisu-settings-section-title">{t("editorKeySound.heading")}</h3>
+      <p className="daisu-field-desc">{t("editorKeySound.description")}</p>
+      <ToggleField
+        category="editor"
+        field="keySoundEnabled"
+        label={t("editorKeySound.enable")}
+      />
+      <NumberField
+        category="editor"
+        field="keySoundVolume"
+        label={t("editorKeySound.volume")}
+        min={0}
+        max={1}
+        step={0.05}
+      />
+      <SelectField
+        category="editor"
+        field="keySoundPack"
+        label={t("editorKeySound.pack")}
+        options={[
+          { value: "soft", label: t("editorKeySound.packs.soft") },
+          { value: "typewriter", label: t("editorKeySound.packs.typewriter") },
+          { value: "mechanical", label: t("editorKeySound.packs.mechanical") },
+        ]}
+      />
     </div>
   );
 }

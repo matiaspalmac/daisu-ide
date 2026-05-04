@@ -60,6 +60,15 @@
     "focusExit": "Exit focus mode (静)",
     "focusLabel": "Focus mode",
     "clockLabel": "Current time {{clock}}, {{period}}",
+    "projectBreadcrumb": "{{project}} · {{file}}",
+    "projectBreadcrumbBare": "{{project}}",
+    "menuAria": "Menu",
+    "smartMode": "Smart mode",
+    "smartModeComingSoon": "Smart mode toggle arriving in M4.",
+    "crumbProjectTooltip": "Recent workspaces",
+    "crumbFolderTooltip": "Folder siblings",
+    "crumbFolderEmpty": "Folder navigation arriving in M4.",
+    "crumbFileTooltip": "Search files (Ctrl+P)",
     "period": {
       "morning": "morning",
       "afternoon": "afternoon",
@@ -122,6 +131,13 @@
         "right": "Right"
       },
       "footer": "Changes apply live. Persist in local storage.",
+      "layout": {
+        "title": "Layout",
+        "classic": "Classic",
+        "classicDesc": "VS Code-like layout. File tree on the left, chat on the right, full title bar with menu strip.",
+        "fleet": "Fleet",
+        "fleetDesc": "Compact JetBrains Fleet-style layout. Files on the right, agent on the left, slim title bar."
+      },
       "cards": {
         "activityBar": {
           "title": "Activity bar",
@@ -360,7 +376,10 @@
     "sidebar": "Sidebar",
     "sidebarTooltip": "Sidebar (Ctrl+B)",
     "chatPanel": "Chat panel",
-    "chatPanelTooltip": "Chat panel (Ctrl+Shift+B)"
+    "chatPanelTooltip": "Chat panel (Ctrl+Shift+B)",
+    "problems": "Problems",
+    "problemsTooltip": "Problems",
+    "problemsComingSoon": "Problems panel arriving in M4."
   },
   "activity": {
     "explorer": "Explorer",
@@ -377,5 +396,215 @@
     "noMatches": "No matches"
   },
   "agentSaved": "Saved",
-  "errorPrefix": "Error: {{msg}}"
+  "errorPrefix": "Error: {{msg}}",
+  "permissionModal": {
+    "title": "Permission required · {{tool}}",
+    "description": "The agent wants to run the tool <0>{{tool}}</0> ({{tier}}) on the scope <1>{{scope}}</1>.",
+    "deny": "Deny",
+    "denyEdit": "Deny and edit",
+    "denyEditTooltip": "Deny once (without persisting the rejection)",
+    "allowOnce": "Allow once",
+    "allowAlways": "Allow always"
+  },
+  "breadcrumb": {
+    "aria": "File path"
+  },
+  "editor": {
+    "areaAria": "Editor area"
+  },
+  "searchPanel": {
+    "aria": "Workspace search",
+    "title": "Search",
+    "closeAria": "Close search panel"
+  },
+  "statusBar": {
+    "aria": "Status bar"
+  },
+  "search": {
+    "placeholder": "Search",
+    "matchCase": "Match case",
+    "wholeWord": "Match whole word",
+    "regex": "Use regular expression",
+    "multiline": "Multiline",
+    "replace": "Replace",
+    "replaceAll": "Replace All",
+    "replaceTitle_one": "Replace {{count}} occurrence in {{fileCount}}?",
+    "replaceTitle_other": "Replace {{count}} occurrences in {{fileCount}}?",
+    "replaceFiles_one": "{{count}} file",
+    "replaceFiles_other": "{{count}} files",
+    "andMore": "and {{count}} more",
+    "confirmReplace": "Replace",
+    "noResultsIn": "No results in {{count}} files",
+    "typeToSearch": "Type to search",
+    "summary_one": "{{count}} result in {{fileCount}}",
+    "summary_other": "{{count}} results in {{fileCount}}",
+    "fileCount_one": "{{count}} file",
+    "fileCount_other": "{{count}} files",
+    "truncated": "(truncated)",
+    "searching_one": "Searching {{files}}... {{hits}}",
+    "searching_other": "Searching {{files}}... {{hits}}",
+    "completion_one": "{{hits}} in {{files}}",
+    "completion_other": "{{hits}} in {{files}}",
+    "hits_one": "{{count}} hit",
+    "hits_other": "{{count}} hits",
+    "toggleAria": "Toggle search panel"
+  },
+  "sidebarNode": {
+    "folderAria": "Folder",
+    "gitStatusAria": "Git status {{status}}"
+  },
+  "fileTree": {
+    "aria": "Workspace file tree"
+  },
+  "branch": {
+    "switchedTo": "Switched to {{name}}",
+    "forceSwitched": "Force-switched to {{name}}",
+    "fetched_one": "Fetched {{count}} new commit from {{remote}}",
+    "fetched_other": "Fetched {{count}} new commits from {{remote}}",
+    "filterPlaceholder": "Filter branches...",
+    "noBranches": "No branches",
+    "switchTitle": "Switch to {{name}}?",
+    "switchDesc": "The working tree has uncommitted changes. Force checkout will discard them. This cannot be undone.",
+    "forceCheckout": "Force checkout",
+    "switchAria": "Switch branch",
+    "fetchAria": "Fetch from origin",
+    "fetchTitle": "Fetch from origin",
+    "ahead": "Ahead",
+    "behind": "Behind"
+  },
+  "statusbarSegment": {
+    "cursorTitle": "Cursor position",
+    "cursorLabel": "Ln {{line}}, Col {{col}}",
+    "cursorSelection": " ({{count}} sel)",
+    "encodingTitle": "File encoding",
+    "encodingReloaded": "Reloaded with {{encoding}}",
+    "reloadWith": "Reload with {{encoding}}",
+    "eolTitle": "End of line",
+    "eolConverted": "EOL converted to {{target}}",
+    "indentSpaces": "Spaces",
+    "indentTabSize": "Tab Size",
+    "indentLabel": "{{kind}}: {{size}}",
+    "indentTitle": "Indentation (click to open settings)",
+    "languageTitle": "Editor language",
+    "languageFilter": "Filter languages...",
+    "languageNoMatches": "No matches",
+    "searchProgressTitle": "Toggle search panel"
+  },
+  "settingsAdvanced": {
+    "title": "Advanced",
+    "exportTitle": "Export Daisu settings",
+    "exportFile": "daisu-settings.json",
+    "importTitle": "Import Daisu settings",
+    "exportedToast": "Settings exported.",
+    "importedToast": "Settings imported.",
+    "resetAllLabel": "Reset all settings to defaults",
+    "resetAllDesc": "Restores fonts, themes, keybindings, and toggles to their built-in values.",
+    "resetAllButton": "Reset all",
+    "resetDialogTitle": "Reset all settings?",
+    "resetDialogDesc": "This restores every setting (fonts, themes, keybindings, toggles) to the built-in defaults. This action cannot be undone.",
+    "resetButton": "Reset",
+    "resetToast": "Settings reset.",
+    "exportLabel": "Export settings…",
+    "exportDesc": "Save the current settings file to disk as JSON.",
+    "exportButton": "Export",
+    "importLabel": "Import settings…",
+    "importDesc": "Load a previously exported settings JSON file. Each category is validated.",
+    "importButton": "Import"
+  },
+  "settingsEditor": {
+    "title": "Editor"
+  },
+  "settingsThemes": {
+    "title": "Themes",
+    "pickerAria": "Bundled themes",
+    "activeAria": "Active"
+  },
+  "settingsKeybindings": {
+    "title": "Keybindings",
+    "hint": "Click the pencil to record a new shortcut. Press Esc, click outside, or wait 5 s to cancel. Reset returns the binding to its default."
+  },
+  "keybind": {
+    "press": "Press shortcut...",
+    "editAria": "Edit binding",
+    "resetAria": "Reset to default",
+    "overrideToast": "{{combo}} already bound to \"{{label}}\". Override saved."
+  },
+  "keybindList": {
+    "action": "Action",
+    "category": "Category",
+    "binding": "Binding",
+    "gotoSeries": "Go to tab 1 (1–9 series)"
+  },
+  "closeConfirm": {
+    "titleSingle": "Save changes to {{name}}?",
+    "titleMulti": "Save changes to {{count}} files?",
+    "defaultName": "this file",
+    "descSingle": "Your changes will be lost if you don't save them.",
+    "andMore": "and {{count}} more",
+    "dontSave": "Don't Save",
+    "save": "Save",
+    "saveAll": "Save All"
+  },
+  "tabBar": {
+    "openTabsAria": "Open tabs",
+    "home": "Home",
+    "revealComing": "Reveal in Explorer arrives in Phase 4."
+  },
+  "tabContext": {
+    "close": "Close",
+    "closeOthers": "Close Others",
+    "closeAll": "Close All",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "copyPath": "Copy Path",
+    "revealInExplorer": "Reveal in File Explorer"
+  },
+  "tabOverflow": {
+    "moreAria": "+{{count}} more tabs"
+  },
+  "explorer": {
+    "heading": "Explorer",
+    "noFolderTitle": "No folder open",
+    "noFolderBody": "Open a folder to start coding.",
+    "walkingLabel": "Reading folder…",
+    "emptyFolderTitle": "This folder is empty.",
+    "readErrorTitle": "Couldn't read folder",
+    "openFolder": "Open Folder",
+    "newFile": "New File",
+    "newFolder": "New Folder",
+    "retry": "Retry",
+    "openDifferent": "Open Different Folder",
+    "recent": "Recent",
+    "recentOpenFolder": "Open Folder…",
+    "recentClear": "Clear Recents",
+    "recentNone": "No recent workspaces",
+    "movedToTrash_one": "Moved {{count}} item to trash",
+    "movedToTrash_other": "Moved {{count}} items to trash",
+    "undo": "Undo",
+    "droppedNonDir": "Drop a folder to open it.",
+    "ctxNewFile": "New File",
+    "ctxNewFolder": "New Folder",
+    "ctxCut": "Cut",
+    "ctxCopy": "Copy",
+    "ctxPaste": "Paste",
+    "ctxRename": "Rename",
+    "ctxDelete": "Delete",
+    "ctxCopyPath": "Copy Path",
+    "ctxCopyRelativePath": "Copy Relative Path",
+    "ctxRevealInExplorer": "Reveal in File Explorer",
+    "searchHeading": "SEARCH",
+    "explorerHeading": "EXPLORER"
+  },
+  "editorKeySound": {
+    "heading": "Typing sounds",
+    "description": "Synthesized soft mechanical-keyboard clicks while typing in the editor. Pure Web Audio — no asset download.",
+    "enable": "Enable typing sounds",
+    "volume": "Volume (0–1)",
+    "pack": "Sound pack",
+    "packs": {
+      "soft": "Soft",
+      "typewriter": "Typewriter",
+      "mechanical": "Mechanical"
+    }
+  }
 }

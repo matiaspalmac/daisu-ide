@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { CaretDown, PushPin } from "@phosphor-icons/react";
 
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function TabOverflowDropdown(props: Props): JSX.Element | null {
+  const { t } = useTranslation();
   if (props.hidden.length === 0) return null;
   return (
     <DropdownMenu.Root>
@@ -22,7 +24,7 @@ export function TabOverflowDropdown(props: Props): JSX.Element | null {
         <button
           type="button"
           className="daisu-tab-overflow"
-          aria-label={`+${props.hidden.length} more tabs`}
+          aria-label={t("tabOverflow.moreAria", { count: props.hidden.length })}
         >
           <CaretDown size={12} />
           +{props.hidden.length}

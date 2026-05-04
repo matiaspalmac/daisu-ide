@@ -60,6 +60,15 @@
     "focusExit": "集中モードを終了 (静)",
     "focusLabel": "集中モード",
     "clockLabel": "現在時刻 {{clock}}、{{period}}",
+    "projectBreadcrumb": "{{project}}／{{file}}",
+    "projectBreadcrumbBare": "{{project}}",
+    "menuAria": "メニュー",
+    "smartMode": "スマートモード",
+    "smartModeComingSoon": "スマートモード切替は M4 で対応予定です。",
+    "crumbProjectTooltip": "最近のワークスペース",
+    "crumbFolderTooltip": "兄弟フォルダ",
+    "crumbFolderEmpty": "フォルダナビゲーションは M4 で対応予定です。",
+    "crumbFileTooltip": "ファイル検索 (Ctrl+P)",
     "period": {
       "morning": "朝",
       "afternoon": "昼",
@@ -122,6 +131,13 @@
         "right": "右"
       },
       "footer": "変更はリアルタイムで反映され、ローカルに保存されます。",
+      "layout": {
+        "title": "レイアウト",
+        "classic": "クラシック",
+        "classicDesc": "VS Code 風のレイアウト。左にファイルツリー、右にチャット、メニュー付きのフルタイトルバー。",
+        "fleet": "Fleet",
+        "fleetDesc": "JetBrains Fleet 風のコンパクトなレイアウト。右にファイル、左にエージェント、細いタイトルバー。"
+      },
       "cards": {
         "activityBar": {
           "title": "アクティビティバー",
@@ -360,7 +376,10 @@
     "sidebar": "サイドバー",
     "sidebarTooltip": "サイドバー (Ctrl+B)",
     "chatPanel": "チャットパネル",
-    "chatPanelTooltip": "チャットパネル (Ctrl+Shift+B)"
+    "chatPanelTooltip": "チャットパネル (Ctrl+Shift+B)",
+    "problems": "問題",
+    "problemsTooltip": "問題",
+    "problemsComingSoon": "問題パネルは M4 で対応予定です。"
   },
   "activity": {
     "explorer": "エクスプローラ",
@@ -377,5 +396,215 @@
     "noMatches": "一致なし"
   },
   "agentSaved": "保存しました",
-  "errorPrefix": "エラー: {{msg}}"
+  "errorPrefix": "エラー: {{msg}}",
+  "permissionModal": {
+    "title": "権限が必要です · {{tool}}",
+    "description": "エージェントがツール <0>{{tool}}</0> ({{tier}}) をスコープ <1>{{scope}}</1> で実行しようとしています。",
+    "deny": "拒否",
+    "denyEdit": "拒否して編集",
+    "denyEditTooltip": "今回のみ拒否 (拒否を保存しない)",
+    "allowOnce": "今回だけ許可",
+    "allowAlways": "常に許可"
+  },
+  "breadcrumb": {
+    "aria": "ファイルパス"
+  },
+  "editor": {
+    "areaAria": "エディタ領域"
+  },
+  "searchPanel": {
+    "aria": "ワークスペース検索",
+    "title": "検索",
+    "closeAria": "検索パネルを閉じる"
+  },
+  "statusBar": {
+    "aria": "ステータスバー"
+  },
+  "search": {
+    "placeholder": "検索",
+    "matchCase": "大文字と小文字を区別",
+    "wholeWord": "単語単位で一致",
+    "regex": "正規表現を使用",
+    "multiline": "複数行",
+    "replace": "置換",
+    "replaceAll": "すべて置換",
+    "replaceTitle_one": "{{fileCount}} 内の {{count}} 件を置換しますか？",
+    "replaceTitle_other": "{{fileCount}} 内の {{count}} 件を置換しますか？",
+    "replaceFiles_one": "{{count}} ファイル",
+    "replaceFiles_other": "{{count}} ファイル",
+    "andMore": "他 {{count}} 件",
+    "confirmReplace": "置換",
+    "noResultsIn": "{{count}} ファイルに結果なし",
+    "typeToSearch": "入力して検索",
+    "summary_one": "{{fileCount}} 内に {{count}} 件",
+    "summary_other": "{{fileCount}} 内に {{count}} 件",
+    "fileCount_one": "{{count}} ファイル",
+    "fileCount_other": "{{count}} ファイル",
+    "truncated": "(省略あり)",
+    "searching_one": "{{files}} を検索中... {{hits}}",
+    "searching_other": "{{files}} を検索中... {{hits}}",
+    "completion_one": "{{files}} 中 {{hits}}",
+    "completion_other": "{{files}} 中 {{hits}}",
+    "hits_one": "{{count}} 件",
+    "hits_other": "{{count}} 件",
+    "toggleAria": "検索パネルを切り替え"
+  },
+  "sidebarNode": {
+    "folderAria": "フォルダ",
+    "gitStatusAria": "Git ステータス {{status}}"
+  },
+  "fileTree": {
+    "aria": "ワークスペースファイルツリー"
+  },
+  "branch": {
+    "switchedTo": "{{name}} に切り替えました",
+    "forceSwitched": "{{name}} に強制切り替えしました",
+    "fetched_one": "{{remote}} から {{count}} 件の新しいコミットを取得",
+    "fetched_other": "{{remote}} から {{count}} 件の新しいコミットを取得",
+    "filterPlaceholder": "ブランチをフィルタ...",
+    "noBranches": "ブランチなし",
+    "switchTitle": "{{name}} に切り替えますか？",
+    "switchDesc": "作業ツリーに未コミットの変更があります。強制チェックアウトはそれらを破棄します。元に戻せません。",
+    "forceCheckout": "強制チェックアウト",
+    "switchAria": "ブランチを切り替え",
+    "fetchAria": "origin から取得",
+    "fetchTitle": "origin から取得",
+    "ahead": "先行",
+    "behind": "遅れ"
+  },
+  "statusbarSegment": {
+    "cursorTitle": "カーソル位置",
+    "cursorLabel": "行 {{line}}, 列 {{col}}",
+    "cursorSelection": " ({{count}} 選択)",
+    "encodingTitle": "ファイルエンコーディング",
+    "encodingReloaded": "{{encoding}} で再読み込みしました",
+    "reloadWith": "{{encoding}} で再読み込み",
+    "eolTitle": "改行コード",
+    "eolConverted": "EOL を {{target}} に変換しました",
+    "indentSpaces": "スペース",
+    "indentTabSize": "タブサイズ",
+    "indentLabel": "{{kind}}: {{size}}",
+    "indentTitle": "インデント (クリックで設定を開く)",
+    "languageTitle": "エディタの言語",
+    "languageFilter": "言語をフィルタ...",
+    "languageNoMatches": "一致なし",
+    "searchProgressTitle": "検索パネルを切り替え"
+  },
+  "settingsAdvanced": {
+    "title": "詳細",
+    "exportTitle": "Daisu 設定をエクスポート",
+    "exportFile": "daisu-settings.json",
+    "importTitle": "Daisu 設定をインポート",
+    "exportedToast": "設定をエクスポートしました。",
+    "importedToast": "設定をインポートしました。",
+    "resetAllLabel": "すべての設定をデフォルトにリセット",
+    "resetAllDesc": "フォント、テーマ、キーバインド、トグルを組み込みのデフォルト値に戻します。",
+    "resetAllButton": "すべてリセット",
+    "resetDialogTitle": "すべての設定をリセットしますか？",
+    "resetDialogDesc": "すべての設定 (フォント、テーマ、キーバインド、トグル) を組み込みのデフォルト値に戻します。元に戻せません。",
+    "resetButton": "リセット",
+    "resetToast": "設定をリセットしました。",
+    "exportLabel": "設定をエクスポート…",
+    "exportDesc": "現在の設定ファイルを JSON としてディスクに保存します。",
+    "exportButton": "エクスポート",
+    "importLabel": "設定をインポート…",
+    "importDesc": "以前にエクスポートした設定 JSON を読み込みます。各カテゴリは検証されます。",
+    "importButton": "インポート"
+  },
+  "settingsEditor": {
+    "title": "エディタ"
+  },
+  "settingsThemes": {
+    "title": "テーマ",
+    "pickerAria": "組み込みテーマ",
+    "activeAria": "アクティブ"
+  },
+  "settingsKeybindings": {
+    "title": "キーバインド",
+    "hint": "鉛筆をクリックして新しいショートカットを記録。Esc、外側クリック、または 5 秒待機でキャンセル。リセットでデフォルトに戻ります。"
+  },
+  "keybind": {
+    "press": "ショートカットを押してください...",
+    "editAria": "バインドを編集",
+    "resetAria": "デフォルトに戻す",
+    "overrideToast": "{{combo}} は \"{{label}}\" にすでに割り当てられています。上書きを保存しました。"
+  },
+  "keybindList": {
+    "action": "アクション",
+    "category": "カテゴリ",
+    "binding": "バインド",
+    "gotoSeries": "タブ 1 へ移動 (1–9 シリーズ)"
+  },
+  "closeConfirm": {
+    "titleSingle": "{{name}} の変更を保存しますか？",
+    "titleMulti": "{{count}} 個のファイルの変更を保存しますか？",
+    "defaultName": "このファイル",
+    "descSingle": "保存しないと変更は失われます。",
+    "andMore": "他 {{count}} 件",
+    "dontSave": "保存しない",
+    "save": "保存",
+    "saveAll": "すべて保存"
+  },
+  "tabBar": {
+    "openTabsAria": "開いているタブ",
+    "home": "ホーム",
+    "revealComing": "エクスプローラで表示はフェーズ 4 で提供されます。"
+  },
+  "tabContext": {
+    "close": "閉じる",
+    "closeOthers": "他を閉じる",
+    "closeAll": "すべて閉じる",
+    "pin": "ピン留め",
+    "unpin": "ピン解除",
+    "copyPath": "パスをコピー",
+    "revealInExplorer": "エクスプローラで表示"
+  },
+  "tabOverflow": {
+    "moreAria": "+{{count}} 件のタブ"
+  },
+  "explorer": {
+    "heading": "エクスプローラ",
+    "noFolderTitle": "フォルダが開かれていません",
+    "noFolderBody": "コードを書き始めるにはフォルダを開いてください。",
+    "walkingLabel": "フォルダを読み込み中…",
+    "emptyFolderTitle": "このフォルダは空です。",
+    "readErrorTitle": "フォルダを読み込めませんでした",
+    "openFolder": "フォルダを開く",
+    "newFile": "新しいファイル",
+    "newFolder": "新しいフォルダ",
+    "retry": "再試行",
+    "openDifferent": "別のフォルダを開く",
+    "recent": "最近",
+    "recentOpenFolder": "フォルダを開く…",
+    "recentClear": "最近の項目をクリア",
+    "recentNone": "最近のワークスペースなし",
+    "movedToTrash_one": "{{count}} 個の項目をゴミ箱に移動しました",
+    "movedToTrash_other": "{{count}} 個の項目をゴミ箱に移動しました",
+    "undo": "元に戻す",
+    "droppedNonDir": "フォルダをドロップして開いてください。",
+    "ctxNewFile": "新しいファイル",
+    "ctxNewFolder": "新しいフォルダ",
+    "ctxCut": "切り取り",
+    "ctxCopy": "コピー",
+    "ctxPaste": "貼り付け",
+    "ctxRename": "名前の変更",
+    "ctxDelete": "削除",
+    "ctxCopyPath": "パスをコピー",
+    "ctxCopyRelativePath": "相対パスをコピー",
+    "ctxRevealInExplorer": "エクスプローラで表示",
+    "searchHeading": "検索",
+    "explorerHeading": "エクスプローラ"
+  },
+  "editorKeySound": {
+    "heading": "タイピング音",
+    "description": "エディタ入力時に合成されたメカニカルキーボードの柔らかいクリック音。Web Audio のみ — アセット不要。",
+    "enable": "タイピング音を有効化",
+    "volume": "音量（0–1）",
+    "pack": "サウンドパック",
+    "packs": {
+      "soft": "ソフト",
+      "typewriter": "タイプライター",
+      "mechanical": "メカニカル"
+    }
+  }
 }

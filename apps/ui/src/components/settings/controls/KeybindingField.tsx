@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { Pencil, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { useSettings } from "../../../stores/settingsStore";
 import { useUI } from "../../../stores/uiStore";
@@ -54,6 +55,7 @@ function findConflict(
 }
 
 export function KeybindingField(props: Props): JSX.Element {
+  const { t } = useTranslation();
   const override = useSettings(
     (s) => (s.settings.keybindings as Record<string, string>)[props.actionId],
   );
@@ -79,7 +81,10 @@ export function KeybindingField(props: Props): JSX.Element {
       const conflict = findConflict(combo, props.actionId);
       if (conflict) {
         pushToast({
-          message: `${combo.replace("$mod", "Ctrl")} already bound to "${conflict.label}". Override saved.`,
+          message: t("keybind.overrideToast", {
+            combo: combo.replace("$mod", "Ctrl"),
+            label: conflict.label,
+          }),
           level: "warning",
         });
       }
@@ -94,7 +99,7 @@ export function KeybindingField(props: Props): JSX.Element {
       window.removeEventListener("keydown", onKey);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [recording, props.actionId, pushToast, setSetting]);
+  }, [recording, props.actionId, pushToast, setSetting, t]);
 
   const reset = (): void => {
     void setSetting("keybindings", { [props.actionId]: undefined as never } as never);
@@ -104,11 +109,11 @@ export function KeybindingField(props: Props): JSX.Element {
     <div className="daisu-keybinding-row">
       <span className="daisu-keybinding-label">{props.actionLabel}</span>
       <span className="daisu-keybinding-combo">
-        {recording ? "Press shortcut..." : comboToHuman(current)}
+        {recording ? t("keybind.press") : comboToHuman(current)}
       </span>
       <button
         type="button"
-        aria-label="Edit binding"
+        aria-label={t("keybind.editAria")}
         className="daisu-icon-btn-sm"
         onClick={() => setRecording(true)}
       >
@@ -116,7 +121,7 @@ export function KeybindingField(props: Props): JSX.Element {
       </button>
       <button
         type="button"
-        aria-label="Reset to default"
+        aria-label={t("keybind.resetAria")}
         className="daisu-icon-btn-sm"
         onClick={reset}
       >

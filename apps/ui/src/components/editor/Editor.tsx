@@ -69,6 +69,7 @@ import {
 } from "../../lib/monaco-editor-ref";
 import { applyTheme, flushPendingTheme } from "../../hooks/useTheme";
 import { useSettings } from "../../stores/settingsStore";
+import { keySoundEngine, keyKindFromCode } from "../../lib/key-sound";
 import { TRON_DARK, TRON_DARK_NAME } from "../../lib/monaco-tron-theme";
 
 type IStandaloneCodeEditor = monacoNs.editor.IStandaloneCodeEditor;
@@ -80,6 +81,19 @@ export function Editor(): JSX.Element {
   const monacoRef = useRef<Monaco | null>(null);
   const prevActiveRef = useRef<string | null>(null);
   const activeTabId = useTabs((s) => s.activeTabId);
+  const keySoundEnabled = useSettings((s) => s.settings.editor.keySoundEnabled);
+  const keySoundVolume = useSettings((s) => s.settings.editor.keySoundVolume);
+  const keySoundPack = useSettings((s) => s.settings.editor.keySoundPack);
+
+  useEffect(() => {
+    keySoundEngine.setEnabled(keySoundEnabled);
+  }, [keySoundEnabled]);
+  useEffect(() => {
+    keySoundEngine.setVolume(keySoundVolume);
+  }, [keySoundVolume]);
+  useEffect(() => {
+    keySoundEngine.setPack(keySoundPack);
+  }, [keySoundPack]);
 
   const handleBeforeMount: BeforeMount = (monaco) => {
     // Register Tron BEFORE editor creation so the `theme` prop resolves to a
@@ -101,6 +115,14 @@ export function Editor(): JSX.Element {
     setMonacoNamespace(monaco);
     flushPendingTheme();
     syncActiveTab();
+    editor.onKeyDown((e) => {
+      const kind = keyKindFromCode(e.code);
+      if (kind) keySoundEngine.play(kind, false);
+    });
+    editor.onKeyUp((e) => {
+      const kind = keyKindFromCode(e.code);
+      if (kind) keySoundEngine.play(kind, true);
+    });
   };
 
   useEffect(() => {
@@ -158,6 +180,7 @@ export function Editor(): JSX.Element {
   }, [activeTabId]);
 
   return (
+    <div className="h-full w-full">
     <MonacoEditor
       height="100%"
       width="100%"
@@ -166,6 +189,7 @@ export function Editor(): JSX.Element {
       onMount={handleMount}
       options={{
         minimap: { enabled: false },
+        lineNumbers: "on",
         fontSize: 13,
         fontFamily: "'Cascadia Code', 'JetBrains Mono', Consolas, monospace",
         fontLigatures: true,
@@ -197,5 +221,6 @@ export function Editor(): JSX.Element {
         stickyScroll: { enabled: true },
       }}
     />
+    </div>
   );
 }

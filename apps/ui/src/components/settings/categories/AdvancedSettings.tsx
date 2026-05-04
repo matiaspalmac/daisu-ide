@@ -1,4 +1,5 @@
 import { useState, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { useSettings } from "../../../stores/settingsStore";
@@ -7,6 +8,7 @@ import { exportSettingsCmd, importSettingsCmd } from "../../../api/tauri";
 import { translateError } from "../../../lib/error-translate";
 
 export function AdvancedSettings(): JSX.Element {
+  const { t } = useTranslation();
   const resetAll = useSettings((s) => s.resetAll);
   const setSetting = useSettings((s) => s.set);
   const pushToast = useUI((s) => s.pushToast);
@@ -15,12 +17,12 @@ export function AdvancedSettings(): JSX.Element {
   const handleExport = async (): Promise<void> => {
     try {
       const target = await saveDialog({
-        title: "Export Daisu settings",
-        defaultPath: "daisu-settings.json",
+        title: t("settingsAdvanced.exportTitle"),
+        defaultPath: t("settingsAdvanced.exportFile"),
       });
       if (typeof target !== "string") return;
       await exportSettingsCmd(target);
-      pushToast({ message: "Settings exported.", level: "success" });
+      pushToast({ message: t("settingsAdvanced.exportedToast"), level: "success" });
     } catch (err) {
       pushToast({ message: translateError(err), level: "error" });
     }
@@ -29,7 +31,7 @@ export function AdvancedSettings(): JSX.Element {
   const handleImport = async (): Promise<void> => {
     try {
       const source = await openDialog({
-        title: "Import Daisu settings",
+        title: t("settingsAdvanced.importTitle"),
         multiple: false,
         directory: false,
         filters: [{ name: "JSON", extensions: ["json"] }],
@@ -41,7 +43,7 @@ export function AdvancedSettings(): JSX.Element {
           await setSetting(cat, raw[cat] as never);
         }
       }
-      pushToast({ message: "Settings imported.", level: "success" });
+      pushToast({ message: t("settingsAdvanced.importedToast"), level: "success" });
     } catch (err) {
       pushToast({ message: translateError(err), level: "error" });
     }
@@ -49,27 +51,26 @@ export function AdvancedSettings(): JSX.Element {
 
   return (
     <div className="daisu-settings-panel">
-      <h2 className="daisu-settings-panel-title">Advanced</h2>
+      <h2 className="daisu-settings-panel-title">{t("settingsAdvanced.title")}</h2>
       <div className="daisu-field">
         <div className="daisu-field-text">
-          <label className="daisu-field-label">Reset all settings to defaults</label>
+          <label className="daisu-field-label">{t("settingsAdvanced.resetAllLabel")}</label>
           <p className="daisu-field-desc">
-            Restores fonts, themes, keybindings, and toggles to their built-in values.
+            {t("settingsAdvanced.resetAllDesc")}
           </p>
         </div>
         <AlertDialog.Root open={resetOpen} onOpenChange={setResetOpen}>
           <AlertDialog.Trigger asChild>
-            <button type="button" className="daisu-btn">Reset all</button>
+            <button type="button" className="daisu-btn">{t("settingsAdvanced.resetAllButton")}</button>
           </AlertDialog.Trigger>
           <AlertDialog.Portal>
             <AlertDialog.Overlay className="daisu-modal-overlay" />
             <AlertDialog.Content className="daisu-modal">
               <AlertDialog.Title className="daisu-modal-title">
-                Reset all settings?
+                {t("settingsAdvanced.resetDialogTitle")}
               </AlertDialog.Title>
               <AlertDialog.Description className="daisu-modal-body">
-                This restores every setting (fonts, themes, keybindings, toggles) to the
-                built-in defaults. This action cannot be undone.
+                {t("settingsAdvanced.resetDialogDesc")}
               </AlertDialog.Description>
               <div className="daisu-modal-actions">
                 <button
@@ -77,7 +78,7 @@ export function AdvancedSettings(): JSX.Element {
                   className="daisu-btn"
                   onClick={() => setResetOpen(false)}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
@@ -85,10 +86,10 @@ export function AdvancedSettings(): JSX.Element {
                   onClick={() => {
                     void resetAll();
                     setResetOpen(false);
-                    pushToast({ message: "Settings reset.", level: "success" });
+                    pushToast({ message: t("settingsAdvanced.resetToast"), level: "success" });
                   }}
                 >
-                  Reset
+                  {t("settingsAdvanced.resetButton")}
                 </button>
               </div>
             </AlertDialog.Content>
@@ -97,22 +98,22 @@ export function AdvancedSettings(): JSX.Element {
       </div>
       <div className="daisu-field">
         <div className="daisu-field-text">
-          <label className="daisu-field-label">Export settings…</label>
-          <p className="daisu-field-desc">Save the current settings file to disk as JSON.</p>
+          <label className="daisu-field-label">{t("settingsAdvanced.exportLabel")}</label>
+          <p className="daisu-field-desc">{t("settingsAdvanced.exportDesc")}</p>
         </div>
         <button type="button" className="daisu-btn" onClick={() => void handleExport()}>
-          Export
+          {t("settingsAdvanced.exportButton")}
         </button>
       </div>
       <div className="daisu-field">
         <div className="daisu-field-text">
-          <label className="daisu-field-label">Import settings…</label>
+          <label className="daisu-field-label">{t("settingsAdvanced.importLabel")}</label>
           <p className="daisu-field-desc">
-            Load a previously exported settings JSON file. Each category is validated.
+            {t("settingsAdvanced.importDesc")}
           </p>
         </div>
         <button type="button" className="daisu-btn" onClick={() => void handleImport()}>
-          Import
+          {t("settingsAdvanced.importButton")}
         </button>
       </div>
     </div>

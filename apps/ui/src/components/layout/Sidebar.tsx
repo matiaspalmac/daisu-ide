@@ -25,7 +25,6 @@ import { SearchInput } from "../search/SearchInput";
 import { ReplaceInput } from "../search/ReplaceInput";
 import { GlobFilters } from "../search/GlobFilters";
 import { ResultsList } from "../search/ResultsList";
-import { copy } from "../../lib/copy";
 import { translateError } from "../../lib/error-translate";
 
 export function Sidebar(): JSX.Element {
@@ -110,9 +109,9 @@ export function Sidebar(): JSX.Element {
           case "delete": {
             const refs = await deleteToTrash([...selection]);
             pushToast({
-              message: copy.toasts.movedToTrash(refs.length),
+              message: t("explorer.movedToTrash", { count: refs.length }),
               level: "info",
-              action: { label: copy.toasts.undo, onAction: () => undefined },
+              action: { label: t("explorer.undo"), onAction: () => undefined },
             });
             break;
           }
@@ -137,7 +136,7 @@ export function Sidebar(): JSX.Element {
             break;
           case "revealInExplorer":
             pushToast({
-              message: "Reveal in Explorer arrives in Phase 4.",
+              message: t("tabBar.revealComing"),
               level: "info",
             });
             break;
@@ -160,6 +159,7 @@ export function Sidebar(): JSX.Element {
       deleteToTrash,
       pushToast,
       togglePin,
+      t,
     ]
   );
 
@@ -199,7 +199,7 @@ export function Sidebar(): JSX.Element {
             {sidebarMode === "search" ? "検" : "木"}
           </span>
           <span className="daisu-sidebar-title-text">
-            {sidebarMode === "search" ? "SEARCH" : copy.sidebar.explorerHeading.toUpperCase()}
+            {sidebarMode === "search" ? t("explorer.searchHeading") : t("explorer.explorerHeading")}
           </span>
         </div>
         {sidebarMode === "search" ? null : (

@@ -22,6 +22,9 @@ const SettingsSchema = z.object({
     smoothScrolling: z.boolean().default(true),
     bracketPairColorization: z.boolean().default(true),
     formatOnSave: z.boolean().default(false),
+    keySoundEnabled: z.boolean().default(false),
+    keySoundVolume: z.number().min(0).max(1).default(0.3),
+    keySoundPack: z.enum(["soft", "typewriter", "mechanical"]).default("soft"),
   }).prefault({}),
   themes: z.object({
     activeThemeId: z.string().default("tron-dark"),
@@ -57,6 +60,16 @@ const SettingsSchema = z.object({
     titleBarHamburger: z.boolean().default(true),
     titleBarMenuStrip: z.boolean().default(true),
     titleBarUserAvatar: z.boolean().default(true),
+    layoutMode: z.enum(["classic", "fleet"]).default("classic"),
+    classicSnapshot: z
+      .object({
+        sidebarSide: z.enum(["left", "right"]),
+        rightPanelSide: z.enum(["left", "right"]),
+        activityBarVisible: z.boolean(),
+        sidebarVisible: z.boolean(),
+        rightPanelVisible: z.boolean(),
+      })
+      .optional(),
   }).prefault({}),
   integrations: z.object({
     discordRpcEnabled: z.boolean().default(true),

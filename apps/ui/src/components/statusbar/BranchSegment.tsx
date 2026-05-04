@@ -1,4 +1,5 @@
 import type { JSX, MouseEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { GitBranch, ArrowsClockwise } from "@phosphor-icons/react";
 import { BranchPicker } from "./BranchPicker";
 import { useGit } from "../../stores/gitStore";
@@ -6,6 +7,7 @@ import { useUI } from "../../stores/uiStore";
 import { translateError } from "../../lib/error-translate";
 
 export function BranchSegment(): JSX.Element | null {
+  const { t } = useTranslation();
   const info = useGit((s) => s.info);
   const fetchRemote = useGit((s) => s.fetchRemote);
   const pushToast = useUI((s) => s.pushToast);
@@ -17,7 +19,7 @@ export function BranchSegment(): JSX.Element | null {
     try {
       const r = await fetchRemote("origin");
       pushToast({
-        message: `Fetched ${r.commitsReceived} new commit(s) from ${r.remote}`,
+        message: t("branch.fetched", { count: r.commitsReceived, remote: r.remote }),
         level: "success",
       });
     } catch (err) {
@@ -32,12 +34,12 @@ export function BranchSegment(): JSX.Element | null {
     <button
       type="button"
       className="daisu-status-segment daisu-status-clickable daisu-branch-segment"
-      title="Switch branch"
+      title={t("branch.switchAria")}
     >
       <GitBranch size={12} />
       {info.branch}
-      {info.ahead > 0 && <span title="Ahead">↑{info.ahead}</span>}
-      {info.behind > 0 && <span title="Behind">↓{info.behind}</span>}
+      {info.ahead > 0 && <span title={t("branch.ahead")}>↑{info.ahead}</span>}
+      {info.behind > 0 && <span title={t("branch.behind")}>↓{info.behind}</span>}
     </button>
   );
 
@@ -48,8 +50,8 @@ export function BranchSegment(): JSX.Element | null {
         type="button"
         className="daisu-icon-btn-sm"
         onClick={(e) => void handleFetch(e)}
-        aria-label="Fetch from origin"
-        title="Fetch from origin"
+        aria-label={t("branch.fetchAria")}
+        title={t("branch.fetchTitle")}
       >
         <ArrowsClockwise size={10} />
       </button>
