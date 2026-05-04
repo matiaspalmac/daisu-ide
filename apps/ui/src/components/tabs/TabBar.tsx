@@ -38,7 +38,10 @@ export function TabBar(): JSX.Element | null {
   const layoutMode = useSettings((s) => s.settings.design.layoutMode);
   const isFleet = layoutMode === "fleet";
   const fleetHide =
-    isFleet && tabs.length === 1 && !(tabs[0]?.pinned ?? false);
+    isFleet &&
+    tabs.length === 1 &&
+    !(tabs[0]?.pinned ?? false) &&
+    activeTabId === tabs[0]?.id;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);

@@ -61,6 +61,15 @@ const SettingsSchema = z.object({
     titleBarMenuStrip: z.boolean().default(true),
     titleBarUserAvatar: z.boolean().default(true),
     layoutMode: z.enum(["classic", "fleet"]).default("classic"),
+    classicSnapshot: z
+      .object({
+        sidebarSide: z.enum(["left", "right"]),
+        rightPanelSide: z.enum(["left", "right"]),
+        activityBarVisible: z.boolean(),
+        sidebarVisible: z.boolean(),
+        rightPanelVisible: z.boolean(),
+      })
+      .optional(),
   }).prefault({}),
   integrations: z.object({
     discordRpcEnabled: z.boolean().default(true),

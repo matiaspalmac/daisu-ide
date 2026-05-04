@@ -15,9 +15,10 @@ export function SearchProgress(): JSX.Element | null {
   if (done && hits === 0) return null;
 
   const hitsLabel = t("search.hits", { count: hits });
+  const filesLabel = t("search.fileCount", { count: filesSearched });
   const label = active
-    ? t("search.searching", { filesSearched, hits: hitsLabel })
-    : t("search.completion", { hits: hitsLabel, filesSearched });
+    ? t("search.searching", { count: filesSearched, files: filesLabel, hits: hitsLabel })
+    : t("search.completion", { count: filesSearched, files: filesLabel, hits: hitsLabel });
 
   return (
     <button

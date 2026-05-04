@@ -47,10 +47,10 @@ export function StatusBar(): JSX.Element {
       {/* Left: file info segments */}
       <div className="flex items-center gap-3 flex-shrink min-w-0">
         <CursorSegment />
-        {!isFleet && <LanguagePicker />}
-        {!isFleet && <EncodingSegment />}
-        {!isFleet && <EolSegment />}
-        {!isFleet && <IndentSegment />}
+        <LanguagePicker />
+        <EncodingSegment />
+        <EolSegment />
+        <IndentSegment />
       </div>
 
       {/* Center: workspace pill + search progress */}
@@ -85,20 +85,22 @@ export function StatusBar(): JSX.Element {
 
       {/* Right: utility cluster */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          type="button"
-          className={utilityCls}
-          title={t("status.problemsTooltip")}
-          aria-label={t("status.problems")}
-          onClick={() =>
-            pushToast({ message: t("status.problemsComingSoon"), level: "info" })
-          }
-        >
-          <XCircle size={11} />
-          <span>0</span>
-          <Warning size={11} />
-          <span>0</span>
-        </button>
+        {(isFleet || design.statusBarUtility) && (
+          <button
+            type="button"
+            className={utilityCls}
+            title={t("status.problemsTooltip")}
+            aria-label={t("status.problems")}
+            onClick={() =>
+              pushToast({ message: t("status.problemsComingSoon"), level: "info" })
+            }
+          >
+            <XCircle size={11} />
+            <span>0</span>
+            <Warning size={11} />
+            <span>0</span>
+          </button>
+        )}
         <McpStatusChip />
         {!isFleet && design.statusBarUtility && (
         <>

@@ -441,8 +441,10 @@
     "fileCount_one": "{{count}} ファイル",
     "fileCount_other": "{{count}} ファイル",
     "truncated": "(省略あり)",
-    "searching": "{{filesSearched}} ファイルを検索中... {{hits}}",
-    "completion": "{{filesSearched}} ファイル中 {{hits}}",
+    "searching_one": "{{files}} を検索中... {{hits}}",
+    "searching_other": "{{files}} を検索中... {{hits}}",
+    "completion_one": "{{files}} 中 {{hits}}",
+    "completion_other": "{{files}} 中 {{hits}}",
     "hits_one": "{{count}} 件",
     "hits_other": "{{count}} 件",
     "toggleAria": "検索パネルを切り替え"

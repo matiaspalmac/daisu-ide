@@ -122,7 +122,8 @@ function DesignCard(props: DesignCardProps): JSX.Element {
 
 function LayoutPicker(): JSX.Element {
   const { t } = useTranslation();
-  const layoutMode = useSettings((s) => s.settings.design.layoutMode);
+  const design = useSettings((s) => s.settings.design);
+  const layoutMode = design.layoutMode;
   const setSetting = useSettings((s) => s.set);
 
   const options: Array<{ value: "classic" | "fleet"; title: string; desc: string }> = [
@@ -152,18 +153,35 @@ function LayoutPicker(): JSX.Element {
               type="button"
               onClick={() => {
                 if (opt.value === "fleet") {
+                  const snapshot =
+                    layoutMode === "classic"
+                      ? {
+                          sidebarSide: design.sidebarSide,
+                          rightPanelSide: design.rightPanelSide,
+                          activityBarVisible: design.activityBarVisible,
+                          sidebarVisible: design.sidebarVisible,
+                          rightPanelVisible: design.rightPanelVisible,
+                        }
+                      : design.classicSnapshot;
                   void setSetting("design", {
                     layoutMode: "fleet",
                     sidebarSide: "right",
                     rightPanelSide: "left",
                     activityBarVisible: false,
+                    sidebarVisible: true,
+                    rightPanelVisible: true,
+                    classicSnapshot: snapshot,
                   });
                   void setSetting("editor", { keySoundEnabled: true });
                 } else {
+                  const snap = design.classicSnapshot;
                   void setSetting("design", {
                     layoutMode: "classic",
-                    sidebarSide: "left",
-                    rightPanelSide: "right",
+                    sidebarSide: snap?.sidebarSide ?? "left",
+                    rightPanelSide: snap?.rightPanelSide ?? "right",
+                    activityBarVisible: snap?.activityBarVisible ?? false,
+                    sidebarVisible: snap?.sidebarVisible ?? true,
+                    rightPanelVisible: snap?.rightPanelVisible ?? true,
                   });
                 }
               }}
