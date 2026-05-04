@@ -110,10 +110,10 @@ function DesignCard(props: DesignCardProps): JSX.Element {
           >
             <span
               className={
-                "block h-3.5 w-3.5 rounded-full bg-[var(--fg-primary)] transition-transform shadow-sm " +
+                "block h-3.5 w-3.5 rounded-full transition-transform shadow-sm " +
                 (isOn
                   ? "translate-x-[18px] bg-[var(--bg-base)]"
-                  : "translate-x-[3px]")
+                  : "translate-x-[3px] bg-[var(--fg-primary)]")
               }
             />
           </button>
