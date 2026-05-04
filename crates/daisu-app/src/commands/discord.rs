@@ -5,6 +5,8 @@
 //! client lives in a process-global mutex; reconnect attempts are best-effort
 //! — if Discord is closed, calls fail silently.
 
+#![allow(clippy::missing_errors_doc, clippy::needless_pass_by_value)]
+
 use std::sync::Mutex;
 
 use discord_rich_presence::{
@@ -34,84 +36,104 @@ fn map_err<E: std::fmt::Display>(e: E) -> AppError {
 }
 
 #[tauri::command]
-pub fn discord_connect(app_id: String) -> AppResult<()> {
-    let mut guard = CLIENT
-        .lock()
-        .map_err(|_| AppError::Internal("discord rpc mutex poisoned".into()))?;
-    // Re-creating the client is cheap; drop the old one first so a stale
-    // socket doesn't linger after Discord restarts.
-    if let Some(mut old) = guard.take() {
-        let _ = old.close();
-    }
-    let mut client = DiscordIpcClient::new(&app_id).map_err(map_err)?;
-    client.connect().map_err(map_err)?;
-    *guard = Some(client);
-    Ok(())
+pub async fn discord_connect(app_id: String) -> AppResult<()> {
+    // Move the entire blocking IPC handshake off the Tauri command thread.
+    // `connect()` performs synchronous socket calls which can stall the UI
+    // thread when Discord is slow to respond or unavailable, freezing the
+    // window until they time out.
+    tokio::task::spawn_blocking(move || -> AppResult<()> {
+        let mut guard = CLIENT
+            .lock()
+            .map_err(|_| AppError::Internal("discord rpc mutex poisoned".into()))?;
+        // Re-creating the client is cheap; drop the old one first so a stale
+        // socket doesn't linger after Discord restarts.
+        if let Some(mut old) = guard.take() {
+            let _ = old.close();
+        }
+        let mut client = DiscordIpcClient::new(&app_id).map_err(map_err)?;
+        client.connect().map_err(map_err)?;
+        *guard = Some(client);
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("discord rpc join: {e}")))?
 }
 
 #[tauri::command]
-pub fn discord_set_activity(payload: ActivityPayload) -> AppResult<()> {
-    let mut guard = CLIENT
-        .lock()
-        .map_err(|_| AppError::Internal("discord rpc mutex poisoned".into()))?;
-    let Some(client) = guard.as_mut() else {
-        return Err(AppError::Internal("discord rpc not connected".into()));
-    };
+pub async fn discord_set_activity(payload: ActivityPayload) -> AppResult<()> {
+    tokio::task::spawn_blocking(move || -> AppResult<()> {
+        let mut guard = CLIENT
+            .lock()
+            .map_err(|_| AppError::Internal("discord rpc mutex poisoned".into()))?;
+        let Some(client) = guard.as_mut() else {
+            return Err(AppError::Internal("discord rpc not connected".into()));
+        };
 
-    let mut activity = Activity::new();
-    if let Some(d) = payload.details.as_deref() {
-        activity = activity.details(d);
-    }
-    if let Some(s) = payload.state.as_deref() {
-        activity = activity.state(s);
-    }
-    if let Some(ts) = payload.start_timestamp {
-        activity = activity.timestamps(Timestamps::new().start(ts));
-    }
-    let mut assets = Assets::new();
-    let mut have_assets = false;
-    if let Some(li) = payload.large_image.as_deref() {
-        assets = assets.large_image(li);
-        have_assets = true;
-    }
-    if let Some(lt) = payload.large_text.as_deref() {
-        assets = assets.large_text(lt);
-        have_assets = true;
-    }
-    if let Some(si) = payload.small_image.as_deref() {
-        assets = assets.small_image(si);
-        have_assets = true;
-    }
-    if let Some(st) = payload.small_text.as_deref() {
-        assets = assets.small_text(st);
-        have_assets = true;
-    }
-    if have_assets {
-        activity = activity.assets(assets);
-    }
+        let mut activity = Activity::new();
+        if let Some(d) = payload.details.as_deref() {
+            activity = activity.details(d);
+        }
+        if let Some(s) = payload.state.as_deref() {
+            activity = activity.state(s);
+        }
+        if let Some(ts) = payload.start_timestamp {
+            activity = activity.timestamps(Timestamps::new().start(ts));
+        }
+        let mut assets = Assets::new();
+        let mut have_assets = false;
+        if let Some(li) = payload.large_image.as_deref() {
+            assets = assets.large_image(li);
+            have_assets = true;
+        }
+        if let Some(lt) = payload.large_text.as_deref() {
+            assets = assets.large_text(lt);
+            have_assets = true;
+        }
+        if let Some(si) = payload.small_image.as_deref() {
+            assets = assets.small_image(si);
+            have_assets = true;
+        }
+        if let Some(st) = payload.small_text.as_deref() {
+            assets = assets.small_text(st);
+            have_assets = true;
+        }
+        if have_assets {
+            activity = activity.assets(assets);
+        }
 
-    client.set_activity(activity).map_err(map_err)?;
-    Ok(())
+        client.set_activity(activity).map_err(map_err)?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("discord rpc join: {e}")))?
 }
 
 #[tauri::command]
-pub fn discord_clear_activity() -> AppResult<()> {
-    let mut guard = CLIENT
-        .lock()
-        .map_err(|_| AppError::Internal("discord rpc mutex poisoned".into()))?;
-    if let Some(client) = guard.as_mut() {
-        client.clear_activity().map_err(map_err)?;
-    }
-    Ok(())
+pub async fn discord_clear_activity() -> AppResult<()> {
+    tokio::task::spawn_blocking(|| -> AppResult<()> {
+        let mut guard = CLIENT
+            .lock()
+            .map_err(|_| AppError::Internal("discord rpc mutex poisoned".into()))?;
+        if let Some(client) = guard.as_mut() {
+            client.clear_activity().map_err(map_err)?;
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("discord rpc join: {e}")))?
 }
 
 #[tauri::command]
-pub fn discord_disconnect() -> AppResult<()> {
-    let mut guard = CLIENT
-        .lock()
-        .map_err(|_| AppError::Internal("discord rpc mutex poisoned".into()))?;
-    if let Some(mut client) = guard.take() {
-        let _ = client.close();
-    }
-    Ok(())
+pub async fn discord_disconnect() -> AppResult<()> {
+    tokio::task::spawn_blocking(|| -> AppResult<()> {
+        let mut guard = CLIENT
+            .lock()
+            .map_err(|_| AppError::Internal("discord rpc mutex poisoned".into()))?;
+        if let Some(mut client) = guard.take() {
+            let _ = client.close();
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("discord rpc join: {e}")))?
 }

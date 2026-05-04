@@ -40,10 +40,13 @@ export function useDiscordRpc(): void {
   const pendingTimerRef = useRef<number | null>(null);
   const connectedRef = useRef<boolean>(false);
 
-  // Connect / reconnect when enabled flag or appId changes.
+  // Connect / reconnect when enabled flag or appId changes. Defer the first
+  // attempt by 1.5s so the app paints, the editor mounts, and the user is
+  // interactive before any potentially slow IPC handshake runs.
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
+    let delayHandle: number | null = null;
     if (!enabled || !appId) {
       void discordDisconnectCmd().catch(() => undefined);
       connectedRef.current = false;
@@ -51,19 +54,23 @@ export function useDiscordRpc(): void {
         cancelled = true;
       };
     }
-    void discordConnectCmd(appId)
-      .then(() => {
-        if (!cancelled) {
-          connectedRef.current = true;
-          startTsRef.current = Math.floor(Date.now() / 1000);
-        }
-      })
-      .catch(() => {
-        // Discord not running or socket unavailable — silently skip.
-        connectedRef.current = false;
-      });
+    delayHandle = window.setTimeout(() => {
+      if (cancelled) return;
+      void discordConnectCmd(appId)
+        .then(() => {
+          if (!cancelled) {
+            connectedRef.current = true;
+            startTsRef.current = Math.floor(Date.now() / 1000);
+          }
+        })
+        .catch(() => {
+          // Discord not running or socket unavailable — silently skip.
+          connectedRef.current = false;
+        });
+    }, 1500);
     return () => {
       cancelled = true;
+      if (delayHandle !== null) window.clearTimeout(delayHandle);
     };
   }, [enabled, appId]);
 
