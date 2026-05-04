@@ -52,7 +52,13 @@ fn main() {
             commands::agent::agent_key_set,
             commands::agent::agent_key_clear,
             commands::agent::agent_key_has,
-            commands::agent::agent_provider_test
+            commands::agent::agent_provider_test,
+            commands::agent::agent_create_conversation,
+            commands::agent::agent_list_conversations,
+            commands::agent::agent_get_messages,
+            commands::agent::agent_delete_conversation,
+            commands::agent::agent_send_message,
+            commands::agent::agent_cancel
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {

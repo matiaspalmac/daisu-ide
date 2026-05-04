@@ -4,9 +4,12 @@
 //! `open_workspace` can cancel a prior walker) and the current root path.
 //! Phase 5 adds the dedicated git watcher handle and its cancellation token.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
+use daisu_agent::memory::MemoryStore;
+use daisu_agent::runtime::CancelToken as AgentCancelToken;
 use notify::RecommendedWatcher;
 use tokio_util::sync::CancellationToken;
 
@@ -15,6 +18,8 @@ pub struct AppState {
     pub walker_token: Mutex<Option<CancellationToken>>,
     git_cancel: parking_lot::Mutex<Option<CancellationToken>>,
     git_watcher: parking_lot::Mutex<Option<RecommendedWatcher>>,
+    agent_memory: parking_lot::Mutex<HashMap<PathBuf, Arc<MemoryStore>>>,
+    agent_runs: parking_lot::Mutex<HashMap<String, AgentCancelToken>>,
 }
 
 impl Default for AppState {
@@ -24,6 +29,8 @@ impl Default for AppState {
             walker_token: Mutex::new(None),
             git_cancel: parking_lot::Mutex::new(None),
             git_watcher: parking_lot::Mutex::new(None),
+            agent_memory: parking_lot::Mutex::new(HashMap::new()),
+            agent_runs: parking_lot::Mutex::new(HashMap::new()),
         }
     }
 }
@@ -114,5 +121,40 @@ impl AppState {
     /// Drop the active git watcher (stops it). Called from `close_workspace`.
     pub fn drop_git_watcher(&self) {
         *self.git_watcher.lock() = None;
+    }
+
+    /// Open or reuse the per-workspace agent memory store.
+    ///
+    /// # Errors
+    ///
+    /// Returns the formatted error if `SQLite` cannot open or migrate the
+    /// `.daisu/agent.db` file under `workspace`.
+    pub fn agent_memory(&self, workspace: &PathBuf) -> Result<Arc<MemoryStore>, String> {
+        let mut guard = self.agent_memory.lock();
+        if let Some(s) = guard.get(workspace) {
+            return Ok(s.clone());
+        }
+        let path = workspace.join(".daisu").join("agent.db");
+        let store = MemoryStore::open(&path).map_err(|e| format!("agent memory: {e}"))?;
+        let arc = Arc::new(store);
+        guard.insert(workspace.clone(), arc.clone());
+        Ok(arc)
+    }
+
+    pub fn register_agent_run(&self, run_id: String, token: AgentCancelToken) {
+        self.agent_runs.lock().insert(run_id, token);
+    }
+
+    pub fn cancel_agent_run(&self, run_id: &str) -> bool {
+        if let Some(token) = self.agent_runs.lock().remove(run_id) {
+            token.cancel();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn drop_agent_run(&self, run_id: &str) {
+        self.agent_runs.lock().remove(run_id);
     }
 }
