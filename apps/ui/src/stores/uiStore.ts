@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { nanoid } from "nanoid";
 
+// Clear any legacy persisted focus mode so users coming from an older build
+// don't open the app stuck without chrome.
+try { localStorage.removeItem("daisu.focusMode"); } catch { /* ignore */ }
+
 export type ToastLevel = "info" | "success" | "warning" | "error";
 
 export type ActivityIcon = "files" | "search" | "git";
@@ -77,9 +81,10 @@ const INITIAL: Pick<UIState,
   activeActivityIcon: "files",
   rightPanelMode: "chat",
   toasts: [],
-  focusMode: ((): boolean => {
-    try { return localStorage.getItem("daisu.focusMode") === "true"; } catch { return false; }
-  })(),
+  // Never persist focusMode across launches — a stuck-on focus mode hides
+  // the entire chrome (sidebar, status bar, resize handles, parts of the
+  // titlebar drag region) and makes the next launch look crashed.
+  focusMode: false,
   sidebarFilter: ((): string => {
     try { return localStorage.getItem("daisu.sidebarFilter") ?? ""; } catch { return ""; }
   })(),
@@ -119,12 +124,7 @@ export const useUI = create<UIState>((set) => ({
     return id;
   },
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
-  toggleFocusMode: () =>
-    set((s) => {
-      const next = !s.focusMode;
-      try { localStorage.setItem("daisu.focusMode", String(next)); } catch { /* ignore */ }
-      return { focusMode: next };
-    }),
+  toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
   setSidebarFilter: (q) => {
     try { localStorage.setItem("daisu.sidebarFilter", q); } catch { /* ignore */ }
     set({ sidebarFilter: q });

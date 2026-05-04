@@ -45,10 +45,10 @@ function dayOfYear(d: Date): number {
 
 function greeting(): string {
   const h = new Date().getHours();
-  if (h < 6) return "buenas noches — momento tranquilo para escribir";
-  if (h < 12) return "buenos días — café y un editor que no se mete en el medio";
-  if (h < 19) return "buenas tardes — bienvenido de vuelta";
-  return "buenas noches — código y silencio";
+  if (h < 6) return "buenas noches";
+  if (h < 12) return "buenos días";
+  if (h < 19) return "buenas tardes";
+  return "buenas noches";
 }
 
 export function WelcomeScreen(): JSX.Element {

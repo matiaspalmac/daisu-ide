@@ -14,12 +14,13 @@ createRoot(container).render(
   </StrictMode>,
 );
 
-// Tear down the inline boot splash once React paints. 320ms hold + 320ms
-// fade out feels like a deliberate breath, not a stutter.
+// Tear down the inline boot splash once React paints. Tuned for "barely felt"
+// presence — 90ms in, ~40ms hold, 200ms ease-out fade with a tiny scale + blur
+// so the glyph dissolves rather than blinks off. Total ~330ms.
 const splash = document.getElementById("daisu-splash");
 if (splash) {
   window.setTimeout(() => {
     splash.dataset["leaving"] = "1";
-    window.setTimeout(() => splash.remove(), 320);
-  }, 320);
+    window.setTimeout(() => splash.remove(), 200);
+  }, 40);
 }

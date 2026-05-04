@@ -17,11 +17,12 @@
         color: #D4A574;
         z-index: 99999;
         opacity: 0;
-        animation: daisu-splash-in 320ms ease-out forwards;
+        animation: daisu-splash-in 90ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
         pointer-events: none;
+        will-change: opacity;
       }
       #daisu-splash[data-leaving="1"] {
-        animation: daisu-splash-out 320ms ease-out forwards;
+        animation: daisu-splash-out 200ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
       }
       #daisu-splash > span {
         font-family: "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", "Times New Roman", serif;
@@ -30,9 +31,23 @@
         letter-spacing: -0.02em;
         text-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
         opacity: 0.92;
+        animation: daisu-splash-glyph-in 200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        transform-origin: center;
+        will-change: transform, opacity;
+      }
+      #daisu-splash[data-leaving="1"] > span {
+        animation: daisu-splash-glyph-out 200ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
       }
       @keyframes daisu-splash-in  { to { opacity: 1; } }
       @keyframes daisu-splash-out { to { opacity: 0; } }
+      @keyframes daisu-splash-glyph-in {
+        from { opacity: 0; transform: scale(0.94); }
+        to   { opacity: 0.92; transform: scale(1); }
+      }
+      @keyframes daisu-splash-glyph-out {
+        from { opacity: 0.92; transform: scale(1); }
+        to   { opacity: 0; transform: scale(1.08); filter: blur(2px); }
+      }
     </style>
   </head>
   <body>
