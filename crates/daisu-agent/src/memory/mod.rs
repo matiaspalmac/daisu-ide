@@ -13,10 +13,18 @@ use crate::provider::{Message, Role};
 const SCHEMA: &str = include_str!("schema.sql");
 
 pub struct MemoryStore {
-    conn: Mutex<Connection>,
+    conn: std::sync::Arc<Mutex<Connection>>,
 }
 
 impl MemoryStore {
+    /// Shared handle to the underlying connection. Used by ancillary
+    /// modules (e.g. [`crate::permission::gate::PermissionGate`]) that
+    /// need to query workspace-scoped tables on the same database.
+    #[must_use]
+    pub fn connection(&self) -> std::sync::Arc<Mutex<Connection>> {
+        self.conn.clone()
+    }
+
     pub fn open(path: impl AsRef<Path>) -> AgentResult<Self> {
         if let Some(parent) = path.as_ref().parent() {
             std::fs::create_dir_all(parent)?;
@@ -29,7 +37,7 @@ impl MemoryStore {
         )?;
         conn.execute_batch(SCHEMA)?;
         Ok(Self {
-            conn: Mutex::new(conn),
+            conn: std::sync::Arc::new(Mutex::new(conn)),
         })
     }
 

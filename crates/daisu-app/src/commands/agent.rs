@@ -24,9 +24,12 @@ use std::sync::Arc;
 use daisu_agent::{
     keychain,
     memory::{ConversationSummary, MemoryStore, StoredMessage},
+    permission::gate::PERMISSION_REQUEST_EVENT,
     provider::{anthropic::AnthropicProvider, ollama::OllamaProvider, ProviderId, ToolCapability},
     runtime::CancelToken,
-    AgentResult, CompletionRequest, LlmProvider, Message, Role, StreamEvent,
+    AgentResult, AllowlistEntry, CompletionRequest, Decision, EventEmitter, LlmProvider, Message,
+    PermissionGate, PermissionRequestEvent, Role, StreamEvent, ToolCall, ToolDescriptor,
+    ToolResult,
 };
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -203,6 +206,154 @@ async fn build_provider(provider: &str, base_url: Option<&str>) -> AppResult<Box
         ))),
     }
 }
+
+// ─── M3 Phase 2: tool dispatcher + permission gate ───────────────────
+
+/// Tauri-backed event emitter that the agent crate uses to push
+/// permission requests to the frontend. Keeps `daisu-agent` Tauri-free.
+struct TauriEmitter {
+    handle: tauri::AppHandle,
+}
+
+impl EventEmitter for TauriEmitter {
+    fn emit(&self, event: &str, payload: &PermissionRequestEvent) -> Result<(), String> {
+        self.handle.emit(event, payload).map_err(|e| e.to_string())
+    }
+}
+
+fn workspace_db_path(workspace: &std::path::Path) -> PathBuf {
+    workspace.join(".daisu").join("agent.db")
+}
+
+/// Validate that the workspace path the frontend sent is an existing
+/// directory and canonicalise it before any IO. Rejects symlink games
+/// and non-existent paths so `MemoryStore::open` never gets handed a
+/// crafted location outside the user's real filesystem.
+fn validate_workspace(raw: &str) -> AppResult<PathBuf> {
+    if raw.trim().is_empty() {
+        return Err(AppError::Internal("empty workspace path".into()));
+    }
+    let candidate = PathBuf::from(raw);
+    let canonical = candidate
+        .canonicalize()
+        .map_err(|e| AppError::Internal(format!("workspace canonicalize: {e}")))?;
+    if !canonical.is_dir() {
+        return Err(AppError::Internal(format!(
+            "workspace is not a directory: {}",
+            canonical.display()
+        )));
+    }
+    Ok(canonical)
+}
+
+fn gate_for_workspace(
+    state: &AppState,
+    handle: &tauri::AppHandle,
+    workspace: &std::path::Path,
+) -> AppResult<Arc<PermissionGate>> {
+    let mut gates = state.permission_gates.lock();
+    if let Some(existing) = gates.get(workspace) {
+        return Ok(existing.clone());
+    }
+    let store =
+        daisu_agent::memory::MemoryStore::open(workspace_db_path(workspace)).map_err(map_agent)?;
+    let emitter: Arc<dyn EventEmitter> = Arc::new(TauriEmitter {
+        handle: handle.clone(),
+    });
+    let gate = Arc::new(PermissionGate::new(Arc::new(store), emitter));
+    gates.insert(workspace.to_path_buf(), gate.clone());
+    Ok(gate)
+}
+
+#[tauri::command]
+#[must_use]
+pub fn agent_tool_list(state: State<'_, AppState>) -> Vec<ToolDescriptor> {
+    state.tool_registry.descriptors()
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolDispatchRequest {
+    pub tool: String,
+    pub arguments: serde_json::Value,
+    pub scope: String,
+    pub workspace_path: String,
+}
+
+#[tauri::command]
+pub async fn agent_tool_dispatch(
+    handle: tauri::AppHandle,
+    req: ToolDispatchRequest,
+) -> AppResult<ToolResult> {
+    let workspace = validate_workspace(&req.workspace_path)?;
+    let state = handle.state::<AppState>();
+    let gate = gate_for_workspace(&state, &handle, &workspace)?;
+    let registry = state.tool_registry.clone();
+    let call = ToolCall {
+        name: req.tool,
+        arguments: req.arguments,
+    };
+    Ok(registry.dispatch(call, &gate, &workspace, &req.scope).await)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionResolveRequest {
+    pub workspace_path: String,
+    pub request_id: String,
+    pub decision: Decision,
+}
+
+#[tauri::command]
+pub fn agent_permission_resolve(
+    handle: tauri::AppHandle,
+    req: PermissionResolveRequest,
+) -> AppResult<bool> {
+    let state = handle.state::<AppState>();
+    let workspace = validate_workspace(&req.workspace_path)?;
+    let gate = gate_for_workspace(&state, &handle, &workspace)?;
+    Ok(gate.resolve(&req.request_id, req.decision))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AllowlistListRequest {
+    pub workspace_path: String,
+}
+
+#[tauri::command]
+pub fn agent_permission_list_allowlist(
+    handle: tauri::AppHandle,
+    req: AllowlistListRequest,
+) -> AppResult<Vec<AllowlistEntry>> {
+    let state = handle.state::<AppState>();
+    let workspace = validate_workspace(&req.workspace_path)?;
+    let gate = gate_for_workspace(&state, &handle, &workspace)?;
+    gate.list_allowlist().map_err(map_agent)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AllowlistClearRequest {
+    pub workspace_path: String,
+    pub tool_name: Option<String>,
+}
+
+#[tauri::command]
+pub fn agent_permission_clear_allowlist(
+    handle: tauri::AppHandle,
+    req: AllowlistClearRequest,
+) -> AppResult<usize> {
+    let state = handle.state::<AppState>();
+    let workspace = validate_workspace(&req.workspace_path)?;
+    let gate = gate_for_workspace(&state, &handle, &workspace)?;
+    gate.clear_allowlist(req.tool_name.as_deref())
+        .map_err(map_agent)
+}
+
+/// Re-export of the event name so `lib.rs` can use it without
+/// reaching into `daisu-agent` internals.
+pub const PERMISSION_REQUEST_EVENT_NAME: &str = PERMISSION_REQUEST_EVENT;
 
 // ----------------------------------------------------------------------------
 // Conversations + streaming (M3 Phase 1)

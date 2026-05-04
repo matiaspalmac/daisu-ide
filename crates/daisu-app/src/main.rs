@@ -58,7 +58,12 @@ fn main() {
             commands::agent::agent_get_messages,
             commands::agent::agent_delete_conversation,
             commands::agent::agent_send_message,
-            commands::agent::agent_cancel
+            commands::agent::agent_cancel,
+            commands::agent::agent_tool_list,
+            commands::agent::agent_tool_dispatch,
+            commands::agent::agent_permission_resolve,
+            commands::agent::agent_permission_list_allowlist,
+            commands::agent::agent_permission_clear_allowlist
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {

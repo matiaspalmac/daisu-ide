@@ -16,6 +16,11 @@ pub mod runtime;
 pub mod tools;
 
 pub use error::{AgentError, AgentResult};
+pub use permission::{
+    AllowlistEntry, Decision, EventEmitter, NoopEmitter, PermissionGate, PermissionRequest,
+    PermissionRequestEvent, PermissionTier,
+};
 pub use provider::{
     CompletionRequest, CompletionResponse, LlmProvider, Message, ProviderId, Role, StreamEvent,
 };
+pub use tools::{Tool, ToolCall, ToolDescriptor, ToolRegistry, ToolResult};
