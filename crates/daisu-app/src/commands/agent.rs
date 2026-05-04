@@ -282,10 +282,23 @@ pub async fn agent_mcp_connect(
 
 #[tauri::command]
 pub async fn agent_mcp_disconnect(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     req: McpDisconnectRequest,
 ) -> AppResult<bool> {
-    Ok(state.mcp_registry.disconnect(&req.name).await)
+    let removed = state.mcp_registry.disconnect(&req.name).await;
+    if removed {
+        let _ = app.emit(
+            MCP_STATUS_EVENT,
+            serde_json::json!({
+                "name": req.name,
+                "ok": true,
+                "connected": false,
+                "event": "disconnected",
+            }),
+        );
+    }
+    Ok(removed)
 }
 
 #[tauri::command]

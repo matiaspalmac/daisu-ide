@@ -86,12 +86,26 @@ impl McpClient {
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .kill_on_drop(true);
-                let child = cmd.spawn().map_err(|e| {
+                let mut child = cmd.spawn().map_err(|e| {
                     AgentError::Internal(format!(
                         "mcp server {}: failed to spawn '{}': {e}",
                         config.name, config.command
                     ))
                 })?;
+                // Drain stderr in the background so a chatty MCP server
+                // can't deadlock by filling the pipe buffer. We don't
+                // surface the lines yet; future work routes them to a
+                // tauri log channel.
+                if let Some(stderr) = child.stderr.take() {
+                    let server_name = config.name.clone();
+                    tokio::spawn(async move {
+                        use tokio::io::{AsyncBufReadExt, BufReader};
+                        let mut lines = BufReader::new(stderr).lines();
+                        while let Ok(Some(line)) = lines.next_line().await {
+                            eprintln!("[mcp:{server_name}] {line}");
+                        }
+                    });
+                }
                 StdioTransport::spawn(child)?
             }
             McpTransportKind::Sse => {

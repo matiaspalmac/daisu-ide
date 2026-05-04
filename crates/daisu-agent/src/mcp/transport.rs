@@ -124,10 +124,18 @@ impl Transport for StdioTransport {
         }
         let mut buf = serde_json::to_vec(&msg)?;
         buf.push(b'\n');
-        {
+        // If the write fails, drop the pending row so the entry can't
+        // leak forever waiting on a request that never went out the door.
+        let write_result = async {
             let mut stdin = self.stdin.lock().await;
             stdin.write_all(&buf).await?;
-            stdin.flush().await?;
+            stdin.flush().await
+        }
+        .await;
+        if let Err(e) = write_result {
+            let mut pending = self.pending.lock().await;
+            pending.remove(&id);
+            return Err(e.into());
         }
         rx.await
             .map_err(|_| AgentError::Internal("mcp transport dropped".into()))

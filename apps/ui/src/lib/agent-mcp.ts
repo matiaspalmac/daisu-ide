@@ -22,7 +22,12 @@ export interface McpToolInfo {
   server: string;
   name: string;
   description: string | null;
-  schema: unknown;
+  /**
+   * JSON Schema reported by the server. Backend serialises an
+   * Option<Value>; an absent schema is delivered as `null`, never
+   * `undefined`. The TS type reflects that.
+   */
+  schema: unknown | null;
 }
 
 export interface McpToolResult {

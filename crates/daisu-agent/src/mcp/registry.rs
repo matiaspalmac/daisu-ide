@@ -47,14 +47,21 @@ impl McpRegistry {
     }
 
     /// Connect every enabled server. Errors are captured per-name; the
-    /// returned vector is in the same order as `configs`.
+    /// returned vector is in the same order as `configs`. Disabled
+    /// servers appear with `ok=false` and a `disabled` error so callers
+    /// can render them uniformly without a separate filter.
     pub async fn connect_all(&self, configs: Vec<McpServerConfig>) -> Vec<ConnectOutcome> {
         let mut out = Vec::with_capacity(configs.len());
         for cfg in configs {
+            let name = cfg.name.clone();
             if !cfg.enabled {
+                out.push(ConnectOutcome {
+                    name,
+                    ok: false,
+                    error: Some("disabled".into()),
+                });
                 continue;
             }
-            let name = cfg.name.clone();
             match self.connect(cfg).await {
                 Ok(_) => out.push(ConnectOutcome {
                     name,
@@ -72,8 +79,14 @@ impl McpRegistry {
     }
 
     pub async fn disconnect(&self, name: &str) -> bool {
-        let mut guard = self.clients.lock().await;
-        if let Some(client) = guard.remove(name) {
+        // Take the client out of the map first, then drop the guard so
+        // close() (which can block on the child process) doesn't hold
+        // the registry mutex.
+        let client = {
+            let mut guard = self.clients.lock().await;
+            guard.remove(name)
+        };
+        if let Some(client) = client {
             client.close().await;
             true
         } else {

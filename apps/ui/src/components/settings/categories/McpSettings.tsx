@@ -8,6 +8,7 @@ import {
   type McpServerConfig,
   type McpStatusInfo,
 } from "../../../lib/agent-mcp";
+import { translateError } from "../../../lib/error-translate";
 
 interface DraftServer {
   name: string;
@@ -27,9 +28,11 @@ const EMPTY_DRAFT: DraftServer = {
   url: "",
 };
 
+// Args are entered one per line so paths with spaces (Windows) survive
+// intact. Splitting on any whitespace would shatter "C:\Program Files".
 function parseArgs(raw: string): string[] {
   return raw
-    .split(/\r?\n|\s+/)
+    .split(/\r?\n/)
     .map((s) => s.trim())
     .filter(Boolean);
 }
@@ -173,7 +176,7 @@ export function McpSettings(): JSX.Element {
       }
       await refreshStatus();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(translateError(e));
     }
   }
 
