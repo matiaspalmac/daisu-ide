@@ -62,6 +62,17 @@ const SettingsSchema = z.object({
     discordShowFile: z.boolean().default(true),
     discordShowProject: z.boolean().default(true),
   }).prefault({}),
+  mcp: z.object({
+    servers: z.array(z.object({
+      name: z.string(),
+      transport: z.enum(["stdio", "sse"]).default("stdio"),
+      command: z.string().default(""),
+      args: z.array(z.string()).default([]),
+      env: z.record(z.string(), z.string()).default({}),
+      url: z.string().optional(),
+      enabled: z.boolean().default(true),
+    })).default([]),
+  }).prefault({ servers: [] }),
   keybindings: z.record(z.string(), z.string()).default({}),
 });
 

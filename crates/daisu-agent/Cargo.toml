@@ -18,10 +18,13 @@ missing_panics_doc = "allow"
 unnecessary_literal_bound = "allow"
 duration_suboptimal_units = "allow"
 doc_markdown = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
 
 [dependencies]
 async-trait.workspace = true
-tokio = { workspace = true, features = ["sync", "rt", "macros", "time", "io-util"] }
+tokio = { workspace = true, features = ["sync", "rt", "macros", "time", "io-util", "process"] }
 tokio-stream.workspace = true
 tokio-util = { workspace = true, features = ["io"] }
 futures.workspace = true
@@ -36,3 +39,10 @@ rusqlite.workspace = true
 uuid.workspace = true
 chrono.workspace = true
 similar.workspace = true
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true
+tree-sitter-typescript.workspace = true
+tree-sitter-python.workspace = true
+tree-sitter-go.workspace = true
+sha1.workspace = true
+ignore = "0.4"

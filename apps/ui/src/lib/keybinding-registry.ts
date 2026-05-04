@@ -63,6 +63,7 @@ export const ACTIONS: ActionDef[] = [
   // Palette
   { id: "palette.openFiles", category: "Palette", label: "Quick open file (索)", defaultBinding: "$mod+p" },
   { id: "palette.openCommands", category: "Palette", label: "Show all commands (命)", defaultBinding: "$mod+Shift+p" },
+  { id: "palette.openSymbols", category: "Palette", label: "Search workspace symbols (号)", defaultBinding: "$mod+t" },
 
   // Agente — slash commands. Surface them in the regular commands palette
   // too so users can discover them without typing the slash prefix.

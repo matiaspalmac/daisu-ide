@@ -4,8 +4,11 @@ import {
   WarningCircle,
   Robot,
   ArrowClockwise,
+  CaretDown,
+  CaretRight,
 } from "@phosphor-icons/react";
 import { useSettings } from "../../../stores/settingsStore";
+import { useWorkspace } from "../../../stores/workspaceStore";
 import {
   type AgentProviderId,
   type AgentProviderInfo,
@@ -14,6 +17,16 @@ import {
   clearProviderKey,
   testProvider,
 } from "../../../lib/agent";
+import {
+  indexRebuild,
+  indexStatus,
+  type IndexStatus,
+} from "../../../lib/agent-index";
+import {
+  listAllowlist,
+  clearAllowlist,
+  type AllowlistEntry,
+} from "../../../lib/agent-tools";
 
 const PROVIDER_DEFAULT_MODELS: Record<AgentProviderId, string> = {
   ollama: "llama3.2",
@@ -40,11 +53,43 @@ export function AiSettings(): JSX.Element {
   const [savingKey, setSavingKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const rootPath = useWorkspace((s) => s.rootPath);
+  const [idxStatus, setIdxStatus] = useState<IndexStatus | null>(null);
+  const [reindexing, setReindexing] = useState(false);
+  const [reindexMsg, setReindexMsg] = useState<string | null>(null);
 
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!rootPath) {
+      setIdxStatus(null);
+      return;
+    }
+    indexStatus(rootPath)
+      .then(setIdxStatus)
+      .catch(() => setIdxStatus(null));
+  }, [rootPath]);
+
+  async function handleReindex(): Promise<void> {
+    if (!rootPath) return;
+    setReindexing(true);
+    setReindexMsg(null);
+    try {
+      const res = await indexRebuild(rootPath);
+      setReindexMsg(
+        `Indexados ${res.indexed} símbolos en ${res.durationMs}ms`,
+      );
+      const next = await indexStatus(rootPath);
+      setIdxStatus(next);
+    } catch (e) {
+      setReindexMsg(`Error: ${String((e as Error).message ?? e)}`);
+    } finally {
+      setReindexing(false);
+    }
+  }
 
   // Reset the in-flight key draft and any test/save status when the user
   // switches provider — otherwise an unsaved secret could be written under
@@ -319,6 +364,40 @@ export function AiSettings(): JSX.Element {
         </>
       )}
 
+      <h3 className="daisu-settings-section-title">Índice de símbolos</h3>
+      <p className="daisu-settings-section-desc">
+        Daisu indexa funciones, structs, clases y tipos del workspace via
+        tree-sitter + SQLite FTS5. Se usa para búsqueda rápida (Ctrl+T) y
+        contexto de agentes. Embeddings vectoriales — diferidos a una fase
+        siguiente.
+      </p>
+      <div className="daisu-field-row">
+        <button
+          type="button"
+          className="daisu-btn daisu-btn-primary"
+          disabled={!rootPath || reindexing}
+          onClick={() => void handleReindex()}
+        >
+          {reindexing ? "Indexando…" : "Reindexar"}
+        </button>
+        <span className="daisu-test-status" aria-live="polite">
+          {!rootPath && "Abrí una carpeta para indexar"}
+          {rootPath && idxStatus && (
+            <>
+              {idxStatus.symbols} símbolos
+              {idxStatus.lastRebuild != null &&
+                ` · último: ${new Date(
+                  idxStatus.lastRebuild * 1000,
+                ).toLocaleTimeString()}`}
+            </>
+          )}
+          {rootPath && !idxStatus && "Sin índice todavía"}
+          {reindexMsg && ` · ${reindexMsg}`}
+        </span>
+      </div>
+
+      <PermisosSection />
+
       <h3 className="daisu-settings-section-title">Test de conexión</h3>
       <div className="daisu-field-row">
         <button
@@ -357,5 +436,126 @@ export function AiSettings(): JSX.Element {
         </span>
       </div>
     </div>
+  );
+}
+
+function PermisosSection(): JSX.Element {
+  const workspacePath = useWorkspace((s) => s.rootPath);
+  const [expanded, setExpanded] = useState(false);
+  const [entries, setEntries] = useState<AllowlistEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refresh(): Promise<void> {
+    if (!workspacePath) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setEntries(await listAllowlist(workspacePath));
+    } catch (e) {
+      setError(String((e as Error).message ?? e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (expanded) void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, workspacePath]);
+
+  async function handleClearAll(): Promise<void> {
+    if (!workspacePath) return;
+    try {
+      await clearAllowlist(workspacePath);
+      await refresh();
+    } catch (e) {
+      setError(String((e as Error).message ?? e));
+    }
+  }
+
+  return (
+    <>
+      <h3 className="daisu-settings-section-title">
+        <button
+          type="button"
+          className="daisu-btn-ghost flex items-center gap-1"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
+          Permisos del agente
+        </button>
+      </h3>
+      {expanded && (
+        <div className="daisu-field">
+          <div className="daisu-field-text">
+            <p className="daisu-field-desc">
+              Lista de herramientas con decisiones persistidas para el
+              workspace actual. Borra para volver a pedir confirmación.
+            </p>
+          </div>
+          {!workspacePath && (
+            <p className="daisu-field-desc">
+              Abre un workspace para ver permisos.
+            </p>
+          )}
+          {workspacePath && (
+            <>
+              {loading && <p className="daisu-field-desc">Cargando…</p>}
+              {error && (
+                <p className="daisu-test-status is-fail" role="alert">
+                  <WarningCircle size={12} weight="fill" />
+                  {error}
+                </p>
+              )}
+              {!loading && entries.length === 0 && (
+                <p className="daisu-field-desc">Sin entradas todavía.</p>
+              )}
+              {entries.length > 0 && (
+                <ul className="text-xs space-y-1 mt-2">
+                  {entries.map((e) => (
+                    <li
+                      key={`${e.tool_name}:${e.scope_glob}`}
+                      className="font-mono flex items-center gap-2"
+                    >
+                      <span
+                        className={
+                          e.decision === "allow"
+                            ? "text-success"
+                            : "text-warn"
+                        }
+                      >
+                        {e.decision}
+                      </span>
+                      <span>{e.tool_name}</span>
+                      <span className="text-[var(--fg-muted)]">
+                        {e.scope_glob}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="daisu-field-row mt-2">
+                <button
+                  type="button"
+                  className="daisu-btn"
+                  onClick={() => void refresh()}
+                >
+                  Refrescar
+                </button>
+                <button
+                  type="button"
+                  className="daisu-btn"
+                  disabled={entries.length === 0}
+                  onClick={() => void handleClearAll()}
+                >
+                  Borrar todo
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </>
   );
 }

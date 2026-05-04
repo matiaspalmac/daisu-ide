@@ -17,6 +17,8 @@ import { ToastViewport } from "./components/ui/Toast";
 import { CloseConfirmModal } from "./components/tabs/CloseConfirmModal";
 import { SettingsModal } from "./components/settings/SettingsModal";
 import { CommandPalette } from "./components/palette/CommandPalette";
+import { SymbolSearchPalette } from "./components/agent/SymbolSearchPalette";
+import { PermissionModal } from "./components/agent/PermissionModal";
 import { InlineEditOverlay } from "./components/agent/InlineEditOverlay";
 import { useUI } from "./stores/uiStore";
 import { useSettings } from "./stores/settingsStore";
@@ -277,6 +279,8 @@ export function App(): JSX.Element {
       <CloseConfirmModalConnected />
       <SettingsModal />
       <CommandPalette />
+      <SymbolSearchPalette />
+      <PermissionModal />
       <InlineEditOverlay />
       <ResizeHandles />
     </main>

@@ -1993,3 +1993,172 @@ body.daisu-focus-mode header[class*="titlebar-h"]:hover { opacity: 1; }
 .daisu-radio-row.is-disabled:hover {
   border-color: var(--border-subtle);
 }
+
+/* Agent chat panel */
+.daisu-agent-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-subtle);
+  min-height: 0;
+}
+.daisu-agent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--fg-secondary);
+}
+.daisu-agent-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--fg-primary);
+}
+.daisu-agent-convos {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  max-height: 30%;
+  overflow-y: auto;
+}
+.daisu-agent-convo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-sm);
+}
+.daisu-agent-convo.is-active {
+  background: var(--accent-soft);
+}
+.daisu-agent-convo-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 11px;
+  text-align: left;
+  color: var(--fg-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.daisu-agent-convo-btn:hover { color: var(--fg-primary); }
+.daisu-agent-convo.is-active .daisu-agent-convo-btn { color: var(--accent); }
+.daisu-agent-convo-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.daisu-agent-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.daisu-agent-empty,
+.daisu-agent-empty-hint {
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 12px;
+  padding: 24px 16px;
+}
+.daisu-agent-empty .daisu-glyph {
+  display: block;
+  font-size: 32px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.daisu-agent-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.daisu-agent-msg.is-user {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.daisu-agent-msg.is-pending {
+  border-style: dashed;
+}
+.daisu-agent-msg-role {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+}
+.daisu-agent-msg-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--fg-primary);
+}
+.daisu-agent-msg-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--warn);
+}
+.daisu-agent-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(184, 115, 106, 0.10);
+  color: var(--danger);
+  font-size: 11px;
+}
+.daisu-agent-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+.daisu-agent-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 60px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--fg-primary);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.daisu-agent-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.daisu-btn-danger {
+  background: var(--danger);
+  color: var(--fg-inverse);
+}
+.daisu-btn-danger:hover {
+  background: rgba(184, 115, 106, 0.85);
+}
