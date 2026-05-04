@@ -68,12 +68,12 @@ function DesignCard(props: DesignCardProps): JSX.Element {
         <h4 className="text-sm font-medium text-[var(--fg-primary)]">{props.title}</h4>
         <p className="text-xs text-[var(--fg-secondary)] mt-0.5">{props.desc}</p>
       </div>
-      <div className="flex items-end justify-between mt-auto gap-2">
+      <div className="flex items-center justify-between mt-auto gap-2">
         {props.selectKey && props.selectOptions ? (
           <select
             value={design[props.selectKey]}
             onChange={(e) => onSelect(e.target.value as Side)}
-            className="daisu-select max-w-[140px] text-xs bg-[var(--bg-base)] border-[var(--border-subtle)]"
+            className="daisu-select flex-1 min-w-0 text-xs bg-[var(--bg-base)] border-[var(--border-subtle)]"
           >
             {props.selectOptions.map((o) => (
               <option key={o.value} value={o.value}>
@@ -82,7 +82,7 @@ function DesignCard(props: DesignCardProps): JSX.Element {
             ))}
           </select>
         ) : (
-          <span />
+          <span className="flex-1" />
         )}
         {props.toggleKey && (
           <button
@@ -91,16 +91,18 @@ function DesignCard(props: DesignCardProps): JSX.Element {
             aria-pressed={isOn}
             aria-label={`Toggle ${props.title}`}
             className={
-              "inline-flex h-5 w-9 items-center rounded-full transition-colors px-0.5 " +
+              "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors " +
               (isOn
-                ? "bg-[var(--warn)] shadow-[var(--glow-orange-sm)]"
+                ? "bg-[var(--accent)]"
                 : "bg-[var(--bg-base)] border border-[var(--border-subtle)]")
             }
           >
             <span
               className={
-                "block h-4 w-4 rounded-full bg-white transition-transform " +
-                (isOn ? "translate-x-4" : "translate-x-0")
+                "block h-3.5 w-3.5 rounded-full bg-[var(--fg-primary)] transition-transform shadow-sm " +
+                (isOn
+                  ? "translate-x-[18px] bg-[var(--bg-base)]"
+                  : "translate-x-[3px]")
               }
             />
           </button>

@@ -122,6 +122,38 @@
   }
 }
 
+/* Daisu Nocturne unified scrollbar.
+ * Thin sumi-ink track, kintsugi-gold thumb, no arrows. Chrome/Edge
+ * (webkit) get pseudo-elements; Firefox uses scrollbar-color. Any
+ * container that opts out of scrollbars sets `scrollbar-width: none`
+ * and `::-webkit-scrollbar { display: none }` locally — those overrides
+ * still win against the global rule. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong, rgba(212, 165, 116, 0.32));
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+  transition: background var(--motion-fast) var(--ease-out);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 html, body, #root {
   margin: 0;
   height: 100%;
