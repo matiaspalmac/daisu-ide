@@ -44,3 +44,6 @@ skills-lock.json
 
 # Private design docs and implementation plans — never push to remote
 docs/
+
+# Daisu runtime: per-workspace agent + symbol index databases
+.daisu/

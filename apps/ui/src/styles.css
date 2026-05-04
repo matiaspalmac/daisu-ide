@@ -657,14 +657,23 @@ body {
 .daisu-input-number { width: 80px; min-width: 0; }
 
 .daisu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background: var(--bg-elevated);
   color: var(--fg-primary);
   border: 1px solid var(--border-subtle);
-  height: 22px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 12px;
   font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   border-radius: var(--radius-sm);
+  transition: background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
 }
 .daisu-btn:hover {
   background: var(--accent-soft);
@@ -2167,9 +2176,14 @@ body.daisu-focus-mode header[class*="titlebar-h"]:hover { opacity: 1; }
 .daisu-agent-composer {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 6px;
   padding: 8px;
   border-top: 1px solid var(--border-subtle);
+}
+.daisu-agent-composer-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 .daisu-agent-input {
   width: 100%;

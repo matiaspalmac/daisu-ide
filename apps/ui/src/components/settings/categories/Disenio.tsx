@@ -1,5 +1,12 @@
 import type { JSX } from "react";
 import { useSettings } from "../../../stores/settingsStore";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../ui/select";
 
 type Side = "left" | "right";
 
@@ -70,17 +77,21 @@ function DesignCard(props: DesignCardProps): JSX.Element {
       </div>
       <div className="flex items-center justify-between mt-auto gap-2">
         {props.selectKey && props.selectOptions ? (
-          <select
+          <Select
             value={design[props.selectKey]}
-            onChange={(e) => onSelect(e.target.value as Side)}
-            className="daisu-select flex-1 min-w-0 text-xs bg-[var(--bg-base)] border-[var(--border-subtle)]"
+            onValueChange={(v) => onSelect(v as Side)}
           >
-            {props.selectOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="flex-1 min-w-0 h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {props.selectOptions.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
           <span className="flex-1" />
         )}
