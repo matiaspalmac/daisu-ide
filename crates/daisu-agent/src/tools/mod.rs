@@ -1,4 +1,14 @@
-//! Tool registry skeleton. Real tools land in M3 Phase 2.
+//! Tool registry and dispatcher.
+//!
+//! Phase 2 lands the dispatcher + permission plumbing. Real tool
+//! bodies for read-only Auto-tier tools are implemented here; the
+//! Prompt/Sandbox-tier tools register descriptors and stubbed
+//! executors so the surface is callable while the heavy work
+//! arrives in later phases.
+
+pub mod dispatcher;
+pub mod list_dir;
+pub mod read_file;
 
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +45,11 @@ pub fn registry() -> Vec<ToolDescriptor> {
             tier: PermissionTier::Auto,
         },
         ToolDescriptor {
+            name: "search_symbols",
+            description: "Search the workspace symbol index (functions, types, classes).",
+            tier: PermissionTier::Auto,
+        },
+        ToolDescriptor {
             name: "git_status",
             description: "Report git working tree status.",
             tier: PermissionTier::Auto,
@@ -61,3 +76,5 @@ pub fn registry() -> Vec<ToolDescriptor> {
         },
     ]
 }
+
+pub use dispatcher::{Tool, ToolCall, ToolRegistry, ToolResult};

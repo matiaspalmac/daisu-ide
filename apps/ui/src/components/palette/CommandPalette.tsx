@@ -142,6 +142,8 @@ export function CommandPalette(): JSX.Element | null {
   }
 
   if (!open) return null;
+  // SymbolSearchPalette owns the "symbols" mode.
+  if (mode === "symbols") return null;
 
   const placeholder =
     mode === "files"
