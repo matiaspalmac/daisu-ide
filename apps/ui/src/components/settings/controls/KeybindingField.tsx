@@ -16,8 +16,6 @@ const RECORD_TIMEOUT_MS = 5000;
 function comboToHuman(combo: string): string {
   return combo
     .replace(/\$mod/g, "Ctrl")
-    .replace(/\bShift\b/g, "Shift")
-    .replace(/\bAlt\b/g, "Alt")
     .replace(/\+([a-z])$/i, (_m, k) => "+" + (k as string).toUpperCase());
 }
 

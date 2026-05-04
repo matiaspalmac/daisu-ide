@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Tree, type MoveHandler, type RenameHandler, type TreeApi } from "react-arborist";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useUI } from "../../stores/uiStore";
-import { useTabs } from "../../stores/tabsStore";
 import type { FileEntry } from "../../api/tauri";
 import { Node } from "./Node";
 
@@ -18,7 +17,6 @@ export function FileTree(): JSX.Element | null {
   const toggleExpand = useWorkspace((s) => s.toggleExpand);
   const selectNode = useWorkspace((s) => s.selectNode);
   const sidebarFilter = useUI((s) => s.sidebarFilter);
-  const openTab = useTabs((s) => s.openTab);
 
   const treeRef = useRef<TreeApi<FileEntry> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
