@@ -4,9 +4,11 @@
 //! `open_workspace` can cancel a prior walker) and the current root path.
 //! Phase 5 adds the dedicated git watcher handle and its cancellation token.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
+use daisu_agent::{PermissionGate, ToolRegistry};
 use notify::RecommendedWatcher;
 use tokio_util::sync::CancellationToken;
 
@@ -15,6 +17,11 @@ pub struct AppState {
     pub walker_token: Mutex<Option<CancellationToken>>,
     git_cancel: parking_lot::Mutex<Option<CancellationToken>>,
     git_watcher: parking_lot::Mutex<Option<RecommendedWatcher>>,
+    /// Shared, stateless tool registry. Built once at startup.
+    pub tool_registry: Arc<ToolRegistry>,
+    /// Per-workspace permission gates. Created lazily on first
+    /// `agent_tool_dispatch` call for a given workspace path.
+    pub permission_gates: parking_lot::Mutex<HashMap<PathBuf, Arc<PermissionGate>>>,
 }
 
 impl Default for AppState {
@@ -24,6 +31,8 @@ impl Default for AppState {
             walker_token: Mutex::new(None),
             git_cancel: parking_lot::Mutex::new(None),
             git_watcher: parking_lot::Mutex::new(None),
+            tool_registry: Arc::new(ToolRegistry::default()),
+            permission_gates: parking_lot::Mutex::new(HashMap::new()),
         }
     }
 }
