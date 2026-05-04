@@ -245,14 +245,12 @@ fn db_path_for(workspace: &Path) -> PathBuf {
 }
 
 fn get_or_open_indexer(state: &AppState, workspace: &Path) -> AppResult<Arc<Indexer>> {
-    if let Some(existing) = state.indexer_for(workspace) {
-        return Ok(existing);
-    }
-    let db_path = db_path_for(workspace);
-    let indexer = Indexer::new(workspace, &db_path).map_err(map_agent)?;
-    let arc = Arc::new(indexer);
-    state.insert_indexer(workspace.to_path_buf(), arc.clone());
-    Ok(arc)
+    state
+        .indexer_get_or_init(workspace, |normalised| {
+            let db_path = db_path_for(normalised);
+            Indexer::new(normalised, &db_path).map_err(|e| format!("agent: {e}"))
+        })
+        .map_err(AppError::Internal)
 }
 
 #[tauri::command]

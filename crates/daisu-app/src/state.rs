@@ -120,21 +120,51 @@ impl AppState {
         *self.git_watcher.lock() = None;
     }
 
-    /// Look up a cached symbol indexer for `workspace`, if any. The cache is
-    /// keyed on the absolute workspace path; callers should normalize before
-    /// querying.
+    /// Normalise a workspace path to its canonical, absolute form so
+    /// every cache helper agrees on the lookup key. Falls back to the
+    /// original buffer when canonicalisation fails (e.g. the directory
+    /// has just been deleted) so the caller still gets a deterministic
+    /// key instead of a panic.
     #[must_use]
-    pub fn indexer_for(&self, workspace: &Path) -> Option<Arc<Indexer>> {
-        self.indexers.lock().get(workspace).cloned()
+    fn normalise_workspace(workspace: &Path) -> PathBuf {
+        workspace
+            .canonicalize()
+            .unwrap_or_else(|_| workspace.to_path_buf())
     }
 
-    /// Store an `Indexer` in the per-workspace cache.
-    pub fn insert_indexer(&self, workspace: PathBuf, indexer: Arc<Indexer>) {
-        self.indexers.lock().insert(workspace, indexer);
+    /// Look up a cached symbol indexer for `workspace`. The lookup key
+    /// is the canonicalised path so callers don't have to pre-normalise.
+    #[must_use]
+    pub fn indexer_for(&self, workspace: &Path) -> Option<Arc<Indexer>> {
+        let key = Self::normalise_workspace(workspace);
+        self.indexers.lock().get(&key).cloned()
+    }
+
+    /// Get the cached `Indexer` for `workspace`, or build one in-place
+    /// under a single mutex acquisition so two concurrent callers can't
+    /// each spin up their own instance and race the `SQLite` store open.
+    ///
+    /// # Errors
+    ///
+    /// Forwards whatever error string `init` returns — typically a
+    /// `daisu-agent` `SQLite` open failure.
+    pub fn indexer_get_or_init<F>(&self, workspace: &Path, init: F) -> Result<Arc<Indexer>, String>
+    where
+        F: FnOnce(&Path) -> Result<Indexer, String>,
+    {
+        let key = Self::normalise_workspace(workspace);
+        let mut guard = self.indexers.lock();
+        if let Some(existing) = guard.get(&key) {
+            return Ok(existing.clone());
+        }
+        let indexer = Arc::new(init(&key)?);
+        guard.insert(key, indexer.clone());
+        Ok(indexer)
     }
 
     /// Drop a cached indexer (called when the workspace closes).
     pub fn drop_indexer(&self, workspace: &Path) {
-        self.indexers.lock().remove(workspace);
+        let key = Self::normalise_workspace(workspace);
+        self.indexers.lock().remove(&key);
     }
 }

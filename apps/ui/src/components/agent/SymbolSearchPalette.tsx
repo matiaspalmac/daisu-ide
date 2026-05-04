@@ -21,6 +21,7 @@ import { useWorkspace } from "../../stores/workspaceStore";
 import { useTabs } from "../../stores/tabsStore";
 import { getActiveEditor } from "../../lib/monaco-editor-ref";
 import { indexSearch, type SymbolHit } from "../../lib/agent-index";
+import { joinPath } from "../../lib/path-utils";
 
 const MAX_RESULTS = 50;
 const DEBOUNCE_MS = 120;
@@ -88,8 +89,7 @@ export function SymbolSearchPalette(): JSX.Element | null {
   function commit(idx: number): void {
     const hit = results[idx];
     if (!hit || !rootPath) return;
-    const sep = rootPath.includes("\\") ? "\\" : "/";
-    const abs = `${rootPath}${sep}${hit.path.replace(/\//g, sep)}`;
+    const abs = joinPath(rootPath, hit.path);
     closePalette();
     void openTab(abs).then(() => {
       setTimeout(() => {
@@ -105,11 +105,13 @@ export function SymbolSearchPalette(): JSX.Element | null {
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
     if (e.key === "ArrowDown") {
       e.preventDefault();
+      if (results.length === 0) return;
       setSelectedIdx(Math.min(results.length - 1, selectedIdx + 1));
       return;
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
+      if (results.length === 0) return;
       setSelectedIdx(Math.max(0, selectedIdx - 1));
       return;
     }

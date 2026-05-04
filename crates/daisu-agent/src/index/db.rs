@@ -142,13 +142,18 @@ impl Db {
             return Ok(Vec::new());
         }
         let match_expr = tokens.join(" ");
+        // Clamp the limit to a sane positive i64 so a wildly large
+        // usize (or future user-controlled value) can't wrap to a
+        // negative value when sqlite binds it. 10_000 is well above
+        // the palette's usable range and keeps memory bounded.
+        let bound_limit: i64 = i64::try_from(limit).unwrap_or(i64::MAX).min(10_000);
         let mut stmt = guard.prepare(
             "SELECT name, kind, path, line_start, line_end, signature \
              FROM symbols_fts WHERE symbols_fts MATCH ?1 \
              ORDER BY rank LIMIT ?2",
         )?;
         let rows = stmt
-            .query_map(params![match_expr, limit as i64], |row| {
+            .query_map(params![match_expr, bound_limit], |row| {
                 Ok(SymbolHit {
                     name: row.get(0)?,
                     kind: row.get(1)?,

@@ -107,12 +107,15 @@ pub fn content_hash(content: &str) -> String {
     s
 }
 
+// `impl_item` was dropped — there's no canonical name pattern that the
+// SymbolKind::from_capture mapper can resolve to, so it would always
+// drop the outer node anyway. Re-add it once we can synthesise a name
+// like "impl Foo" or "impl Trait for Foo" from the type child.
 const RUST_QUERY: &str = r"
 (function_item name: (identifier) @function.name) @function
 (struct_item name: (type_identifier) @struct.name) @struct
 (enum_item name: (type_identifier) @enum.name) @enum
 (trait_item name: (type_identifier) @trait.name) @trait
-(impl_item) @impl
 (type_item name: (type_identifier) @type.name) @type
 (mod_item name: (identifier) @module.name) @module
 (const_item name: (identifier) @const.name) @const
