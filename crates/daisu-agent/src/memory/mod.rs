@@ -100,6 +100,76 @@ impl MemoryStore {
         Ok(id)
     }
 
+    pub fn get_conversation(&self, id: &str) -> AgentResult<Option<ConversationSummary>> {
+        let guard = self
+            .conn
+            .lock()
+            .map_err(|_| crate::error::AgentError::Internal("memory mutex poisoned".into()))?;
+        let mut stmt = guard.prepare(
+            "SELECT id, title, provider, model, created_at, updated_at \
+             FROM conversations WHERE id = ?1",
+        )?;
+        let row = stmt.query_row([id], |row| {
+            Ok(ConversationSummary {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                provider: row.get(2)?,
+                model: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+            })
+        });
+        match row {
+            Ok(r) => Ok(Some(r)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    pub fn get_messages(&self, conversation_id: &str) -> AgentResult<Vec<StoredMessage>> {
+        let guard = self
+            .conn
+            .lock()
+            .map_err(|_| crate::error::AgentError::Internal("memory mutex poisoned".into()))?;
+        let mut stmt = guard.prepare(
+            "SELECT id, role, content, tool_call_id, created_at \
+             FROM messages WHERE conversation_id = ?1 ORDER BY created_at, id",
+        )?;
+        let rows = stmt
+            .query_map([conversation_id], |row| {
+                Ok(StoredMessage {
+                    id: row.get(0)?,
+                    role: row.get(1)?,
+                    content: row.get(2)?,
+                    tool_call_id: row.get(3)?,
+                    created_at: row.get(4)?,
+                })
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    pub fn rename_conversation(&self, id: &str, title: &str) -> AgentResult<()> {
+        let guard = self
+            .conn
+            .lock()
+            .map_err(|_| crate::error::AgentError::Internal("memory mutex poisoned".into()))?;
+        guard.execute(
+            "UPDATE conversations SET title = ?1, updated_at = ?2 WHERE id = ?3",
+            params![title, Utc::now().timestamp(), id],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_conversation(&self, id: &str) -> AgentResult<()> {
+        let guard = self
+            .conn
+            .lock()
+            .map_err(|_| crate::error::AgentError::Internal("memory mutex poisoned".into()))?;
+        guard.execute("DELETE FROM conversations WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
     pub fn list_conversations(&self) -> AgentResult<Vec<ConversationSummary>> {
         let guard = self
             .conn
@@ -133,4 +203,13 @@ pub struct ConversationSummary {
     pub model: String,
     pub created_at: i64,
     pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct StoredMessage {
+    pub id: String,
+    pub role: String,
+    pub content: String,
+    pub tool_call_id: Option<String>,
+    pub created_at: i64,
 }
