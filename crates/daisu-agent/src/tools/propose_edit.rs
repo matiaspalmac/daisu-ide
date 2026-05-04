@@ -15,7 +15,10 @@ use similar::{ChangeTag, TextDiff};
 /// A single accept-or-reject unit in an edit proposal.
 ///
 /// Line ranges are 0-based, half-open: `[start, end)`. Empty side means
-/// pure insertion (old) or pure deletion (new).
+/// pure insertion (old) or pure deletion (new). `old_eols` / `new_eols`
+/// store the exact line terminator each line carried in the source
+/// (`\r\n`, `\n`, or empty for the trailing-no-newline case) so apply
+/// can preserve CRLF on Windows files instead of normalising to LF.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditHunk {
@@ -25,6 +28,10 @@ pub struct EditHunk {
     pub end_new: usize,
     pub old_lines: Vec<String>,
     pub new_lines: Vec<String>,
+    #[serde(default)]
+    pub old_eols: Vec<String>,
+    #[serde(default)]
+    pub new_eols: Vec<String>,
 }
 
 /// A pending edit proposal: original + replacement text plus the
@@ -64,7 +71,8 @@ pub fn compute_hunks(old: &str, new: &str) -> Vec<EditHunk> {
     let mut new_idx: usize = 0;
 
     for change in diff.iter_all_changes() {
-        let value = strip_trailing_newline(change.value());
+        let raw = change.value();
+        let (body, eol) = split_eol(raw);
         match change.tag() {
             ChangeTag::Equal => {
                 if let Some(hunk) = current.take() {
@@ -81,8 +89,11 @@ pub fn compute_hunks(old: &str, new: &str) -> Vec<EditHunk> {
                     end_new: new_idx,
                     old_lines: Vec::new(),
                     new_lines: Vec::new(),
+                    old_eols: Vec::new(),
+                    new_eols: Vec::new(),
                 });
-                hunk.old_lines.push(value.to_string());
+                hunk.old_lines.push(body.to_string());
+                hunk.old_eols.push(eol.to_string());
                 hunk.end_old = old_idx + 1;
                 old_idx += 1;
             }
@@ -94,8 +105,11 @@ pub fn compute_hunks(old: &str, new: &str) -> Vec<EditHunk> {
                     end_new: new_idx,
                     old_lines: Vec::new(),
                     new_lines: Vec::new(),
+                    old_eols: Vec::new(),
+                    new_eols: Vec::new(),
                 });
-                hunk.new_lines.push(value.to_string());
+                hunk.new_lines.push(body.to_string());
+                hunk.new_eols.push(eol.to_string());
                 hunk.end_new = new_idx + 1;
                 new_idx += 1;
             }
@@ -107,9 +121,17 @@ pub fn compute_hunks(old: &str, new: &str) -> Vec<EditHunk> {
     hunks
 }
 
-fn strip_trailing_newline(s: &str) -> &str {
-    s.strip_suffix('\n')
-        .map_or(s, |t| t.strip_suffix('\r').unwrap_or(t))
+/// Split `s` into `(body, eol)` where `eol` is `"\r\n"`, `"\n"`, or
+/// `""` for the no-trailing-newline case. Lets apply re-attach the
+/// exact terminator each line carried in the source.
+fn split_eol(s: &str) -> (&str, &str) {
+    if let Some(rest) = s.strip_suffix("\r\n") {
+        (rest, "\r\n")
+    } else if let Some(rest) = s.strip_suffix('\n') {
+        (rest, "\n")
+    } else {
+        (s, "")
+    }
 }
 
 /// Build the final file content from the original + only the hunks the
@@ -135,16 +157,13 @@ pub fn apply_accepted_hunks(old_text: &str, hunks: &[EditHunk], accepted: &[usiz
             cursor += 1;
         }
         if accepted_set[i] {
-            // Emit the new side of the hunk.
+            // Emit the new side of the hunk, restoring the exact EOL
+            // each line carried in the diff (preserves CRLF on Windows
+            // sources and respects no-trailing-newline-at-EOF).
             for (j, line) in hunk.new_lines.iter().enumerate() {
                 out.push_str(line);
-                let is_last = j + 1 == hunk.new_lines.len();
-                let needs_newline = !is_last
-                    || hunk.end_new < total_new_lines(hunks, old_text)
-                    || old_text.ends_with('\n');
-                if needs_newline && !line.ends_with('\n') {
-                    out.push('\n');
-                }
+                let eol = hunk.new_eols.get(j).map_or("", String::as_str);
+                out.push_str(eol);
             }
         } else {
             // Keep the old side verbatim.
@@ -160,10 +179,6 @@ pub fn apply_accepted_hunks(old_text: &str, hunks: &[EditHunk], accepted: &[usiz
         cursor += 1;
     }
     out
-}
-
-fn total_new_lines(hunks: &[EditHunk], _old_text: &str) -> usize {
-    hunks.last().map_or(0, |h| h.end_new)
 }
 
 #[cfg(test)]

@@ -260,7 +260,10 @@ pub async fn agent_propose_edit(
 ) -> AppResult<EditProposal> {
     let _ = req.workspace_path; // reserved for future workspace-scoped sandboxing
     let path = PathBuf::from(&req.path);
-    let old_text = read_file_at(&path).await.unwrap_or_default();
+    // Surface read failures to the caller. Silently using "" would
+    // produce a giant insertion-only proposal that destroys the file
+    // when applied — way worse than failing fast.
+    let old_text = read_file_at(&path).await?;
     let proposal = ProposeEdit::new(path.clone(), old_text, req.new_text);
     let hunks = proposal.hunks.clone();
     let id = state.register_pending_edit(proposal);
@@ -277,8 +280,12 @@ pub async fn agent_apply_edit(
     req: ApplyEditRequest,
 ) -> AppResult<ApplyResult> {
     let id = parse_uuid(&req.proposal_id)?;
+    // Peek (clone) the proposal first; only remove it from the pending
+    // map once the write succeeds. Otherwise a permission / disk-full
+    // failure mid-apply silently drops the proposal and the user
+    // cannot retry without re-running the agent prompt.
     let proposal = state
-        .take_pending_edit(id)
+        .peek_pending_edit(id)
         .ok_or_else(|| AppError::Internal(format!("unknown proposal_id: {}", req.proposal_id)))?;
     let final_text = apply_accepted_hunks(
         &proposal.old_text,
@@ -286,6 +293,7 @@ pub async fn agent_apply_edit(
         &req.accepted_hunk_indices,
     );
     write_file_at(&proposal.path, &final_text).await?;
+    let _ = state.take_pending_edit(id);
     let bytes = u64::try_from(final_text.len()).unwrap_or(u64::MAX);
     let line_count = final_text.lines().count();
     Ok(ApplyResult {

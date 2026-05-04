@@ -134,6 +134,15 @@ impl AppState {
         self.pending_edits.lock().remove(&id)
     }
 
+    /// Clone a pending edit proposal without removing it. Used by
+    /// `agent_apply_edit` so the proposal stays in the map if the
+    /// disk write fails — the user can retry without re-running the
+    /// agent prompt.
+    #[must_use]
+    pub fn peek_pending_edit(&self, id: Uuid) -> Option<ProposeEdit> {
+        self.pending_edits.lock().get(&id).cloned()
+    }
+
     /// Snapshot of currently pending edits (id + path), for status UI.
     #[must_use]
     pub fn list_pending_edits(&self) -> Vec<(Uuid, PathBuf, usize)> {
