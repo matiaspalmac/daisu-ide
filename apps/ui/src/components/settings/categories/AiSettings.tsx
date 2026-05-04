@@ -1,4 +1,5 @@
 import { useEffect, useState, type JSX } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
   CheckCircle,
   WarningCircle,
@@ -22,6 +23,7 @@ import {
   indexStatus,
   type IndexStatus,
 } from "../../../lib/agent-index";
+import { probeOllama, pickBestModel } from "../../../lib/ollama-detect";
 import {
   listAllowlist,
   clearAllowlist,
@@ -43,6 +45,7 @@ interface TestResult {
 }
 
 export function AiSettings(): JSX.Element {
+  const { t } = useTranslation();
   const ai = useSettings((s) => s.settings.aiProvider);
   const setSetting = useSettings((s) => s.set);
   const [providers, setProviders] = useState<AgentProviderInfo[]>([]);
@@ -57,6 +60,47 @@ export function AiSettings(): JSX.Element {
   const [idxStatus, setIdxStatus] = useState<IndexStatus | null>(null);
   const [reindexing, setReindexing] = useState(false);
   const [reindexMsg, setReindexMsg] = useState<string | null>(null);
+  const [installedModels, setInstalledModels] = useState<string[]>([]);
+  const [detecting, setDetecting] = useState(false);
+  const [detectMsg, setDetectMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (ai.id !== "ollama") {
+      setInstalledModels([]);
+      return;
+    }
+    let cancelled = false;
+    void probeOllama(ai.ollamaBaseUrl).then((p) => {
+      if (cancelled) return;
+      setInstalledModels(p.models);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ai.id, ai.ollamaBaseUrl]);
+
+  async function handleDetect(): Promise<void> {
+    setDetecting(true);
+    setDetectMsg(null);
+    const probe = await probeOllama(ai.ollamaBaseUrl, { force: true });
+    if (!probe.reachable) {
+      setDetectMsg(t("ai.detectUnreachable", { url: ai.ollamaBaseUrl }));
+      setDetecting(false);
+      return;
+    }
+    setInstalledModels(probe.models);
+    if (probe.models.length === 0) {
+      setDetectMsg(t("ai.detectNoModels"));
+      setDetecting(false);
+      return;
+    }
+    const best = pickBestModel(probe.models, ai.model);
+    if (best !== ai.model) {
+      await setSetting("aiProvider", { model: best });
+    }
+    setDetectMsg(t("ai.detectFound", { count: probe.models.length, model: best }));
+    setDetecting(false);
+  }
 
   useEffect(() => {
     void refresh();
@@ -80,20 +124,17 @@ export function AiSettings(): JSX.Element {
     try {
       const res = await indexRebuild(rootPath);
       setReindexMsg(
-        `Indexados ${res.indexed} símbolos en ${res.durationMs}ms`,
+        t("ai.indexedToast", { count: res.indexed, ms: res.durationMs }),
       );
       const next = await indexStatus(rootPath);
       setIdxStatus(next);
     } catch (e) {
-      setReindexMsg(`Error: ${String((e as Error).message ?? e)}`);
+      setReindexMsg(`${t("palette.symbols.errorPrefix")}: ${String((e as Error).message ?? e)}`);
     } finally {
       setReindexing(false);
     }
   }
 
-  // Reset the in-flight key draft and any test/save status when the user
-  // switches provider — otherwise an unsaved secret could be written under
-  // the wrong provider id.
   useEffect(() => {
     setKeyDraft("");
     setKeyError(null);
@@ -165,7 +206,7 @@ export function AiSettings(): JSX.Element {
       });
       setTestResult({
         ok: true,
-        message: `Modelo ${res.model} respondió: "${res.sample.slice(0, 80)}"`,
+        message: t("ai.modelReplied", { model: res.model, sample: res.sample.slice(0, 80) }),
         latencyMs: res.latencyMs,
       });
     } catch (e) {
@@ -182,29 +223,25 @@ export function AiSettings(): JSX.Element {
     <div className="daisu-settings-panel">
       <h2 className="daisu-settings-panel-title">
         <span className="daisu-glyph mr-2" aria-hidden="true">話</span>
-        Agente · IA
+        {t("ai.title")}
       </h2>
-      <p className="daisu-settings-section-desc">
-        Daisu se conecta a un proveedor LLM para chat, completados y agentes.
-        Por defecto usa Ollama local (privacidad, sin clave). Cambia a un
-        proveedor cloud si querés Claude, GPT o Gemini.
-      </p>
+      <p className="daisu-settings-section-desc">{t("ai.intro")}</p>
 
-      <h3 className="daisu-settings-section-title">Proveedor</h3>
+      <h3 className="daisu-settings-section-title">{t("ai.providerHeading")}</h3>
       <div className="daisu-radio-list">
         {loading && (
-          <p className="daisu-field-desc">Cargando proveedores…</p>
+          <p className="daisu-field-desc">{t("ai.loadingProviders")}</p>
         )}
         {!loading && loadError && (
           <div className="daisu-test-status is-fail" role="alert">
             <WarningCircle size={14} weight="fill" />
-            No se pudieron cargar los proveedores: {loadError}
+            {t("ai.loadError", { error: loadError })}
             <button
               type="button"
               className="daisu-btn ml-2"
               onClick={() => void refresh()}
             >
-              <ArrowClockwise size={12} /> Reintentar
+              <ArrowClockwise size={12} /> {t("ai.retry")}
             </button>
           </div>
         )}
@@ -228,7 +265,7 @@ export function AiSettings(): JSX.Element {
                   <Robot size={14} />
                   {p.name}
                   {!p.implemented && (
-                    <span className="daisu-pill-muted">próximamente</span>
+                    <span className="daisu-pill-muted">{t("ai.comingSoon")}</span>
                   )}
                   {p.implemented && p.requiresKey && p.hasKey && (
                     <CheckCircle
@@ -249,10 +286,10 @@ export function AiSettings(): JSX.Element {
                   {p.implemented
                     ? p.requiresKey
                       ? p.hasKey
-                        ? "API key configurada"
-                        : "Requiere API key"
-                      : "Local · sin clave"
-                    : "Implementación en M3 Phase 1+"}
+                        ? t("ai.keyConfigured")
+                        : t("ai.keyRequired")
+                      : t("ai.localNoKey")
+                    : t("ai.implPhase")}
                   {p.implemented && p.supportsTools ? " · tools" : ""}
                 </p>
               </div>
@@ -260,21 +297,20 @@ export function AiSettings(): JSX.Element {
           ))}
       </div>
 
-      <h3 className="daisu-settings-section-title">Modelo</h3>
+      <h3 className="daisu-settings-section-title">{t("ai.modelHeading")}</h3>
       <div className="daisu-field">
         <div className="daisu-field-text">
           <label className="daisu-field-label" htmlFor="ai-model">
-            Identificador del modelo
+            {t("ai.modelLabel")}
           </label>
           <p className="daisu-field-desc">
-            Ej: <code>llama3.2</code>, <code>claude-haiku-4-5-20251001</code>,
-            <code>gpt-4o-mini</code>. Verificá el ID exacto en la documentación
-            del proveedor.
+            <Trans i18nKey="ai.modelHint" components={{ code: <code /> }} />
           </p>
         </div>
         <input
           id="ai-model"
           type="text"
+          list={ai.id === "ollama" ? "ollama-models" : undefined}
           className="daisu-input daisu-input-mono"
           value={ai.model}
           onChange={(e) =>
@@ -283,18 +319,40 @@ export function AiSettings(): JSX.Element {
           spellCheck={false}
           autoComplete="off"
         />
+        {ai.id === "ollama" && installedModels.length > 0 && (
+          <datalist id="ollama-models">
+            {installedModels.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+        )}
       </div>
+      {ai.id === "ollama" && (
+        <div className="daisu-field-row">
+          <button
+            type="button"
+            className="daisu-btn"
+            disabled={detecting}
+            onClick={() => void handleDetect()}
+          >
+            {detecting ? t("ai.detecting") : t("ai.detect")}
+          </button>
+          {detectMsg && (
+            <span className="daisu-test-status" aria-live="polite">
+              {detectMsg}
+            </span>
+          )}
+        </div>
+      )}
 
       {(ai.id === "ollama" || ai.id === "lmstudio") && (
         <div className="daisu-field">
           <div className="daisu-field-text">
             <label className="daisu-field-label" htmlFor="ai-base-url">
-              URL base
+              {t("ai.baseUrlLabel")}
             </label>
             <p className="daisu-field-desc">
-              Endpoint del servidor local. Ollama default{" "}
-              <code>http://localhost:11434</code>; LM Studio default{" "}
-              <code>http://localhost:1234/v1</code>.
+              <Trans i18nKey="ai.baseUrlHint" components={{ code: <code /> }} />
             </p>
           </div>
           <input
@@ -318,20 +376,19 @@ export function AiSettings(): JSX.Element {
 
       {current?.requiresKey && (
         <>
-          <h3 className="daisu-settings-section-title">API key</h3>
+          <h3 className="daisu-settings-section-title">{t("ai.apiKeyHeading")}</h3>
           <p className="daisu-field-desc" id="ai-key-desc">
-            Se almacena en el keychain del sistema operativo (Windows
-            Credential Manager). Nunca se escribe en disco en texto plano.
+            {t("ai.apiKeyDesc")}
           </p>
           <div className="daisu-field-row">
             <label htmlFor="ai-key-input" className="sr-only">
-              API key para {current.name}
+              {t("ai.apiKeyLabel", { provider: current.name })}
             </label>
             <input
               id="ai-key-input"
               type="password"
               className="daisu-input daisu-input-mono"
-              placeholder={current.hasKey ? "•••••••• (configurada)" : "sk-..."}
+              placeholder={current.hasKey ? t("ai.apiKeyPlaceholderSet") : "sk-..."}
               value={keyDraft}
               onChange={(e) => setKeyDraft(e.target.value)}
               autoComplete="off"
@@ -343,7 +400,7 @@ export function AiSettings(): JSX.Element {
               disabled={savingKey || !keyDraft.trim()}
               onClick={() => void handleSaveKey()}
             >
-              {savingKey ? "Guardando…" : "Guardar"}
+              {savingKey ? t("ai.savingButton") : t("ai.saveButton")}
             </button>
             {current.hasKey && (
               <button
@@ -351,7 +408,7 @@ export function AiSettings(): JSX.Element {
                 className="daisu-btn"
                 onClick={() => void handleClearKey()}
               >
-                Borrar
+                {t("ai.deleteButton")}
               </button>
             )}
           </div>
@@ -364,13 +421,8 @@ export function AiSettings(): JSX.Element {
         </>
       )}
 
-      <h3 className="daisu-settings-section-title">Índice de símbolos</h3>
-      <p className="daisu-settings-section-desc">
-        Daisu indexa funciones, structs, clases y tipos del workspace via
-        tree-sitter + SQLite FTS5. Se usa para búsqueda rápida (Ctrl+T) y
-        contexto de agentes. Embeddings vectoriales — diferidos a una fase
-        siguiente.
-      </p>
+      <h3 className="daisu-settings-section-title">{t("ai.symbolIndex")}</h3>
+      <p className="daisu-settings-section-desc">{t("ai.indexFullHint")}</p>
       <div className="daisu-field-row">
         <button
           type="button"
@@ -378,27 +430,27 @@ export function AiSettings(): JSX.Element {
           disabled={!rootPath || reindexing}
           onClick={() => void handleReindex()}
         >
-          {reindexing ? "Indexando…" : "Reindexar"}
+          {reindexing ? t("ai.reindexing") : t("ai.reindex")}
         </button>
         <span className="daisu-test-status" aria-live="polite">
-          {!rootPath && "Abrí una carpeta para indexar"}
+          {!rootPath && t("ai.openFolderToIndex")}
           {rootPath && idxStatus && (
             <>
-              {idxStatus.symbols} símbolos
+              {t("ai.symbolsCount", { count: idxStatus.symbols })}
               {idxStatus.lastRebuild != null &&
-                ` · último: ${new Date(
-                  idxStatus.lastRebuild * 1000,
-                ).toLocaleTimeString()}`}
+                t("ai.lastIndex", {
+                  when: new Date(idxStatus.lastRebuild * 1000).toLocaleTimeString(),
+                })}
             </>
           )}
-          {rootPath && !idxStatus && "Sin índice todavía"}
+          {rootPath && !idxStatus && t("ai.noIndexYet")}
           {reindexMsg && ` · ${reindexMsg}`}
         </span>
       </div>
 
-      <PermisosSection />
+      <PermissionsSection />
 
-      <h3 className="daisu-settings-section-title">Test de conexión</h3>
+      <h3 className="daisu-settings-section-title">{t("ai.connectionTest")}</h3>
       <div className="daisu-field-row">
         <button
           type="button"
@@ -410,7 +462,7 @@ export function AiSettings(): JSX.Element {
           }
           onClick={() => void handleTest()}
         >
-          {testing ? "Probando…" : "Probar conexión"}
+          {testing ? t("ai.testing") : t("ai.testButton")}
         </button>
         <span
           aria-live="polite"
@@ -439,7 +491,8 @@ export function AiSettings(): JSX.Element {
   );
 }
 
-function PermisosSection(): JSX.Element {
+function PermissionsSection(): JSX.Element {
+  const { t } = useTranslation();
   const workspacePath = useWorkspace((s) => s.rootPath);
   const [expanded, setExpanded] = useState(false);
   const [entries, setEntries] = useState<AllowlistEntry[]>([]);
@@ -483,25 +536,20 @@ function PermisosSection(): JSX.Element {
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
-          Permisos del agente
+          {t("ai.permissionsHeading")}
         </button>
       </h3>
       {expanded && (
         <div className="daisu-field">
           <div className="daisu-field-text">
-            <p className="daisu-field-desc">
-              Lista de herramientas con decisiones persistidas para el
-              workspace actual. Borra para volver a pedir confirmación.
-            </p>
+            <p className="daisu-field-desc">{t("ai.permissionsDesc")}</p>
           </div>
           {!workspacePath && (
-            <p className="daisu-field-desc">
-              Abre un workspace para ver permisos.
-            </p>
+            <p className="daisu-field-desc">{t("ai.openWorkspaceForPerms")}</p>
           )}
           {workspacePath && (
             <>
-              {loading && <p className="daisu-field-desc">Cargando…</p>}
+              {loading && <p className="daisu-field-desc">{t("common.loading")}</p>}
               {error && (
                 <p className="daisu-test-status is-fail" role="alert">
                   <WarningCircle size={12} weight="fill" />
@@ -509,7 +557,7 @@ function PermisosSection(): JSX.Element {
                 </p>
               )}
               {!loading && entries.length === 0 && (
-                <p className="daisu-field-desc">Sin entradas todavía.</p>
+                <p className="daisu-field-desc">{t("ai.noEntries")}</p>
               )}
               {entries.length > 0 && (
                 <ul className="text-xs space-y-1 mt-2">
@@ -541,7 +589,7 @@ function PermisosSection(): JSX.Element {
                   className="daisu-btn"
                   onClick={() => void refresh()}
                 >
-                  Refrescar
+                  {t("ai.refresh")}
                 </button>
                 <button
                   type="button"
@@ -549,7 +597,7 @@ function PermisosSection(): JSX.Element {
                   disabled={entries.length === 0}
                   onClick={() => void handleClearAll()}
                 >
-                  Borrar todo
+                  {t("ai.deleteAll")}
                 </button>
               </div>
             </>

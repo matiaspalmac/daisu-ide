@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Info,
   Keyboard,
@@ -30,25 +31,41 @@ export type SettingsCategoryId =
 
 interface CategoryItem {
   id: SettingsCategoryId;
-  label: string;
   icon?: PhosphorIcon;
   glyph?: string;
 }
 
 const CATEGORIES: CategoryItem[] = [
-  { id: "general", label: "General", icon: Gear },
-  { id: "keybindings", label: "Atajos", icon: Keyboard },
-  { id: "editor", label: "Editor", icon: Code },
-  { id: "themes", label: "Apariencia", icon: Palette },
-  { id: "design", label: "Diseño", icon: SquaresFour },
-  { id: "chat", label: "Chat", icon: Chat },
-  { id: "ai", label: "Agente", icon: Robot },
-  { id: "mcp", label: "MCP", glyph: "連" },
-  { id: "integrations", label: "Integraciones", icon: Plugs },
-  { id: "security", label: "Seguridad", icon: Shield },
-  { id: "info", label: "Información", icon: Info },
-  { id: "advanced", label: "Avanzado", icon: Wrench },
+  { id: "general", icon: Gear },
+  { id: "keybindings", icon: Keyboard },
+  { id: "editor", icon: Code },
+  { id: "themes", icon: Palette },
+  { id: "design", icon: SquaresFour },
+  { id: "chat", icon: Chat },
+  { id: "ai", icon: Robot },
+  { id: "mcp", glyph: "連" },
+  { id: "integrations", icon: Plugs },
+  { id: "security", icon: Shield },
+  { id: "info", icon: Info },
+  { id: "advanced", icon: Wrench },
 ];
+
+function categoryLabel(t: ReturnType<typeof useTranslation>["t"], id: SettingsCategoryId): string {
+  switch (id) {
+    case "general": return t("settings.categories.general");
+    case "keybindings": return t("settings.categories.shortcuts");
+    case "editor": return t("settings.categories.editor");
+    case "themes": return t("settings.categories.appearance");
+    case "design": return t("settings.categories.design");
+    case "chat": return t("settings.categories.chat");
+    case "ai": return t("settings.categories.agent");
+    case "mcp": return t("settings.categories.mcp");
+    case "integrations": return t("settings.categories.integrations");
+    case "security": return t("settings.categories.security");
+    case "info": return t("settings.categories.info");
+    case "advanced": return t("settings.categories.advanced");
+  }
+}
 
 interface Props {
   active: SettingsCategoryId;
@@ -56,6 +73,7 @@ interface Props {
 }
 
 export function SettingsSidebar(props: Props): JSX.Element {
+  const { t } = useTranslation();
   return (
     <nav className="daisu-settings-sidebar" aria-label="Settings categories">
       {CATEGORIES.map((c) => (
@@ -75,7 +93,7 @@ export function SettingsSidebar(props: Props): JSX.Element {
               {c.glyph}
             </span>
           )}
-          <span>{c.label}</span>
+          <span>{categoryLabel(t, c.id)}</span>
         </button>
       ))}
     </nav>

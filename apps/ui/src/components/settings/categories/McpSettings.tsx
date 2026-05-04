@@ -1,4 +1,5 @@
 import { useEffect, useState, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, Plugs, PlugsConnected, Trash, PencilSimple } from "@phosphor-icons/react";
 import { useSettings } from "../../../stores/settingsStore";
 import {
@@ -56,6 +57,7 @@ function envToText(env: Record<string, string>): string {
 }
 
 export function McpSettings(): JSX.Element {
+  const { t } = useTranslation();
   const servers = useSettings((s) => s.settings.mcp.servers);
   const setSetting = useSettings((s) => s.set);
   const [statuses, setStatuses] = useState<McpStatusInfo[]>([]);
@@ -123,7 +125,7 @@ export function McpSettings(): JSX.Element {
   async function saveDraft(): Promise<void> {
     const name = draft.name.trim();
     if (!name) {
-      setError("El nombre es obligatorio.");
+      setError(t("mcp.nameRequired"));
       return;
     }
     const next: McpServerConfig = {
@@ -140,7 +142,7 @@ export function McpSettings(): JSX.Element {
       list[editingIndex] = { ...list[editingIndex], ...next };
     } else {
       if (list.some((s) => s.name === name)) {
-        setError("Ya existe un servidor con ese nombre.");
+        setError(t("mcp.duplicate"));
         return;
       }
       list.push(next);
@@ -183,10 +185,7 @@ export function McpSettings(): JSX.Element {
   return (
     <div className="daisu-settings-panel">
       <h2 className="daisu-settings-panel-title">MCP</h2>
-      <p className="daisu-settings-section-desc">
-        Servidores Model Context Protocol. Cada servidor expone tools que el
-        agente puede invocar en runtime. Transporte SSE aún no implementado.
-      </p>
+      <p className="daisu-settings-section-desc">{t("mcp.hint")}</p>
 
       {error && (
         <div className="daisu-field-error" role="alert">
@@ -196,9 +195,7 @@ export function McpSettings(): JSX.Element {
 
       <div className="flex flex-col gap-2 mt-2">
         {servers.length === 0 && (
-          <p className="text-[var(--fg-muted)] text-[12px]">
-            Sin servidores configurados.
-          </p>
+          <p className="text-[var(--fg-muted)] text-[12px]">{t("mcp.noServers")}</p>
         )}
         {servers.map((s, idx) => {
           const st = statusFor(s.name);
@@ -216,8 +213,8 @@ export function McpSettings(): JSX.Element {
                 </span>
                 <span className="text-[10px] text-[var(--fg-muted)] truncate">
                   {s.transport === "stdio"
-                    ? `${s.command} ${s.args.join(" ")}`.trim() || "(sin comando)"
-                    : (s.url ?? "(sin url)")}
+                    ? `${s.command} ${s.args.join(" ")}`.trim() || t("mcp.noCommand")
+                    : (s.url ?? t("mcp.noUrl"))}
                 </span>
               </div>
               <span
@@ -227,13 +224,13 @@ export function McpSettings(): JSX.Element {
                     : "text-[var(--fg-muted)]"
                 }`}
               >
-                {st?.connected ? `${st.toolCount} tools` : "off"}
+                {st?.connected ? t("mcp.tools", { count: st.toolCount }) : t("mcp.off")}
               </span>
               <button
                 type="button"
                 className="daisu-icon-btn"
-                title={st?.connected ? "Desconectar" : "Conectar"}
-                aria-label={st?.connected ? "Desconectar" : "Conectar"}
+                title={st?.connected ? t("mcp.disconnect") : t("mcp.connect")}
+                aria-label={st?.connected ? t("mcp.disconnect") : t("mcp.connect")}
                 onClick={() => void toggleConnect(idx)}
               >
                 {st?.connected ? <PlugsConnected size={14} /> : <Plugs size={14} />}
@@ -241,8 +238,8 @@ export function McpSettings(): JSX.Element {
               <button
                 type="button"
                 className="daisu-icon-btn"
-                title="Editar"
-                aria-label="Editar"
+                title={t("mcp.edit")}
+                aria-label={t("mcp.edit")}
                 onClick={() => startEdit(idx)}
               >
                 <PencilSimple size={14} />
@@ -250,8 +247,8 @@ export function McpSettings(): JSX.Element {
               <button
                 type="button"
                 className="daisu-icon-btn"
-                title="Eliminar"
-                aria-label="Eliminar"
+                title={t("mcp.deleteAria")}
+                aria-label={t("mcp.deleteAria")}
                 onClick={() => void removeServer(idx)}
               >
                 <Trash size={14} />
@@ -267,13 +264,13 @@ export function McpSettings(): JSX.Element {
           className="daisu-btn mt-3 inline-flex items-center gap-1"
           onClick={startAdd}
         >
-          <Plus size={12} /> Agregar servidor
+          <Plus size={12} /> {t("mcp.addServer")}
         </button>
       )}
 
       {(adding || editingIndex !== null) && (
         <div className="daisu-field flex-col gap-2 mt-3 p-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
-          <label className="daisu-field-label">Nombre</label>
+          <label className="daisu-field-label">{t("mcp.name")}</label>
           <input
             className="daisu-input daisu-input-mono"
             value={draft.name}
@@ -281,7 +278,7 @@ export function McpSettings(): JSX.Element {
             spellCheck={false}
           />
 
-          <label className="daisu-field-label">Transporte</label>
+          <label className="daisu-field-label">{t("mcp.transport")}</label>
           <select
             className="daisu-input"
             value={draft.transport}
@@ -292,13 +289,13 @@ export function McpSettings(): JSX.Element {
               })
             }
           >
-            <option value="stdio">stdio (proceso hijo)</option>
-            <option value="sse">sse (no implementado)</option>
+            <option value="stdio">{t("mcp.transportStdio")}</option>
+            <option value="sse">{t("mcp.transportSse")}</option>
           </select>
 
           {draft.transport === "stdio" ? (
             <>
-              <label className="daisu-field-label">Comando</label>
+              <label className="daisu-field-label">{t("mcp.command")}</label>
               <input
                 className="daisu-input daisu-input-mono"
                 value={draft.command}
@@ -307,7 +304,7 @@ export function McpSettings(): JSX.Element {
                 placeholder="npx"
               />
 
-              <label className="daisu-field-label">Args (uno por línea)</label>
+              <label className="daisu-field-label">{t("mcp.argsLabel")}</label>
               <textarea
                 className="daisu-input daisu-input-mono"
                 rows={3}
@@ -317,7 +314,7 @@ export function McpSettings(): JSX.Element {
                 placeholder="-y&#10;@modelcontextprotocol/server-filesystem&#10;/path/to/dir"
               />
 
-              <label className="daisu-field-label">Env (KEY=value, uno por línea)</label>
+              <label className="daisu-field-label">{t("mcp.envLabel")}</label>
               <textarea
                 className="daisu-input daisu-input-mono"
                 rows={3}
@@ -328,7 +325,7 @@ export function McpSettings(): JSX.Element {
             </>
           ) : (
             <>
-              <label className="daisu-field-label">URL</label>
+              <label className="daisu-field-label">{t("mcp.url")}</label>
               <input
                 className="daisu-input daisu-input-mono"
                 value={draft.url}
@@ -345,10 +342,10 @@ export function McpSettings(): JSX.Element {
               className="daisu-btn"
               onClick={() => void saveDraft()}
             >
-              Guardar
+              {t("common.save")}
             </button>
             <button type="button" className="daisu-btn" onClick={cancelDraft}>
-              Cancelar
+              {t("common.cancel")}
             </button>
           </div>
         </div>

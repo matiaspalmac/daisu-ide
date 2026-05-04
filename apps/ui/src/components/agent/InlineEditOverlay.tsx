@@ -10,6 +10,7 @@
 // without depending on Phase 1 chat panel work.
 
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import {
 import { useInlineEdits } from "../../stores/inlineEditStore";
 
 export function InlineEditOverlay(): JSX.Element | null {
+  const { t } = useTranslation();
   const activeId = useInlineEdits((s) => s.activeProposalId);
   const proposals = useInlineEdits((s) => s.proposals);
   const accepted = useInlineEdits((s) => s.acceptedHunks);
@@ -44,7 +46,7 @@ export function InlineEditOverlay(): JSX.Element | null {
     >
       <DialogContent className="!max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Propuesta de edición</DialogTitle>
+          <DialogTitle>{t("inlineEdit.title")}</DialogTitle>
           <DialogDescription>
             {proposal.path} — {proposal.hunks.length} hunk
             {proposal.hunks.length === 1 ? "" : "s"}
@@ -53,9 +55,7 @@ export function InlineEditOverlay(): JSX.Element | null {
 
         <div className="max-h-[60vh] overflow-auto p-4 font-mono text-xs leading-5">
           {proposal.hunks.length === 0 && (
-            <p className="text-[var(--fg-muted)]">
-              Sin diferencias entre el archivo actual y la propuesta.
-            </p>
+            <p className="text-[var(--fg-muted)]">{t("inlineEdit.noDiffs")}</p>
           )}
           {proposal.hunks.map((h, idx) => {
             const isAccepted = accepted.has(idx);
@@ -69,11 +69,16 @@ export function InlineEditOverlay(): JSX.Element | null {
                     type="checkbox"
                     checked={isAccepted}
                     onChange={() => toggleHunk(idx)}
-                    aria-label={`Aceptar hunk ${idx + 1}`}
+                    aria-label={t("inlineEdit.hunkAria", { idx: idx + 1 })}
                   />
                   <span>
-                    Hunk {idx + 1} — líneas {h.startOld + 1}…{h.endOld} →{" "}
-                    {h.startNew + 1}…{h.endNew}
+                    {t("inlineEdit.hunkLabel", {
+                      idx: idx + 1,
+                      oldStart: h.startOld + 1,
+                      oldEnd: h.endOld,
+                      newStart: h.startNew + 1,
+                      newEnd: h.endNew,
+                    })}
                   </span>
                 </header>
                 <div>
@@ -115,21 +120,21 @@ export function InlineEditOverlay(): JSX.Element | null {
             className="px-2 py-1 text-xs text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
             onClick={selectNone}
           >
-            Seleccionar nada
+            {t("inlineEdit.selectNone")}
           </button>
           <button
             type="button"
             className="px-2 py-1 text-xs text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
             onClick={selectAll}
           >
-            Seleccionar todo
+            {t("inlineEdit.selectAll")}
           </button>
           <button
             type="button"
             className="px-3 py-1 text-xs text-[var(--fg-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] hover:bg-[var(--accent-soft)]"
             onClick={() => void reject()}
           >
-            Rechazar todo
+            {t("inlineEdit.rejectAll")}
           </button>
           <button
             type="button"
@@ -137,7 +142,7 @@ export function InlineEditOverlay(): JSX.Element | null {
             onClick={() => void accept()}
             disabled={accepted.size === 0}
           >
-            Aceptar seleccionados ({accepted.size})
+            {t("inlineEdit.acceptSelected", { count: accepted.size })}
           </button>
         </DialogFooter>
       </DialogContent>

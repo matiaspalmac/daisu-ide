@@ -1,5 +1,6 @@
 import type { JSX, KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import * as Dialog from "@radix-ui/react-dialog";
 import fuzzysort from "fuzzysort";
 import { Terminal, FileText } from "@phosphor-icons/react";
@@ -54,6 +55,7 @@ function buildCommands(): CommandResult[] {
 }
 
 export function CommandPalette(): JSX.Element | null {
+  const { t } = useTranslation();
   const open = usePalette((s) => s.open);
   const mode = usePalette((s) => s.mode);
   const query = usePalette((s) => s.query);
@@ -163,11 +165,11 @@ export function CommandPalette(): JSX.Element | null {
   const placeholder =
     mode === "files"
       ? rootPath
-        ? "Buscar archivo…"
-        : "Abrí una carpeta para buscar archivos"
-      : "Buscar comando…";
+        ? t("palette.command.fileSearch")
+        : t("palette.command.fileSearchEmpty")
+      : t("palette.command.command");
   const headerGlyph = mode === "files" ? "索" : "命";
-  const headerLabel = mode === "files" ? "Archivos" : "Comandos";
+  const headerLabel = mode === "files" ? t("commandPalette.files") : t("commandPalette.commands");
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && closePalette()}>

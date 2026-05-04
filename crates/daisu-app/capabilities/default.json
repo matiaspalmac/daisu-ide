@@ -36,6 +36,8 @@
     "store:allow-set",
     "store:allow-save",
     "store:allow-delete",
+    "os:default",
+    "os:allow-locale",
     "window-state:default"
   ]
 }

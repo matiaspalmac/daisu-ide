@@ -14,6 +14,7 @@
 
 import type { JSX, KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import * as Dialog from "@radix-ui/react-dialog";
 import { MagnifyingGlass } from "@phosphor-icons/react";
 import { usePalette } from "../../stores/paletteStore";
@@ -27,6 +28,7 @@ const MAX_RESULTS = 50;
 const DEBOUNCE_MS = 120;
 
 export function SymbolSearchPalette(): JSX.Element | null {
+  const { t } = useTranslation();
   const open = usePalette((s) => s.open);
   const mode = usePalette((s) => s.mode);
   const query = usePalette((s) => s.query);
@@ -131,9 +133,9 @@ export function SymbolSearchPalette(): JSX.Element | null {
   }, [selectedIdx]);
 
   const placeholder = useMemo(() => {
-    if (!rootPath) return "Abrí una carpeta para buscar símbolos";
-    return "Buscar símbolo… (función, tipo, clase)";
-  }, [rootPath]);
+    if (!rootPath) return t("palette.symbols.openFolderHint");
+    return t("palette.symbols.placeholder");
+  }, [rootPath, t]);
 
   if (!visible) return null;
 
@@ -143,7 +145,7 @@ export function SymbolSearchPalette(): JSX.Element | null {
         <Dialog.Overlay className="daisu-palette-overlay" />
         <Dialog.Content
           className="daisu-palette"
-          aria-label="Paleta de símbolos"
+          aria-label={t("palette.symbols.ariaLabel")}
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             inputRef.current?.focus();
@@ -172,19 +174,19 @@ export function SymbolSearchPalette(): JSX.Element | null {
           </div>
           <ul className="daisu-palette-list" ref={listRef} role="listbox">
             {loading && (
-              <li className="daisu-palette-empty">Buscando…</li>
+              <li className="daisu-palette-empty">{t("palette.symbols.loading")}</li>
             )}
             {!loading && error && (
-              <li className="daisu-palette-empty">Error: {error}</li>
+              <li className="daisu-palette-empty">{t("palette.symbols.errorPrefix")}: {error}</li>
             )}
             {!loading && !error && results.length === 0 && query.trim() && (
               <li className="daisu-palette-empty">
-                Sin coincidencias. Reindexá desde Configuración → IA.
+                {t("palette.symbols.noMatches")}
               </li>
             )}
             {!loading && !error && results.length === 0 && !query.trim() && (
               <li className="daisu-palette-empty">
-                Escribí para buscar símbolos del workspace
+                {t("palette.symbols.emptyHint")}
               </li>
             )}
             {!loading &&

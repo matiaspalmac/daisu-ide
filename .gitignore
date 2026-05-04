@@ -39,6 +39,7 @@ Desktop.ini
 # AI tooling — local only, never push
 .claude/
 .agents/
+.daisu/
 CLAUDE.md
 skills-lock.json
 

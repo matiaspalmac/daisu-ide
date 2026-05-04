@@ -13,6 +13,7 @@ import {
 } from "../lib/agent";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useSettings } from "./settingsStore";
+import i18n from "../i18n";
 
 export interface ChatMessage {
   id: string;
@@ -100,7 +101,7 @@ export const useAgent = create<AgentState>((set, get) => ({
     try {
       const id = await createConversation(
         ws,
-        title ?? "Nueva conversación",
+        title ?? i18n.t("tabs.newConversation"),
         ai.id,
         ai.model,
       );

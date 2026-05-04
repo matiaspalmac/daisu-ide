@@ -1,5 +1,6 @@
 import type { ChangeEvent, JSX, KeyboardEvent } from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowUp, FileText, ClockCounterClockwise, ChatCenteredDots } from "@phosphor-icons/react";
 import { useUI } from "../../stores/uiStore";
 
@@ -7,6 +8,7 @@ const HEADER_BTN =
   "w-6 h-6 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-[var(--radius-sm)] transition-colors";
 
 export function AgentsPanel(): JSX.Element {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const pushToast = useUI((s) => s.pushToast);
   const canSend = text.trim().length > 0;
@@ -14,7 +16,7 @@ export function AgentsPanel(): JSX.Element {
   const send = (): void => {
     if (!canSend) return;
     pushToast({
-      message: "Chat con agentes disponible en M4 — provider configurado en M3",
+      message: t("chat.comingM4"),
       level: "info",
     });
     setText("");
@@ -30,24 +32,24 @@ export function AgentsPanel(): JSX.Element {
   return (
     <aside
       className="daisu-agents-panel h-full flex flex-col bg-[var(--bg-panel)] border-l border-[var(--border-subtle)]"
-      aria-label="Chat panel"
+      aria-label={t("chat.panelAria")}
     >
       <header className="h-9 px-3 flex items-center justify-between border-b border-[var(--border-subtle)] text-[11px] uppercase tracking-[0.08em] text-[var(--fg-secondary)]">
         <span className="flex items-center">
           <span className="daisu-glyph" aria-hidden="true">話</span>
-          Chat
+          {t("chat.label")}
         </span>
         <div className="flex items-center gap-0.5">
-          <button type="button" title="Nueva conversación" aria-label="Nueva conversación" className={HEADER_BTN}>
+          <button type="button" title={t("chat.newConversation")} aria-label={t("chat.newConversation")} className={HEADER_BTN}>
             <ChatCenteredDots size={13} />
           </button>
-          <button type="button" title="Historial" aria-label="Historial" className={HEADER_BTN}>
+          <button type="button" title={t("chat.history")} aria-label={t("chat.history")} className={HEADER_BTN}>
             <ClockCounterClockwise size={13} />
           </button>
           <button
             type="button"
-            title="Configuración del proveedor"
-            aria-label="Configuración del proveedor"
+            title={t("chat.providerSettings")}
+            aria-label={t("chat.providerSettings")}
             onClick={() => useUI.getState().setRightPanelMode("config")}
             className={HEADER_BTN}
           >
@@ -59,10 +61,10 @@ export function AgentsPanel(): JSX.Element {
       <div className="flex-1 min-h-0 grid place-items-center px-6 text-center">
         <div className="flex flex-col items-center gap-2">
           <h3 className="text-sm font-medium text-[var(--fg-primary)]">
-            Comienza una conversación
+            {t("chat.startConversation")}
           </h3>
           <p className="text-xs text-[var(--fg-secondary)] max-w-[240px]">
-            Escribe un mensaje para comenzar a chatear con la IA
+            {t("chat.startHint")}
           </p>
         </div>
       </div>
@@ -78,7 +80,7 @@ export function AgentsPanel(): JSX.Element {
               el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
             }}
             onKeyDown={onKey}
-            placeholder="Escribe un mensaje... (Shift+Enter = nueva línea)"
+            placeholder={t("chat.placeholderShort")}
             rows={1}
             className="flex-1 bg-transparent border-0 outline-none resize-none text-sm text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] max-h-32 overflow-y-auto"
           />
@@ -86,7 +88,7 @@ export function AgentsPanel(): JSX.Element {
             type="button"
             disabled={!canSend}
             aria-disabled={!canSend}
-            aria-label="Enviar"
+            aria-label={t("chat.send")}
             onClick={send}
             className="w-7 h-7 grid place-items-center bg-[var(--warn)] text-[var(--fg-inverse)] rounded-[var(--radius-sm)] hover:bg-[var(--warn-bright)] shadow-[var(--glow-orange-sm)] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed"
           >

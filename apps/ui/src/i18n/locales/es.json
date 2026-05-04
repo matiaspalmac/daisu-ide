@@ -1,0 +1,377 @@
+{
+  "common": {
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "open": "Abrir",
+    "loading": "Cargando…",
+    "comingSoon": "Próximamente",
+    "send": "Enviar",
+    "settings": "Configuración",
+    "account": "Cuenta",
+    "menu": "Menú",
+    "minimize": "Minimizar",
+    "maximize": "Maximizar",
+    "search": "Buscar",
+    "newFile": "Nuevo archivo",
+    "newFolder": "Nueva carpeta",
+    "openFile": "Abrir archivo",
+    "openFolder": "Abrir carpeta"
+  },
+  "language": {
+    "label": "Idioma",
+    "description": "Idioma de la interfaz. No requiere reiniciar.",
+    "en": "English",
+    "es": "Español",
+    "ja": "日本語"
+  },
+  "menu": {
+    "file": "Archivo",
+    "edit": "Edición",
+    "selection": "Selección",
+    "view": "Vista",
+    "terminal": "Terminal",
+    "newFile": "Nuevo archivo",
+    "openFile": "Abrir archivo…",
+    "openFolder": "Abrir carpeta…",
+    "save": "Guardar",
+    "exit": "Salir",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "cut": "Cortar",
+    "copy": "Copiar",
+    "paste": "Pegar",
+    "selectAll": "Seleccionar todo",
+    "toggleSidebar": "Alternar barra lateral",
+    "toggleSearch": "Alternar buscar",
+    "toggleChatPanel": "Alternar panel chat",
+    "settings": "Configuración"
+  },
+  "titlebar": {
+    "menu": "Menú",
+    "account": "Cuenta",
+    "minimize": "Minimizar",
+    "maximize": "Maximizar",
+    "close": "Cerrar",
+    "focusEnter": "Modo enfoque (静)",
+    "focusExit": "Salir de modo enfoque (静)",
+    "focusLabel": "Modo enfoque",
+    "clockLabel": "Hora actual {{clock}}, {{period}}",
+    "period": {
+      "morning": "mañana",
+      "afternoon": "tarde",
+      "evening": "atardecer",
+      "night": "noche"
+    }
+  },
+  "sidebar": {
+    "newFile": "Nuevo archivo",
+    "newFolder": "Nueva carpeta",
+    "search": "Buscar",
+    "searchProject": "Buscar en el proyecto (Ctrl+Shift+F)",
+    "explorerAria": "Explorador del workspace",
+    "refresh": "Refrescar",
+    "collapseAll": "Colapsar todo",
+    "collapseAllToast": "Colapsar todo disponible en milestones futuros",
+    "filterPlaceholder": "filtrar archivos…",
+    "filterAria": "Filtrar archivos en sidebar",
+    "clearFilter": "Limpiar filtro",
+    "pinned": "FIJADOS",
+    "unpin": "Desfijar",
+    "unpinName": "Desfijar {{name}}",
+    "collapseFilters": "Colapsar reemplazar y filtros",
+    "expandFilters": "Expandir reemplazar y filtros",
+    "hideFilters": "Ocultar reemplazar y filtros",
+    "showFilters": "Mostrar reemplazar y filtros"
+  },
+  "settings": {
+    "title": "Configuración",
+    "closeAria": "Cerrar configuración",
+    "categories": {
+      "general": "General",
+      "shortcuts": "Atajos",
+      "editor": "Editor",
+      "appearance": "Apariencia",
+      "design": "Diseño",
+      "chat": "Chat",
+      "agent": "Agente",
+      "mcp": "MCP",
+      "integrations": "Integraciones",
+      "security": "Seguridad",
+      "info": "Información",
+      "advanced": "Avanzado"
+    },
+    "stub": {
+      "default": "Próximamente — esta categoría llega en milestones futuros.",
+      "chat": "Configuración avanzada de chat e historial llega en M4.",
+      "security": "Almacenamiento de API keys via OS keychain + permisos de plugins en M3.",
+      "info": "Versión, licencias y sistema. Detallado en M3."
+    },
+    "design": {
+      "title": "Diseño",
+      "subtitle": "Personaliza la disposición de los componentes de la interfaz",
+      "components": "Componentes",
+      "panelButtons": "Botones de paneles",
+      "side": {
+        "left": "Izquierda",
+        "right": "Derecha"
+      },
+      "footer": "Cambios aplican en vivo. Persisten en almacenamiento local.",
+      "cards": {
+        "activityBar": {
+          "title": "Barra de actividad",
+          "desc": "Navegación lateral con explorador, búsqueda y extensiones"
+        },
+        "statusBar": {
+          "title": "Barra de estado",
+          "desc": "Información del editor y proyecto"
+        },
+        "sidebar": {
+          "title": "Panel lateral",
+          "desc": "Explorador de archivos, búsqueda y otras herramientas"
+        },
+        "terminal": {
+          "title": "Terminal",
+          "desc": "Terminal integrada para ejecutar comandos"
+        },
+        "chatPanel": {
+          "title": "Panel de chat",
+          "desc": "Chat con IA para asistencia de código"
+        },
+        "panelToggles": {
+          "title": "Toggles de paneles",
+          "desc": "Botones cyan/orange en barra de estado para mostrar/ocultar paneles"
+        },
+        "utilityCluster": {
+          "title": "Cluster utilitario",
+          "desc": "Errores, advertencias, notificaciones y configuración en barra de estado"
+        },
+        "hamburger": {
+          "title": "Menú hamburguesa",
+          "desc": "Botón de menú principal en barra de título"
+        },
+        "menuStrip": {
+          "title": "Barra de menús",
+          "desc": "Archivo, Edición, Selección, Vista, Terminal en barra de título"
+        },
+        "userAvatar": {
+          "title": "Avatar de usuario",
+          "desc": "Icono de cuenta en barra de título"
+        }
+      }
+    }
+  },
+  "chat": {
+    "title": "Agente",
+    "label": "Chat",
+    "panelAria": "Panel de chat",
+    "newConversation": "Nueva conversación",
+    "deleteConversation": "Eliminar conversación",
+    "history": "Historial",
+    "providerSettings": "Configuración del proveedor",
+    "openFolderHint": "Abrí una carpeta para empezar a conversar con el agente.",
+    "emptyConversation": "Escribí un mensaje abajo para comenzar.",
+    "startConversation": "Comienza una conversación",
+    "startHint": "Escribe un mensaje para comenzar a chatear con la IA",
+    "messageLabel": "Mensaje al agente",
+    "placeholder": "Pedile algo al agente. Enter envía, Shift+Enter salto de línea.",
+    "placeholderShort": "Escribe un mensaje... (Shift+Enter = nueva línea)",
+    "send": "Enviar",
+    "stop": "Detener",
+    "cancel": "Cancelar",
+    "cancelTooltip": "Cancelar (Esc)",
+    "roles": {
+      "user": "Vos",
+      "assistant": "Agente",
+      "tool": "Tool"
+    },
+    "comingM4": "Chat con agentes disponible en M4 — provider configurado en M3"
+  },
+  "palette": {
+    "symbols": {
+      "ariaLabel": "Paleta de símbolos",
+      "openFolderHint": "Abrí una carpeta para buscar símbolos",
+      "placeholder": "Buscar símbolo… (función, tipo, clase)",
+      "loading": "Buscando…",
+      "errorPrefix": "Error",
+      "noMatches": "Sin coincidencias. Reindexá desde Configuración → IA.",
+      "emptyHint": "Escribí para buscar símbolos del workspace"
+    },
+    "command": {
+      "fileSearch": "Buscar archivo…",
+      "fileSearchEmpty": "Abrí una carpeta para buscar archivos",
+      "command": "Buscar comando…"
+    }
+  },
+  "welcome": {
+    "aria": "Pantalla de bienvenida",
+    "greeting": {
+      "night": "buenas noches",
+      "morning": "buenos días",
+      "afternoon": "buenas tardes",
+      "evening": "buenas noches"
+    },
+    "recents": "Recientes",
+    "actions": {
+      "newFile": "Nuevo archivo",
+      "openFile": "Abrir archivo",
+      "openFolder": "Abrir carpeta",
+      "recoverScratch": "Recuperar {{count}} pestaña(s) sin guardar"
+    },
+    "scratchRecovered": "{{count}} pestaña(s) Untitled recuperada(s)",
+    "scratchPersisted": "{{count}} pestaña(s) Untitled guardadas en buffer — recupera desde Inicio",
+    "haiku": {
+      "0": "viejo estanque — una rana salta, sonido del agua.",
+      "1": "tal silencio — la voz de las cigarras penetra la roca.",
+      "2": "fuera, gorrioncito — viene pasando el caballo.",
+      "3": "rana flaca — no te rindas, Issa está contigo.",
+      "4": "una enredadera tomó el balde — pido agua prestada.",
+      "5": "campo de mostaza — la luna al este, el sol al oeste.",
+      "6": "hojas verdes a la vista, cuco en la montaña, primer bonito.",
+      "7": "hierba de verano — todo lo que queda del sueño de los guerreros.",
+      "8": "se derrite la nieve — el pueblo lleno de niños.",
+      "9": "ven, juega conmigo — gorrión sin padres.",
+      "10": "comiendo un caqui — suenan las campanas de Hōryū-ji.",
+      "11": "este camino — nadie lo recorre, atardecer de otoño."
+    }
+  },
+  "ai": {
+    "title": "Agente · IA",
+    "intro": "Daisu se conecta a un proveedor LLM para chat, completados y agentes. Por defecto usa Ollama local (privacidad, sin clave). Cambia a un proveedor cloud si querés Claude, GPT o Gemini.",
+    "providerHeading": "Proveedor",
+    "loadingProviders": "Cargando proveedores…",
+    "loadError": "No se pudieron cargar los proveedores: {{error}}",
+    "retry": "Reintentar",
+    "comingSoon": "próximamente",
+    "implPhase": "Implementación en M3 Phase 1+",
+    "keyConfigured": "API key configurada",
+    "keyRequired": "Requiere API key",
+    "localNoKey": "Local · sin clave",
+    "modelHeading": "Modelo",
+    "modelLabel": "Identificador del modelo",
+    "modelHint": "Ej: <code>llama3.2</code>, <code>claude-haiku-4-5-20251001</code>, <code>gpt-4o-mini</code>. Verificá el ID exacto en la documentación del proveedor.",
+    "detect": "Detectar",
+    "detecting": "Detectando…",
+    "detectFound": "Encontrados {{count}} modelo(s) instalado(s) · seleccionado: {{model}}",
+    "detectUnreachable": "Ollama no responde en {{url}}",
+    "detectNoModels": "Ollama corriendo pero sin modelos instalados. Ejecutá `ollama pull qwen2.5-coder:7b` (o cualquier modelo) y volvé a detectar.",
+    "baseUrlLabel": "URL base",
+    "baseUrlHint": "Endpoint del servidor local. Ollama default <code>http://localhost:11434</code>; LM Studio default <code>http://localhost:1234/v1</code>.",
+    "apiKeyHeading": "API key",
+    "apiKeyDesc": "Se almacena en el keychain del sistema operativo (Windows Credential Manager). Nunca se escribe en disco en texto plano.",
+    "apiKeyLabel": "API key para {{provider}}",
+    "apiKeyPlaceholderSet": "•••••••• (configurada)",
+    "saveButton": "Guardar",
+    "savingButton": "Guardando…",
+    "deleteButton": "Borrar",
+    "symbolIndex": "Índice de símbolos",
+    "indexFullHint": "Daisu indexa funciones, structs, clases y tipos del workspace via tree-sitter + SQLite FTS5. Se usa para búsqueda rápida (Ctrl+T) y contexto de agentes. Embeddings vectoriales — diferidos a una fase siguiente.",
+    "reindex": "Reindexar",
+    "reindexing": "Indexando…",
+    "openFolderToIndex": "Abrí una carpeta para indexar",
+    "symbolsCount": "{{count}} símbolos",
+    "lastIndex": " · último: {{when}}",
+    "noIndexYet": "Sin índice todavía",
+    "connectionTest": "Test de conexión",
+    "testing": "Probando…",
+    "testButton": "Probar conexión",
+    "indexedToast": "Indexados {{count}} símbolos en {{ms}}ms",
+    "modelReplied": "Modelo {{model}} respondió: \"{{sample}}\"",
+    "permissionsHeading": "Permisos del agente",
+    "permissionsDesc": "Lista de herramientas con decisiones persistidas para el workspace actual. Borra para volver a pedir confirmación.",
+    "openWorkspaceForPerms": "Abre un workspace para ver permisos.",
+    "noEntries": "Sin entradas todavía.",
+    "refresh": "Refrescar",
+    "deleteAll": "Borrar todo"
+  },
+  "integrations": {
+    "discordRpc": "Discord Rich Presence",
+    "discordHint": "Muestra en tu perfil de Discord lo que estás editando. Requiere Discord abierto en el equipo. Si Discord no está activo, la conexión falla silenciosamente.",
+    "enable": "Activar Discord Rich Presence",
+    "enableDesc": "Conecta a Discord al iniciar Daisu y publica actividad.",
+    "showProject": "Mostrar nombre del proyecto",
+    "showProjectDesc": "Publica el nombre de la carpeta abierta como contexto.",
+    "showFile": "Mostrar archivo en edición",
+    "showFileDesc": "Publica el nombre del archivo activo. Desactiva para privacidad.",
+    "appId": "Application ID",
+    "appIdHint": "ID de la aplicación de Discord (Discord Developer Portal). Usa el default a menos que tengas tu propia app con assets personalizados."
+  },
+  "mcp": {
+    "hint": "Servidores Model Context Protocol. Cada servidor expone tools que el agente puede invocar en runtime. Transporte SSE aún no implementado.",
+    "noServers": "Sin servidores configurados.",
+    "noCommand": "(sin comando)",
+    "noUrl": "(sin url)",
+    "tools": "{{count}} tools",
+    "off": "off",
+    "connect": "Conectar",
+    "disconnect": "Desconectar",
+    "edit": "Editar",
+    "addServer": "Agregar servidor",
+    "name": "Nombre",
+    "nameRequired": "El nombre es obligatorio.",
+    "duplicate": "Ya existe un servidor con ese nombre.",
+    "transport": "Transporte",
+    "transportStdio": "stdio (proceso hijo)",
+    "transportSse": "sse (no implementado)",
+    "command": "Comando",
+    "argsLabel": "Args (uno por línea)",
+    "envLabel": "Env (KEY=value, uno por línea)",
+    "url": "URL",
+    "deleteAria": "Eliminar"
+  },
+  "tabs": {
+    "newConversation": "Nueva conversación",
+    "newFile": "Nuevo archivo",
+    "unsaved": "Sin guardar",
+    "pinned": "Fijada",
+    "close": "Cerrar",
+    "togglePin": "Fijar / Desfijar"
+  },
+  "inlineEdit": {
+    "title": "Propuesta de edición",
+    "noDiffs": "Sin diferencias entre el archivo actual y la propuesta.",
+    "hunkAria": "Aceptar hunk {{idx}}",
+    "hunkLabel": "Hunk {{idx}} — líneas {{oldStart}}…{{oldEnd}} → {{newStart}}…{{newEnd}}",
+    "selectNone": "Seleccionar nada",
+    "selectAll": "Seleccionar todo",
+    "rejectAll": "Rechazar todo",
+    "acceptSelected": "Aceptar seleccionados ({{count}})"
+  },
+  "configPanel": {
+    "title": "Configuración",
+    "back": "Volver al chat",
+    "activeProvider": "Proveedor activo",
+    "modeCloud": "Cloud",
+    "modeLocal": "Local",
+    "configure": "Configurar agente",
+    "panelAria": "Configuración del proveedor de IA",
+    "footer": "Las API keys se almacenan en el keychain del sistema operativo. Cambiá proveedor, modelo o credenciales desde <strong>Configuración → Agente</strong>."
+  },
+  "status": {
+    "settings": "Configuración",
+    "settingsTooltip": "Configuración (Ctrl+,)",
+    "behindCommits": "{{count}} commits atrás",
+    "aheadCommits": "{{count}} commits adelante",
+    "sidebar": "Panel lateral",
+    "sidebarTooltip": "Panel lateral (Ctrl+B)",
+    "chatPanel": "Panel de chat",
+    "chatPanelTooltip": "Panel de chat (Ctrl+Shift+B)"
+  },
+  "activity": {
+    "explorer": "Explorador",
+    "search": "Buscar",
+    "sourceControl": "Control de fuente",
+    "settings": "Configuración",
+    "viewsAria": "Vistas de actividad",
+    "comingSoon": "{{feature}} disponible en milestones futuros"
+  },
+  "commandPalette": {
+    "files": "Archivos",
+    "commands": "Comandos"
+  },
+  "agentSaved": "Guardado",
+  "errorPrefix": "Error: {{msg}}"
+}

@@ -1,0 +1,377 @@
+{
+  "common": {
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "open": "Open",
+    "loading": "Loading…",
+    "comingSoon": "Coming soon",
+    "send": "Send",
+    "settings": "Settings",
+    "account": "Account",
+    "menu": "Menu",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "search": "Search",
+    "newFile": "New file",
+    "newFolder": "New folder",
+    "openFile": "Open file",
+    "openFolder": "Open folder"
+  },
+  "language": {
+    "label": "Language",
+    "description": "Interface language. Restart not required.",
+    "en": "English",
+    "es": "Español",
+    "ja": "日本語"
+  },
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "selection": "Selection",
+    "view": "View",
+    "terminal": "Terminal",
+    "newFile": "New file",
+    "openFile": "Open file…",
+    "openFolder": "Open folder…",
+    "save": "Save",
+    "exit": "Exit",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "selectAll": "Select all",
+    "toggleSidebar": "Toggle sidebar",
+    "toggleSearch": "Toggle search",
+    "toggleChatPanel": "Toggle chat panel",
+    "settings": "Settings"
+  },
+  "titlebar": {
+    "menu": "Menu",
+    "account": "Account",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "close": "Close",
+    "focusEnter": "Focus mode (静)",
+    "focusExit": "Exit focus mode (静)",
+    "focusLabel": "Focus mode",
+    "clockLabel": "Current time {{clock}}, {{period}}",
+    "period": {
+      "morning": "morning",
+      "afternoon": "afternoon",
+      "evening": "evening",
+      "night": "night"
+    }
+  },
+  "sidebar": {
+    "newFile": "New file",
+    "newFolder": "New folder",
+    "search": "Search",
+    "searchProject": "Search in project (Ctrl+Shift+F)",
+    "explorerAria": "Workspace explorer",
+    "refresh": "Refresh",
+    "collapseAll": "Collapse all",
+    "collapseAllToast": "Collapse all available in future milestones",
+    "filterPlaceholder": "filter files…",
+    "filterAria": "Filter files in sidebar",
+    "clearFilter": "Clear filter",
+    "pinned": "PINNED",
+    "unpin": "Unpin",
+    "unpinName": "Unpin {{name}}",
+    "collapseFilters": "Collapse replace and filters",
+    "expandFilters": "Expand replace and filters",
+    "hideFilters": "Hide replace and filters",
+    "showFilters": "Show replace and filters"
+  },
+  "settings": {
+    "title": "Settings",
+    "closeAria": "Close settings",
+    "categories": {
+      "general": "General",
+      "shortcuts": "Shortcuts",
+      "editor": "Editor",
+      "appearance": "Appearance",
+      "design": "Design",
+      "chat": "Chat",
+      "agent": "Agent",
+      "mcp": "MCP",
+      "integrations": "Integrations",
+      "security": "Security",
+      "info": "Info",
+      "advanced": "Advanced"
+    },
+    "stub": {
+      "default": "Coming soon — this category arrives in future milestones.",
+      "chat": "Advanced chat and history settings arriving in M4.",
+      "security": "API key storage via OS keychain + plugin permissions in M3.",
+      "info": "Version, licenses and system. Detailed in M3."
+    },
+    "design": {
+      "title": "Design",
+      "subtitle": "Customize how interface components are arranged",
+      "components": "Components",
+      "panelButtons": "Panel buttons",
+      "side": {
+        "left": "Left",
+        "right": "Right"
+      },
+      "footer": "Changes apply live. Persist in local storage.",
+      "cards": {
+        "activityBar": {
+          "title": "Activity bar",
+          "desc": "Side navigation with explorer, search and extensions"
+        },
+        "statusBar": {
+          "title": "Status bar",
+          "desc": "Editor and project information"
+        },
+        "sidebar": {
+          "title": "Sidebar",
+          "desc": "File explorer, search and other tools"
+        },
+        "terminal": {
+          "title": "Terminal",
+          "desc": "Integrated terminal for running commands"
+        },
+        "chatPanel": {
+          "title": "Chat panel",
+          "desc": "AI chat for code assistance"
+        },
+        "panelToggles": {
+          "title": "Panel toggles",
+          "desc": "Cyan/orange buttons on status bar to show/hide panels"
+        },
+        "utilityCluster": {
+          "title": "Utility cluster",
+          "desc": "Errors, warnings, notifications and settings on status bar"
+        },
+        "hamburger": {
+          "title": "Hamburger menu",
+          "desc": "Main menu button on title bar"
+        },
+        "menuStrip": {
+          "title": "Menu strip",
+          "desc": "File, Edit, Selection, View, Terminal on title bar"
+        },
+        "userAvatar": {
+          "title": "User avatar",
+          "desc": "Account icon on title bar"
+        }
+      }
+    }
+  },
+  "chat": {
+    "title": "Agent",
+    "label": "Chat",
+    "panelAria": "Chat panel",
+    "newConversation": "New conversation",
+    "deleteConversation": "Delete conversation",
+    "history": "History",
+    "providerSettings": "Provider settings",
+    "openFolderHint": "Open a folder to start chatting with the agent.",
+    "emptyConversation": "Type a message below to start.",
+    "startConversation": "Start a conversation",
+    "startHint": "Type a message to start chatting with the AI",
+    "messageLabel": "Message to agent",
+    "placeholder": "Ask the agent something. Enter sends, Shift+Enter newline.",
+    "placeholderShort": "Type a message... (Shift+Enter = newline)",
+    "send": "Send",
+    "stop": "Stop",
+    "cancel": "Cancel",
+    "cancelTooltip": "Cancel (Esc)",
+    "roles": {
+      "user": "You",
+      "assistant": "Agent",
+      "tool": "Tool"
+    },
+    "comingM4": "Agent chat available in M4 — provider configured in M3"
+  },
+  "palette": {
+    "symbols": {
+      "ariaLabel": "Symbol palette",
+      "openFolderHint": "Open a folder to search symbols",
+      "placeholder": "Search symbol… (function, type, class)",
+      "loading": "Searching…",
+      "errorPrefix": "Error",
+      "noMatches": "No matches. Reindex from Settings → AI.",
+      "emptyHint": "Type to search workspace symbols"
+    },
+    "command": {
+      "fileSearch": "Search file…",
+      "fileSearchEmpty": "Open a folder to search files",
+      "command": "Search command…"
+    }
+  },
+  "welcome": {
+    "aria": "Welcome screen",
+    "greeting": {
+      "night": "good evening",
+      "morning": "good morning",
+      "afternoon": "good afternoon",
+      "evening": "good evening"
+    },
+    "recents": "Recent",
+    "actions": {
+      "newFile": "New file",
+      "openFile": "Open file",
+      "openFolder": "Open folder",
+      "recoverScratch": "Recover {{count}} unsaved tab(s)"
+    },
+    "scratchRecovered": "{{count}} Untitled tab(s) recovered",
+    "scratchPersisted": "{{count}} Untitled tab(s) saved to buffer — recover from Home",
+    "haiku": {
+      "0": "old pond — a frog jumps in, sound of water.",
+      "1": "such silence — the cicadas' voice seeps into the rocks.",
+      "2": "out of the way, little sparrow — the horse is passing.",
+      "3": "thin frog — don't give up, Issa is here with you.",
+      "4": "morning glory took the bucket — I borrow water.",
+      "5": "rape flowers — moon to the east, sun to the west.",
+      "6": "green leaves before me, cuckoo on the mountain, first bonito.",
+      "7": "summer grass — all that remains of the warriors' dreams.",
+      "8": "snow melting — the village full of children.",
+      "9": "come, play with me — orphan sparrow.",
+      "10": "biting a persimmon — the bell rings at Hōryū-ji.",
+      "11": "this road — no one travels it, autumn dusk."
+    }
+  },
+  "ai": {
+    "title": "Agent · AI",
+    "intro": "Daisu connects to an LLM provider for chat, completions and agents. Defaults to local Ollama (privacy, no key). Switch to a cloud provider if you want Claude, GPT or Gemini.",
+    "providerHeading": "Provider",
+    "loadingProviders": "Loading providers…",
+    "loadError": "Could not load providers: {{error}}",
+    "retry": "Retry",
+    "comingSoon": "coming soon",
+    "implPhase": "Implementation in M3 Phase 1+",
+    "keyConfigured": "API key configured",
+    "keyRequired": "Requires API key",
+    "localNoKey": "Local · no key",
+    "modelHeading": "Model",
+    "modelLabel": "Model identifier",
+    "modelHint": "E.g.: <code>llama3.2</code>, <code>claude-haiku-4-5-20251001</code>, <code>gpt-4o-mini</code>. Verify the exact ID in the provider documentation.",
+    "detect": "Detect",
+    "detecting": "Detecting…",
+    "detectFound": "Found {{count}} installed model(s) · selected: {{model}}",
+    "detectUnreachable": "Ollama not reachable at {{url}}",
+    "detectNoModels": "Ollama running but no models installed. Run `ollama pull qwen2.5-coder:7b` (or any model) and detect again.",
+    "baseUrlLabel": "Base URL",
+    "baseUrlHint": "Local server endpoint. Ollama default <code>http://localhost:11434</code>; LM Studio default <code>http://localhost:1234/v1</code>.",
+    "apiKeyHeading": "API key",
+    "apiKeyDesc": "Stored in the operating system keychain (Windows Credential Manager). Never written to disk in plain text.",
+    "apiKeyLabel": "API key for {{provider}}",
+    "apiKeyPlaceholderSet": "•••••••• (configured)",
+    "saveButton": "Save",
+    "savingButton": "Saving…",
+    "deleteButton": "Delete",
+    "symbolIndex": "Symbol index",
+    "indexFullHint": "Daisu indexes functions, structs, classes and types in the workspace via tree-sitter + SQLite FTS5. Used for fast search (Ctrl+T) and agent context. Vector embeddings — deferred to a later phase.",
+    "reindex": "Reindex",
+    "reindexing": "Indexing…",
+    "openFolderToIndex": "Open a folder to index",
+    "symbolsCount": "{{count}} symbols",
+    "lastIndex": " · last: {{when}}",
+    "noIndexYet": "No index yet",
+    "connectionTest": "Connection test",
+    "testing": "Testing…",
+    "testButton": "Test connection",
+    "indexedToast": "Indexed {{count}} symbols in {{ms}}ms",
+    "modelReplied": "Model {{model}} replied: \"{{sample}}\"",
+    "permissionsHeading": "Agent permissions",
+    "permissionsDesc": "Tool list with persisted decisions for the current workspace. Delete to be asked for confirmation again.",
+    "openWorkspaceForPerms": "Open a workspace to view permissions.",
+    "noEntries": "No entries yet.",
+    "refresh": "Refresh",
+    "deleteAll": "Delete all"
+  },
+  "integrations": {
+    "discordRpc": "Discord Rich Presence",
+    "discordHint": "Shows in your Discord profile what you are editing. Requires Discord open on the device. If Discord is not active, the connection fails silently.",
+    "enable": "Enable Discord Rich Presence",
+    "enableDesc": "Connects to Discord on Daisu startup and publishes activity.",
+    "showProject": "Show project name",
+    "showProjectDesc": "Publishes the name of the open folder as context.",
+    "showFile": "Show file being edited",
+    "showFileDesc": "Publishes the name of the active file. Disable for privacy.",
+    "appId": "Application ID",
+    "appIdHint": "Discord application ID (Discord Developer Portal). Use the default unless you have your own app with custom assets."
+  },
+  "mcp": {
+    "hint": "Model Context Protocol servers. Each server exposes tools the agent can invoke at runtime. SSE transport not yet implemented.",
+    "noServers": "No servers configured.",
+    "noCommand": "(no command)",
+    "noUrl": "(no url)",
+    "tools": "{{count}} tools",
+    "off": "off",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "edit": "Edit",
+    "addServer": "Add server",
+    "name": "Name",
+    "nameRequired": "Name is required.",
+    "duplicate": "A server with that name already exists.",
+    "transport": "Transport",
+    "transportStdio": "stdio (child process)",
+    "transportSse": "sse (not implemented)",
+    "command": "Command",
+    "argsLabel": "Args (one per line)",
+    "envLabel": "Env (KEY=value, one per line)",
+    "url": "URL",
+    "deleteAria": "Delete"
+  },
+  "tabs": {
+    "newConversation": "New conversation",
+    "newFile": "New file",
+    "unsaved": "Unsaved",
+    "pinned": "Pinned",
+    "close": "Close",
+    "togglePin": "Pin / Unpin"
+  },
+  "inlineEdit": {
+    "title": "Edit proposal",
+    "noDiffs": "No differences between current file and proposal.",
+    "hunkAria": "Accept hunk {{idx}}",
+    "hunkLabel": "Hunk {{idx}} — lines {{oldStart}}…{{oldEnd}} → {{newStart}}…{{newEnd}}",
+    "selectNone": "Select none",
+    "selectAll": "Select all",
+    "rejectAll": "Reject all",
+    "acceptSelected": "Accept selected ({{count}})"
+  },
+  "configPanel": {
+    "title": "Settings",
+    "back": "Back to chat",
+    "activeProvider": "Active provider",
+    "modeCloud": "Cloud",
+    "modeLocal": "Local",
+    "configure": "Configure agent",
+    "panelAria": "AI provider configuration",
+    "footer": "API keys are stored in the operating system keychain. Change provider, model or credentials from <strong>Settings → Agent</strong>."
+  },
+  "status": {
+    "settings": "Settings",
+    "settingsTooltip": "Settings (Ctrl+,)",
+    "behindCommits": "{{count}} commits behind",
+    "aheadCommits": "{{count}} commits ahead",
+    "sidebar": "Sidebar",
+    "sidebarTooltip": "Sidebar (Ctrl+B)",
+    "chatPanel": "Chat panel",
+    "chatPanelTooltip": "Chat panel (Ctrl+Shift+B)"
+  },
+  "activity": {
+    "explorer": "Explorer",
+    "search": "Search",
+    "sourceControl": "Source control",
+    "settings": "Settings",
+    "viewsAria": "Activity views",
+    "comingSoon": "{{feature}} arriving in future milestones"
+  },
+  "commandPalette": {
+    "files": "Files",
+    "commands": "Commands"
+  },
+  "agentSaved": "Saved",
+  "errorPrefix": "Error: {{msg}}"
+}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type JSX, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ChatCircle,
   Plus,
@@ -11,6 +12,7 @@ import { useAgent } from "../../stores/agentStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 
 export function ChatPanel(): JSX.Element {
+  const { t } = useTranslation();
   const rootPath = useWorkspace((s) => s.rootPath);
   const conversations = useAgent((s) => s.conversations);
   const activeConvoId = useAgent((s) => s.activeConvoId);
@@ -53,7 +55,7 @@ export function ChatPanel(): JSX.Element {
     return (
       <div className="daisu-agent-empty">
         <span className="daisu-glyph" aria-hidden="true">話</span>
-        <p>Abrí una carpeta para empezar a conversar con el agente.</p>
+        <p>{t("chat.openFolderHint")}</p>
       </div>
     );
   }
@@ -63,13 +65,13 @@ export function ChatPanel(): JSX.Element {
       <header className="daisu-agent-header">
         <div className="daisu-agent-title">
           <span className="daisu-glyph" aria-hidden="true">話</span>
-          <span>Agente</span>
+          <span>{t("chat.title")}</span>
         </div>
         <button
           type="button"
           className="daisu-icon-btn"
-          aria-label="Nueva conversación"
-          title="Nueva conversación"
+          aria-label={t("chat.newConversation")}
+          title={t("chat.newConversation")}
           onClick={() => void create()}
         >
           <Plus size={14} />
@@ -97,8 +99,8 @@ export function ChatPanel(): JSX.Element {
               <button
                 type="button"
                 className="daisu-icon-btn"
-                aria-label="Eliminar conversación"
-                title="Eliminar conversación"
+                aria-label={t("chat.deleteConversation")}
+                title={t("chat.deleteConversation")}
                 onClick={() => void remove(c.id)}
               >
                 <Trash size={12} />
@@ -111,7 +113,7 @@ export function ChatPanel(): JSX.Element {
       <div ref={scrollRef} className="daisu-agent-messages">
         {messages.length === 0 && (
           <p className="daisu-agent-empty-hint">
-            Escribí un mensaje abajo para comenzar.
+            {t("chat.emptyConversation")}
           </p>
         )}
         {messages.map((m) => (
@@ -122,7 +124,7 @@ export function ChatPanel(): JSX.Element {
             }`}
             aria-live={m.pending ? "polite" : undefined}
           >
-            <header className="daisu-agent-msg-role">{labelForRole(m.role)}</header>
+            <header className="daisu-agent-msg-role">{t(`chat.roles.${m.role}`, { defaultValue: m.role })}</header>
             <div className="daisu-agent-msg-body">{m.content || "…"}</div>
             {m.warning && (
               <p className="daisu-agent-msg-warn">
@@ -141,7 +143,7 @@ export function ChatPanel(): JSX.Element {
 
       <form className="daisu-agent-composer" onSubmit={handleSubmit}>
         <label className="sr-only" htmlFor="agent-composer-input">
-          Mensaje al agente
+          {t("chat.messageLabel")}
         </label>
         <textarea
           id="agent-composer-input"
@@ -154,7 +156,7 @@ export function ChatPanel(): JSX.Element {
               handleSubmit(e);
             }
           }}
-          placeholder="Pedile algo al agente. Enter envía, Shift+Enter salto de línea."
+          placeholder={t("chat.placeholder")}
           rows={3}
           disabled={isStreaming}
         />
@@ -164,10 +166,10 @@ export function ChatPanel(): JSX.Element {
               type="button"
               className="daisu-btn daisu-btn-danger"
               onClick={() => void cancel()}
-              title="Cancelar (Esc)"
+              title={t("chat.cancelTooltip")}
             >
               <Stop size={12} weight="fill" />
-              Cancelar
+              {t("chat.cancel")}
             </button>
           ) : (
             <button
@@ -176,7 +178,7 @@ export function ChatPanel(): JSX.Element {
               disabled={!draft.trim()}
             >
               <PaperPlaneRight size={12} weight="fill" />
-              Enviar
+              {t("chat.send")}
             </button>
           )}
         </div>
@@ -185,15 +187,3 @@ export function ChatPanel(): JSX.Element {
   );
 }
 
-function labelForRole(role: string): string {
-  switch (role) {
-    case "user":
-      return "Vos";
-    case "assistant":
-      return "Agente";
-    case "tool":
-      return "Tool";
-    default:
-      return role;
-  }
-}

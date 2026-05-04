@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { useSettings } from "../../../stores/settingsStore";
 import {
   Select,
@@ -48,11 +49,6 @@ interface DesignSettings {
   titleBarMenuStrip: boolean;
   titleBarUserAvatar: boolean;
 }
-
-const SIDE_OPTIONS: Array<{ value: Side; label: string }> = [
-  { value: "left", label: "Izquierda" },
-  { value: "right", label: "Derecha" },
-];
 
 function DesignCard(props: DesignCardProps): JSX.Element {
   const design = useSettings((s) => s.settings.design) as DesignSettings;
@@ -123,50 +119,56 @@ function DesignCard(props: DesignCardProps): JSX.Element {
   );
 }
 
-export function Disenio(): JSX.Element {
+export function Design(): JSX.Element {
+  const { t } = useTranslation();
+  const sideOptions: Array<{ value: Side; label: string }> = [
+    { value: "left", label: t("settings.design.side.left") },
+    { value: "right", label: t("settings.design.side.right") },
+  ];
+
   return (
     <div className="daisu-settings-panel">
       <header className="border-b border-[var(--border-subtle)] pb-3 mb-6">
-        <h2 className="text-base font-semibold text-[var(--fg-primary)]">Diseño</h2>
+        <h2 className="text-base font-semibold text-[var(--fg-primary)]">{t("settings.design.title")}</h2>
         <p className="text-xs text-[var(--fg-secondary)]">
-          Personaliza la disposición de los componentes de la interfaz
+          {t("settings.design.subtitle")}
         </p>
       </header>
 
       <section className="mb-8">
         <h3 className="text-sm font-medium mb-3 text-[var(--fg-primary)]">
-          Componentes
+          {t("settings.design.components")}
         </h3>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
           <DesignCard
-            title="Barra de actividad"
-            desc="Navegación lateral con explorador, búsqueda y extensiones"
+            title={t("settings.design.cards.activityBar.title")}
+            desc={t("settings.design.cards.activityBar.desc")}
             selectKey="activityBarSide"
-            selectOptions={SIDE_OPTIONS}
+            selectOptions={sideOptions}
             toggleKey="activityBarVisible"
           />
           <DesignCard
-            title="Barra de estado"
-            desc="Información del editor y proyecto"
+            title={t("settings.design.cards.statusBar.title")}
+            desc={t("settings.design.cards.statusBar.desc")}
             toggleKey="statusBarVisible"
           />
           <DesignCard
-            title="Panel lateral"
-            desc="Explorador de archivos, búsqueda y otras herramientas"
+            title={t("settings.design.cards.sidebar.title")}
+            desc={t("settings.design.cards.sidebar.desc")}
             selectKey="sidebarSide"
-            selectOptions={SIDE_OPTIONS}
+            selectOptions={sideOptions}
             toggleKey="sidebarVisible"
           />
           <DesignCard
-            title="Terminal"
-            desc="Terminal integrada para ejecutar comandos"
+            title={t("settings.design.cards.terminal.title")}
+            desc={t("settings.design.cards.terminal.desc")}
             toggleKey="terminalVisible"
           />
           <DesignCard
-            title="Panel de chat"
-            desc="Chat con IA para asistencia de código"
+            title={t("settings.design.cards.chatPanel.title")}
+            desc={t("settings.design.cards.chatPanel.desc")}
             selectKey="rightPanelSide"
-            selectOptions={SIDE_OPTIONS}
+            selectOptions={sideOptions}
             toggleKey="rightPanelVisible"
           />
         </div>
@@ -174,39 +176,39 @@ export function Disenio(): JSX.Element {
 
       <section>
         <h3 className="text-sm font-medium mb-3 text-[var(--fg-primary)]">
-          Botones de paneles
+          {t("settings.design.panelButtons")}
         </h3>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
           <DesignCard
-            title="Toggles de paneles"
-            desc="Botones cyan/orange en barra de estado para mostrar/ocultar paneles"
+            title={t("settings.design.cards.panelToggles.title")}
+            desc={t("settings.design.cards.panelToggles.desc")}
             toggleKey="statusBarPanelToggles"
           />
           <DesignCard
-            title="Cluster utilitario"
-            desc="Errores, advertencias, notificaciones y configuración en barra de estado"
+            title={t("settings.design.cards.utilityCluster.title")}
+            desc={t("settings.design.cards.utilityCluster.desc")}
             toggleKey="statusBarUtility"
           />
           <DesignCard
-            title="Menú hamburguesa"
-            desc="Botón de menú principal en barra de título"
+            title={t("settings.design.cards.hamburger.title")}
+            desc={t("settings.design.cards.hamburger.desc")}
             toggleKey="titleBarHamburger"
           />
           <DesignCard
-            title="Barra de menús"
-            desc="Archivo, Edición, Selección, Vista, Terminal en barra de título"
+            title={t("settings.design.cards.menuStrip.title")}
+            desc={t("settings.design.cards.menuStrip.desc")}
             toggleKey="titleBarMenuStrip"
           />
           <DesignCard
-            title="Avatar de usuario"
-            desc="Icono de cuenta en barra de título"
+            title={t("settings.design.cards.userAvatar.title")}
+            desc={t("settings.design.cards.userAvatar.desc")}
             toggleKey="titleBarUserAvatar"
           />
         </div>
       </section>
 
       <p className="text-[11px] text-[var(--fg-muted)] mt-4">
-        Cambios aplican en vivo. Persisten en almacenamiento local.
+        {t("settings.design.footer")}
       </p>
     </div>
   );

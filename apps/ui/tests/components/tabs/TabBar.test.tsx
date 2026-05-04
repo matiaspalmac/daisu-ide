@@ -26,7 +26,7 @@ describe("<TabBar>", () => {
     expect(bar).not.toBeNull();
     // Only the trailing "+" button should be present.
     expect(bar?.querySelector("[data-tab-id]")).toBeNull();
-    expect(bar?.querySelector('button[aria-label="Nuevo archivo"]')).not.toBeNull();
+    expect(bar?.querySelector('button[aria-label="New file"]')).not.toBeNull();
   });
 
   it("renders one tab per OpenTab", () => {
