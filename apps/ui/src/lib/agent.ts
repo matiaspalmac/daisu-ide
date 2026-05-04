@@ -14,6 +14,7 @@ export interface AgentProviderInfo {
   hasKey: boolean;
   supportsTools: boolean;
   supportsParallelTools: boolean;
+  implemented: boolean;
 }
 
 export interface ProviderTestRequest {
@@ -38,6 +39,7 @@ export function listProviders(): Promise<AgentProviderInfo[]> {
       has_key: boolean;
       supports_tools: boolean;
       supports_parallel_tools: boolean;
+      implemented: boolean;
     }>
   >("agent_provider_list").then((rows) =>
     rows.map((r) => ({
@@ -47,6 +49,7 @@ export function listProviders(): Promise<AgentProviderInfo[]> {
       hasKey: r.has_key,
       supportsTools: r.supports_tools,
       supportsParallelTools: r.supports_parallel_tools,
+      implemented: r.implemented,
     })),
   );
 }

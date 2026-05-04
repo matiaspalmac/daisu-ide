@@ -30,7 +30,10 @@ const SettingsSchema = z.object({
   aiProvider: z.object({
     mode: z.enum(["cloud", "local"]).default("local"),
     id: z
-      .enum(["gemini", "openai", "anthropic", "lmstudio", "ollama"])
+      .preprocess(
+        (v) => (v === "claude" ? "anthropic" : v),
+        z.enum(["gemini", "openai", "anthropic", "lmstudio", "ollama"]),
+      )
       .default("ollama"),
     model: z.string().default("llama3.2"),
     ollamaBaseUrl: z.string().default("http://localhost:11434"),

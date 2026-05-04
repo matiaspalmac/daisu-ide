@@ -36,6 +36,7 @@ pub struct ProviderInfo {
     pub has_key: bool,
     pub supports_tools: bool,
     pub supports_parallel_tools: bool,
+    pub implemented: bool,
 }
 
 #[tauri::command]
@@ -45,6 +46,7 @@ pub async fn agent_provider_list() -> AppResult<Vec<ProviderInfo>> {
             ProviderId::Ollama,
             "Ollama (local)",
             ToolCapability::default(),
+            true,
         ),
         (
             ProviderId::Anthropic,
@@ -53,6 +55,7 @@ pub async fn agent_provider_list() -> AppResult<Vec<ProviderInfo>> {
                 function_calls: true,
                 parallel_calls: true,
             },
+            true,
         ),
         (
             ProviderId::OpenAi,
@@ -61,6 +64,7 @@ pub async fn agent_provider_list() -> AppResult<Vec<ProviderInfo>> {
                 function_calls: true,
                 parallel_calls: true,
             },
+            false,
         ),
         (
             ProviderId::Gemini,
@@ -69,16 +73,18 @@ pub async fn agent_provider_list() -> AppResult<Vec<ProviderInfo>> {
                 function_calls: true,
                 parallel_calls: false,
             },
+            false,
         ),
         (
             ProviderId::LmStudio,
             "LM Studio (local)",
             ToolCapability::default(),
+            false,
         ),
     ];
 
     let mut out = Vec::with_capacity(entries.len());
-    for (id, name, caps) in entries {
+    for (id, name, caps, implemented) in entries {
         let requires_key = id.requires_key();
         let has_key = if requires_key {
             tokio::task::spawn_blocking(move || keychain::has_key(id.as_str()))
@@ -95,6 +101,7 @@ pub async fn agent_provider_list() -> AppResult<Vec<ProviderInfo>> {
             has_key,
             supports_tools: caps.function_calls,
             supports_parallel_tools: caps.parallel_calls,
+            implemented,
         });
     }
     Ok(out)

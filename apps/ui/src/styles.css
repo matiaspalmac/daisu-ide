@@ -1966,3 +1966,30 @@ body.daisu-focus-mode header[class*="titlebar-h"]:hover { opacity: 1; }
 }
 .daisu-test-status.is-ok { color: var(--success); }
 .daisu-test-status.is-fail { color: var(--danger); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+.daisu-pill-muted {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-base);
+  color: var(--fg-muted);
+  border: 1px solid var(--border-subtle);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+.daisu-radio-row.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.daisu-radio-row.is-disabled:hover {
+  border-color: var(--border-subtle);
+}

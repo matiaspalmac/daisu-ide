@@ -1,5 +1,10 @@
 import { useEffect, useState, type JSX } from "react";
-import { CheckCircle, WarningCircle, Robot } from "@phosphor-icons/react";
+import {
+  CheckCircle,
+  WarningCircle,
+  Robot,
+  ArrowClockwise,
+} from "@phosphor-icons/react";
 import { useSettings } from "../../../stores/settingsStore";
 import {
   type AgentProviderId,
@@ -28,20 +33,37 @@ export function AiSettings(): JSX.Element {
   const ai = useSettings((s) => s.settings.aiProvider);
   const setSetting = useSettings((s) => s.set);
   const [providers, setProviders] = useState<AgentProviderInfo[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [keyDraft, setKeyDraft] = useState("");
+  const [keyError, setKeyError] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
 
   useEffect(() => {
     void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reset the in-flight key draft and any test/save status when the user
+  // switches provider — otherwise an unsaved secret could be written under
+  // the wrong provider id.
+  useEffect(() => {
+    setKeyDraft("");
+    setKeyError(null);
+    setTestResult(null);
+  }, [ai.id]);
+
   async function refresh(): Promise<void> {
+    setLoading(true);
+    setLoadError(null);
     try {
       setProviders(await listProviders());
     } catch (e) {
-      console.error("listProviders", e);
+      setLoadError(String((e as Error).message ?? e));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -59,18 +81,26 @@ export function AiSettings(): JSX.Element {
   async function handleSaveKey(): Promise<void> {
     if (!keyDraft.trim()) return;
     setSavingKey(true);
+    setKeyError(null);
     try {
       await setProviderKey(ai.id as AgentProviderId, keyDraft.trim());
       setKeyDraft("");
       await refresh();
+    } catch (e) {
+      setKeyError(String((e as Error).message ?? e));
     } finally {
       setSavingKey(false);
     }
   }
 
   async function handleClearKey(): Promise<void> {
-    await clearProviderKey(ai.id as AgentProviderId);
-    await refresh();
+    setKeyError(null);
+    try {
+      await clearProviderKey(ai.id as AgentProviderId);
+      await refresh();
+    } catch (e) {
+      setKeyError(String((e as Error).message ?? e));
+    }
   }
 
   async function handleTest(): Promise<void> {
@@ -117,42 +147,72 @@ export function AiSettings(): JSX.Element {
 
       <h3 className="daisu-settings-section-title">Proveedor</h3>
       <div className="daisu-radio-list">
-        {providers.length === 0 && (
+        {loading && (
           <p className="daisu-field-desc">Cargando proveedores…</p>
         )}
-        {providers.map((p) => (
-          <label
-            key={p.id}
-            className={`daisu-radio-row${ai.id === p.id ? " is-active" : ""}`}
-          >
-            <input
-              type="radio"
-              name="ai-provider"
-              checked={ai.id === p.id}
-              onChange={() => void handleSelect(p.id)}
-            />
-            <div className="daisu-radio-row-body">
-              <div className="daisu-radio-row-title">
-                <Robot size={14} />
-                {p.name}
-                {p.requiresKey && p.hasKey && (
-                  <CheckCircle size={12} weight="fill" className="text-success" />
-                )}
-                {p.requiresKey && !p.hasKey && (
-                  <WarningCircle size={12} weight="fill" className="text-warn" />
-                )}
+        {!loading && loadError && (
+          <div className="daisu-test-status is-fail" role="alert">
+            <WarningCircle size={14} weight="fill" />
+            No se pudieron cargar los proveedores: {loadError}
+            <button
+              type="button"
+              className="daisu-btn ml-2"
+              onClick={() => void refresh()}
+            >
+              <ArrowClockwise size={12} /> Reintentar
+            </button>
+          </div>
+        )}
+        {!loading && !loadError &&
+          providers.map((p) => (
+            <label
+              key={p.id}
+              className={`daisu-radio-row${ai.id === p.id ? " is-active" : ""}${
+                p.implemented ? "" : " is-disabled"
+              }`}
+            >
+              <input
+                type="radio"
+                name="ai-provider"
+                checked={ai.id === p.id}
+                disabled={!p.implemented}
+                onChange={() => void handleSelect(p.id)}
+              />
+              <div className="daisu-radio-row-body">
+                <div className="daisu-radio-row-title">
+                  <Robot size={14} />
+                  {p.name}
+                  {!p.implemented && (
+                    <span className="daisu-pill-muted">próximamente</span>
+                  )}
+                  {p.implemented && p.requiresKey && p.hasKey && (
+                    <CheckCircle
+                      size={12}
+                      weight="fill"
+                      className="text-success"
+                    />
+                  )}
+                  {p.implemented && p.requiresKey && !p.hasKey && (
+                    <WarningCircle
+                      size={12}
+                      weight="fill"
+                      className="text-warn"
+                    />
+                  )}
+                </div>
+                <p className="daisu-radio-row-desc">
+                  {p.implemented
+                    ? p.requiresKey
+                      ? p.hasKey
+                        ? "API key configurada"
+                        : "Requiere API key"
+                      : "Local · sin clave"
+                    : "Implementación en M3 Phase 1+"}
+                  {p.implemented && p.supportsTools ? " · tools" : ""}
+                </p>
               </div>
-              <p className="daisu-radio-row-desc">
-                {p.requiresKey
-                  ? p.hasKey
-                    ? "API key configurada"
-                    : "Requiere API key"
-                  : "Local · sin clave"}
-                {p.supportsTools ? " · tools" : ""}
-              </p>
-            </div>
-          </label>
-        ))}
+            </label>
+          ))}
       </div>
 
       <h3 className="daisu-settings-section-title">Modelo</h3>
@@ -214,18 +274,23 @@ export function AiSettings(): JSX.Element {
       {current?.requiresKey && (
         <>
           <h3 className="daisu-settings-section-title">API key</h3>
-          <p className="daisu-field-desc">
+          <p className="daisu-field-desc" id="ai-key-desc">
             Se almacena en el keychain del sistema operativo (Windows
             Credential Manager). Nunca se escribe en disco en texto plano.
           </p>
           <div className="daisu-field-row">
+            <label htmlFor="ai-key-input" className="sr-only">
+              API key para {current.name}
+            </label>
             <input
+              id="ai-key-input"
               type="password"
               className="daisu-input daisu-input-mono"
               placeholder={current.hasKey ? "•••••••• (configurada)" : "sk-..."}
               value={keyDraft}
               onChange={(e) => setKeyDraft(e.target.value)}
               autoComplete="off"
+              aria-describedby="ai-key-desc"
             />
             <button
               type="button"
@@ -245,6 +310,12 @@ export function AiSettings(): JSX.Element {
               </button>
             )}
           </div>
+          {keyError && (
+            <p className="daisu-test-status is-fail" role="alert">
+              <WarningCircle size={12} weight="fill" />
+              {keyError}
+            </p>
+          )}
         </>
       )}
 
@@ -253,24 +324,37 @@ export function AiSettings(): JSX.Element {
         <button
           type="button"
           className="daisu-btn daisu-btn-primary"
-          disabled={testing || (current?.requiresKey === true && !current.hasKey)}
+          disabled={
+            testing ||
+            (current?.implemented === false) ||
+            (current?.requiresKey === true && !current.hasKey)
+          }
           onClick={() => void handleTest()}
         >
           {testing ? "Probando…" : "Probar conexión"}
         </button>
-        {testResult && (
-          <span
-            className={`daisu-test-status ${testResult.ok ? "is-ok" : "is-fail"}`}
-          >
-            {testResult.ok ? (
-              <CheckCircle size={14} weight="fill" />
-            ) : (
-              <WarningCircle size={14} weight="fill" />
-            )}
-            {testResult.message}
-            {testResult.latencyMs != null && ` · ${testResult.latencyMs}ms`}
-          </span>
-        )}
+        <span
+          aria-live="polite"
+          aria-atomic="true"
+          className={
+            testResult
+              ? `daisu-test-status ${testResult.ok ? "is-ok" : "is-fail"}`
+              : "daisu-test-status"
+          }
+        >
+          {testResult && (
+            <>
+              {testResult.ok ? (
+                <CheckCircle size={14} weight="fill" />
+              ) : (
+                <WarningCircle size={14} weight="fill" />
+              )}
+              {testResult.message}
+              {testResult.latencyMs != null &&
+                ` · ${testResult.latencyMs}ms`}
+            </>
+          )}
+        </span>
       </div>
     </div>
   );
