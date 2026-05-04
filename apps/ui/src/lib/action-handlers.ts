@@ -5,6 +5,7 @@ import { useUI } from "../stores/uiStore";
 import { useWorkspace } from "../stores/workspaceStore";
 import { usePalette } from "../stores/paletteStore";
 import { getActiveEditor } from "./monaco-editor-ref";
+import { runSlashCommand } from "./agent-slash";
 
 export interface ActionContext {
   tabs: ReturnType<typeof useTabs.getState>;
@@ -93,6 +94,10 @@ export const ACTION_HANDLERS: Record<string, (ctx: ActionContext) => void> = {
   },
   "palette.openFiles": () => usePalette.getState().togglePalette("files"),
   "palette.openCommands": () => usePalette.getState().togglePalette("commands"),
+  "agent.slash.explain": () => runSlashCommand("explain"),
+  "agent.slash.fix": () => runSlashCommand("fix"),
+  "agent.slash.test": () => runSlashCommand("test"),
+  "agent.slash.refactor": () => runSlashCommand("refactor"),
 };
 
 export function runAction(id: string): void {

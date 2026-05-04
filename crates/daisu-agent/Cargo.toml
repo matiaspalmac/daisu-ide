@@ -35,3 +35,4 @@ keyring.workspace = true
 rusqlite.workspace = true
 uuid.workspace = true
 chrono.workspace = true
+similar.workspace = true

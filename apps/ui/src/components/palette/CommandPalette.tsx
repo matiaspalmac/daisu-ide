@@ -71,6 +71,11 @@ export function CommandPalette(): JSX.Element | null {
 
   const fileIndex = useMemo(() => buildFiles(tree, rootPath), [tree, rootPath]);
   const commandIndex = useMemo(buildCommands, []);
+  const slashIndex = useMemo<CommandResult[]>(
+    () =>
+      commandIndex.filter((c) => c.id.startsWith("agent.slash.")),
+    [commandIndex],
+  );
 
   const results: Result[] = useMemo(() => {
     if (mode === "files") {
@@ -82,6 +87,16 @@ export function CommandPalette(): JSX.Element | null {
       });
       return matches.map((m) => m.obj);
     }
+    // Slash-prefix routes through a small fixed index so /explain etc.
+    // surface even when the user hasn't typed enough to fuzz-match the
+    // full label.
+    if (query.startsWith("/")) {
+      const tail = query.slice(1).toLowerCase();
+      if (!tail) return slashIndex;
+      return slashIndex.filter((c) =>
+        c.id.replace("agent.slash.", "").startsWith(tail),
+      );
+    }
     if (!query) return commandIndex.slice(0, MAX_RESULTS);
     const matches = fuzzysort.go(query, commandIndex, {
       keys: ["label", "id"],
@@ -89,7 +104,7 @@ export function CommandPalette(): JSX.Element | null {
       threshold: -10000,
     });
     return matches.map((m) => m.obj);
-  }, [mode, query, fileIndex, commandIndex]);
+  }, [mode, query, fileIndex, commandIndex, slashIndex]);
 
   // Keep selection inside the visible result range when results change.
   useEffect(() => {
