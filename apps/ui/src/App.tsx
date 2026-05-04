@@ -16,6 +16,7 @@ import { useDiscordRpc } from "./hooks/useDiscordRpc";
 import { ToastViewport } from "./components/ui/Toast";
 import { CloseConfirmModal } from "./components/tabs/CloseConfirmModal";
 import { SettingsModal } from "./components/settings/SettingsModal";
+import { CommandPalette } from "./components/palette/CommandPalette";
 import { useUI } from "./stores/uiStore";
 import { useSettings } from "./stores/settingsStore";
 import { useWorkspace } from "./stores/workspaceStore";
@@ -274,6 +275,7 @@ export function App(): JSX.Element {
       <ToastViewport />
       <CloseConfirmModalConnected />
       <SettingsModal />
+      <CommandPalette />
       <ResizeHandles />
     </main>
     </IconContext.Provider>

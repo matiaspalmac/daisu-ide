@@ -5,6 +5,7 @@ export const ACTION_CATEGORIES = [
   "View",
   "Settings",
   "Workspace",
+  "Palette",
 ] as const;
 
 export type ActionCategory = (typeof ACTION_CATEGORIES)[number];
@@ -57,4 +58,8 @@ export const ACTIONS: ActionDef[] = [
 
   // Workspace
   { id: "workspace.close", category: "Workspace", label: "Close workspace", defaultBinding: "$mod+Shift+k" },
+
+  // Palette
+  { id: "palette.openFiles", category: "Palette", label: "Quick open file (索)", defaultBinding: "$mod+p" },
+  { id: "palette.openCommands", category: "Palette", label: "Show all commands (命)", defaultBinding: "$mod+Shift+p" },
 ];

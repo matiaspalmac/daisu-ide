@@ -3,6 +3,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useTabs } from "../stores/tabsStore";
 import { useUI } from "../stores/uiStore";
 import { useWorkspace } from "../stores/workspaceStore";
+import { usePalette } from "../stores/paletteStore";
 import { getActiveEditor } from "./monaco-editor-ref";
 
 export interface ActionContext {
@@ -90,4 +91,12 @@ export const ACTION_HANDLERS: Record<string, (ctx: ActionContext) => void> = {
   "workspace.close": (ctx) => {
     void ctx.workspace.closeWorkspace();
   },
+  "palette.openFiles": () => usePalette.getState().togglePalette("files"),
+  "palette.openCommands": () => usePalette.getState().togglePalette("commands"),
 };
+
+export function runAction(id: string): void {
+  const handler = ACTION_HANDLERS[id];
+  if (!handler) return;
+  handler(getActionContext());
+}
