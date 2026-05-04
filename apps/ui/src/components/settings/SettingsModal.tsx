@@ -14,6 +14,7 @@ import { AdvancedSettings } from "./categories/AdvancedSettings";
 import { Disenio } from "./categories/Disenio";
 import { IntegrationsSettings } from "./categories/IntegrationsSettings";
 import { AiSettings } from "./categories/AiSettings";
+import { McpSettings } from "./categories/McpSettings";
 import { StubCategory } from "./categories/StubCategory";
 
 const VALID_CATEGORIES: SettingsCategoryId[] = [
@@ -23,6 +24,7 @@ const VALID_CATEGORIES: SettingsCategoryId[] = [
   "design",
   "chat",
   "ai",
+  "mcp",
   "integrations",
   "security",
   "keybindings",
@@ -82,6 +84,7 @@ export function SettingsModal(): JSX.Element | null {
               {active === "design" && <Disenio />}
               {active === "integrations" && <IntegrationsSettings />}
               {active === "ai" && <AiSettings />}
+              {active === "mcp" && <McpSettings />}
               {active === "chat" && (
                 <StubCategory
                   title="Chat"

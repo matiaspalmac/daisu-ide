@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use daisu_agent::index::Indexer;
 use daisu_agent::memory::MemoryStore;
 use daisu_agent::runtime::CancelToken as AgentCancelToken;
-use daisu_agent::{PermissionGate, ToolRegistry};
+use daisu_agent::{McpRegistry, PermissionGate, ToolRegistry};
 use notify::RecommendedWatcher;
 use tokio_util::sync::CancellationToken;
 
@@ -20,6 +20,7 @@ pub struct AppState {
     pub walker_token: Mutex<Option<CancellationToken>>,
     git_cancel: parking_lot::Mutex<Option<CancellationToken>>,
     git_watcher: parking_lot::Mutex<Option<RecommendedWatcher>>,
+    pub mcp_registry: Arc<McpRegistry>,
     indexers: parking_lot::Mutex<HashMap<PathBuf, Arc<Indexer>>>,
     /// Shared, stateless tool registry. Built once at startup.
     pub tool_registry: Arc<ToolRegistry>,
@@ -38,6 +39,7 @@ impl Default for AppState {
             walker_token: Mutex::new(None),
             git_cancel: parking_lot::Mutex::new(None),
             git_watcher: parking_lot::Mutex::new(None),
+            mcp_registry: Arc::new(McpRegistry::new()),
             indexers: parking_lot::Mutex::new(HashMap::new()),
             tool_registry: Arc::new(ToolRegistry::default()),
             permission_gates: parking_lot::Mutex::new(HashMap::new()),

@@ -66,7 +66,12 @@ fn main() {
             commands::agent::agent_permission_clear_allowlist,
             commands::agent::agent_index_rebuild,
             commands::agent::agent_index_search,
-            commands::agent::agent_index_status
+            commands::agent::agent_index_status,
+            commands::agent::agent_mcp_connect,
+            commands::agent::agent_mcp_disconnect,
+            commands::agent::agent_mcp_status,
+            commands::agent::agent_mcp_list_tools,
+            commands::agent::agent_mcp_call_tool
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
