@@ -25,8 +25,11 @@ if (typeof HTMLElement !== "undefined") {
 // jsdom lacks ResizeObserver; TabBar uses it for overflow detection.
 if (typeof globalThis.ResizeObserver === "undefined") {
   class ResizeObserverStub {
-    observe(): void {}
-    unobserve(): void {}
+    constructor(_cb: ResizeObserverCallback) {
+      void _cb;
+    }
+    observe(_target: Element, _options?: ResizeObserverOptions): void {}
+    unobserve(_target: Element): void {}
     disconnect(): void {}
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
