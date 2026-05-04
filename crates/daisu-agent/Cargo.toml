@@ -38,6 +38,7 @@ keyring.workspace = true
 rusqlite.workspace = true
 uuid.workspace = true
 chrono.workspace = true
+similar.workspace = true
 tree-sitter.workspace = true
 tree-sitter-rust.workspace = true
 tree-sitter-typescript.workspace = true

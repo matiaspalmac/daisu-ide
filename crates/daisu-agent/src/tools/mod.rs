@@ -10,6 +10,10 @@ pub mod dispatcher;
 pub mod list_dir;
 pub mod read_file;
 
+pub mod propose_edit;
+
+pub use propose_edit::{apply_accepted_hunks, compute_hunks, EditHunk, ProposeEdit};
+
 use serde::{Deserialize, Serialize};
 
 use crate::permission::PermissionTier;
@@ -67,6 +71,11 @@ pub fn registry() -> Vec<ToolDescriptor> {
         ToolDescriptor {
             name: "delete_file",
             description: "Move a file to the system trash. Requires approval.",
+            tier: PermissionTier::Prompt,
+        },
+        ToolDescriptor {
+            name: "propose_edit",
+            description: "Propose a hunk-by-hunk edit to a file. Requires approval; nothing is written until accepted.",
             tier: PermissionTier::Prompt,
         },
         ToolDescriptor {

@@ -20,6 +20,7 @@
 )]
 
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 
 use daisu_agent::{
@@ -29,6 +30,7 @@ use daisu_agent::{
     permission::gate::PERMISSION_REQUEST_EVENT,
     provider::{anthropic::AnthropicProvider, ollama::OllamaProvider, ProviderId, ToolCapability},
     runtime::CancelToken,
+    tools::{apply_accepted_hunks, EditHunk, ProposeEdit},
     AgentResult, AllowlistEntry, CompletionRequest, Decision, EventEmitter, LlmProvider,
     McpServerConfig, McpToolResult, Message, PermissionGate, PermissionRequestEvent, Role,
     StreamEvent, ToolCall, ToolDescriptor, ToolResult,
@@ -38,6 +40,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager, State};
 use uuid::Uuid;
 
+use crate::commands::file_ops::{read_file_at, write_file_at};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
@@ -881,6 +884,127 @@ async fn build_provider_with_fallback(
     base_url: Option<&str>,
 ) -> AppResult<Box<dyn LlmProvider>> {
     build_provider(provider, base_url).await
+}
+
+// ---------------------------------------------------------------------------
+// Inline edit proposals (M3 Phase 3)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProposeEditRequest {
+    pub workspace_path: Option<String>,
+    pub path: String,
+    pub new_text: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditProposal {
+    pub proposal_id: String,
+    pub path: String,
+    pub hunks: Vec<EditHunk>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyEditRequest {
+    pub proposal_id: String,
+    pub accepted_hunk_indices: Vec<usize>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyResult {
+    pub path: String,
+    pub bytes: u64,
+    pub line_count: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RejectEditRequest {
+    pub proposal_id: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingEdit {
+    pub proposal_id: String,
+    pub path: String,
+    pub hunk_count: usize,
+}
+
+fn parse_uuid(s: &str) -> AppResult<Uuid> {
+    Uuid::from_str(s).map_err(|e| AppError::Internal(format!("invalid proposal_id: {e}")))
+}
+
+#[tauri::command]
+pub async fn agent_propose_edit(
+    state: tauri::State<'_, AppState>,
+    req: ProposeEditRequest,
+) -> AppResult<EditProposal> {
+    let _ = req.workspace_path; // reserved for future workspace-scoped sandboxing
+    let path = PathBuf::from(&req.path);
+    let old_text = read_file_at(&path).await?;
+    let proposal = ProposeEdit::new(path.clone(), old_text, req.new_text);
+    let hunks = proposal.hunks.clone();
+    let id = state.register_pending_edit(proposal);
+    Ok(EditProposal {
+        proposal_id: id.to_string(),
+        path: path.display().to_string(),
+        hunks,
+    })
+}
+
+#[tauri::command]
+pub async fn agent_apply_edit(
+    state: tauri::State<'_, AppState>,
+    req: ApplyEditRequest,
+) -> AppResult<ApplyResult> {
+    let id = parse_uuid(&req.proposal_id)?;
+    let proposal = state
+        .peek_pending_edit(id)
+        .ok_or_else(|| AppError::Internal(format!("unknown proposal_id: {}", req.proposal_id)))?;
+    let final_text = apply_accepted_hunks(
+        &proposal.old_text,
+        &proposal.hunks,
+        &req.accepted_hunk_indices,
+    );
+    write_file_at(&proposal.path, &final_text).await?;
+    let _ = state.take_pending_edit(id);
+    let bytes = u64::try_from(final_text.len()).unwrap_or(u64::MAX);
+    let line_count = final_text.lines().count();
+    Ok(ApplyResult {
+        path: proposal.path.display().to_string(),
+        bytes,
+        line_count,
+    })
+}
+
+#[tauri::command]
+pub async fn agent_reject_edit(
+    state: tauri::State<'_, AppState>,
+    req: RejectEditRequest,
+) -> AppResult<()> {
+    let id = parse_uuid(&req.proposal_id)?;
+    let _ = state.take_pending_edit(id);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn agent_list_pending_edits(
+    state: tauri::State<'_, AppState>,
+) -> AppResult<Vec<PendingEdit>> {
+    Ok(state
+        .list_pending_edits()
+        .into_iter()
+        .map(|(id, path, hunk_count)| PendingEdit {
+            proposal_id: id.to_string(),
+            path: path.display().to_string(),
+            hunk_count,
+        })
+        .collect())
 }
 
 async fn load_key(provider: &str) -> AppResult<String> {

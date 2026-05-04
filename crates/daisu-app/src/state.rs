@@ -11,9 +11,11 @@ use std::sync::{Arc, Mutex};
 use daisu_agent::index::Indexer;
 use daisu_agent::memory::MemoryStore;
 use daisu_agent::runtime::CancelToken as AgentCancelToken;
+use daisu_agent::tools::ProposeEdit;
 use daisu_agent::{McpRegistry, PermissionGate, ToolRegistry};
 use notify::RecommendedWatcher;
 use tokio_util::sync::CancellationToken;
+use uuid::Uuid;
 
 pub struct AppState {
     pub workspace_root: Mutex<Option<PathBuf>>,
@@ -30,6 +32,7 @@ pub struct AppState {
     pub permission_gates: parking_lot::Mutex<HashMap<PathBuf, Arc<PermissionGate>>>,
     agent_memory: parking_lot::Mutex<HashMap<PathBuf, Arc<MemoryStore>>>,
     agent_runs: parking_lot::Mutex<HashMap<String, AgentCancelToken>>,
+    pending_edits: parking_lot::Mutex<HashMap<Uuid, ProposeEdit>>,
 }
 
 impl Default for AppState {
@@ -45,6 +48,7 @@ impl Default for AppState {
             permission_gates: parking_lot::Mutex::new(HashMap::new()),
             agent_memory: parking_lot::Mutex::new(HashMap::new()),
             agent_runs: parking_lot::Mutex::new(HashMap::new()),
+            pending_edits: parking_lot::Mutex::new(HashMap::new()),
         }
     }
 }
@@ -135,6 +139,38 @@ impl AppState {
     /// Drop the active git watcher (stops it). Called from `close_workspace`.
     pub fn drop_git_watcher(&self) {
         *self.git_watcher.lock() = None;
+    }
+
+    /// Register a freshly built edit proposal and return its id.
+    pub fn register_pending_edit(&self, proposal: ProposeEdit) -> Uuid {
+        let id = Uuid::new_v4();
+        self.pending_edits.lock().insert(id, proposal);
+        id
+    }
+
+    /// Remove and return a pending edit proposal by id.
+    #[must_use]
+    pub fn take_pending_edit(&self, id: Uuid) -> Option<ProposeEdit> {
+        self.pending_edits.lock().remove(&id)
+    }
+
+    /// Clone a pending edit proposal without removing it. Used by
+    /// `agent_apply_edit` so the proposal stays in the map if the
+    /// disk write fails — the user can retry without re-running the
+    /// agent prompt.
+    #[must_use]
+    pub fn peek_pending_edit(&self, id: Uuid) -> Option<ProposeEdit> {
+        self.pending_edits.lock().get(&id).cloned()
+    }
+
+    /// Snapshot of currently pending edits (id + path), for status UI.
+    #[must_use]
+    pub fn list_pending_edits(&self) -> Vec<(Uuid, PathBuf, usize)> {
+        self.pending_edits
+            .lock()
+            .iter()
+            .map(|(id, p)| (*id, p.path.clone(), p.hunks.len()))
+            .collect()
     }
 
     /// Normalise a workspace path to its canonical, absolute form so

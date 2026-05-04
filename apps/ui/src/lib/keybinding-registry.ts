@@ -6,6 +6,7 @@ export const ACTION_CATEGORIES = [
   "Settings",
   "Workspace",
   "Palette",
+  "Agente",
 ] as const;
 
 export type ActionCategory = (typeof ACTION_CATEGORIES)[number];
@@ -63,4 +64,11 @@ export const ACTIONS: ActionDef[] = [
   { id: "palette.openFiles", category: "Palette", label: "Quick open file (索)", defaultBinding: "$mod+p" },
   { id: "palette.openCommands", category: "Palette", label: "Show all commands (命)", defaultBinding: "$mod+Shift+p" },
   { id: "palette.openSymbols", category: "Palette", label: "Search workspace symbols (号)", defaultBinding: "$mod+t" },
+
+  // Agente — slash commands. Surface them in the regular commands palette
+  // too so users can discover them without typing the slash prefix.
+  { id: "agent.slash.explain", category: "Agente", label: "/explain — Explain selection", defaultBinding: "" },
+  { id: "agent.slash.fix", category: "Agente", label: "/fix — Fix this code", defaultBinding: "" },
+  { id: "agent.slash.test", category: "Agente", label: "/test — Generate test for selection", defaultBinding: "" },
+  { id: "agent.slash.refactor", category: "Agente", label: "/refactor — Refactor selection", defaultBinding: "" },
 ];

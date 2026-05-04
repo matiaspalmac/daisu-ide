@@ -71,7 +71,11 @@ fn main() {
             commands::agent::agent_mcp_disconnect,
             commands::agent::agent_mcp_status,
             commands::agent::agent_mcp_list_tools,
-            commands::agent::agent_mcp_call_tool
+            commands::agent::agent_mcp_call_tool,
+            commands::agent::agent_propose_edit,
+            commands::agent::agent_apply_edit,
+            commands::agent::agent_reject_edit,
+            commands::agent::agent_list_pending_edits
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
