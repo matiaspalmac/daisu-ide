@@ -157,4 +157,21 @@ impl AppState {
     pub fn drop_agent_run(&self, run_id: &str) {
         self.agent_runs.lock().remove(run_id);
     }
+
+    /// Drop the cached agent memory store for a workspace. Call from
+    /// `close_workspace` so `SQLite` handles release WAL files when the user
+    /// switches projects. Idempotent.
+    pub fn drop_agent_memory(&self, workspace: &PathBuf) {
+        self.agent_memory.lock().remove(workspace);
+    }
+
+    /// Drop every cached agent store + cancel every active run. Used when
+    /// the app shuts down or the workspace fully resets, so a long-running
+    /// stream doesn't outlive the workspace it was bound to.
+    pub fn reset_agent_state(&self) {
+        for (_, token) in self.agent_runs.lock().drain() {
+            token.cancel();
+        }
+        self.agent_memory.lock().clear();
+    }
 }

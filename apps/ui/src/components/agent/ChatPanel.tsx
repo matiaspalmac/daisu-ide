@@ -154,7 +154,7 @@ export function ChatPanel(): JSX.Element {
               handleSubmit(e);
             }
           }}
-          placeholder="Pediле algo al agente. Enter para enviar, Shift+Enter para salto de línea."
+          placeholder="Pedile algo al agente. Enter envía, Shift+Enter salto de línea."
           rows={3}
           disabled={isStreaming}
         />

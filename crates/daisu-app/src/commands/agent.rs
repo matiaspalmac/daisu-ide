@@ -320,12 +320,29 @@ pub struct SendMessageResponse {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "type")]
 enum StreamPayload {
-    Started { run_id: String, message_id: String },
-    Delta { run_id: String, text: String },
-    Warning { run_id: String, message: String },
-    Done { run_id: String, message_id: String },
-    Error { run_id: String, message: String },
-    Cancelled { run_id: String },
+    Started {
+        run_id: String,
+        conversation_id: String,
+    },
+    Delta {
+        run_id: String,
+        text: String,
+    },
+    Warning {
+        run_id: String,
+        message: String,
+    },
+    Done {
+        run_id: String,
+        message_id: String,
+    },
+    Error {
+        run_id: String,
+        message: String,
+    },
+    Cancelled {
+        run_id: String,
+    },
 }
 
 const STREAM_EVENT: &str = "agent://stream";
@@ -410,21 +427,19 @@ pub async fn agent_send_message(
             STREAM_EVENT,
             StreamPayload::Started {
                 run_id: run_id_bg.clone(),
-                message_id: convo_id.clone(),
+                conversation_id: convo_id.clone(),
             },
         );
 
         let mut stream = provider.stream(completion);
         let mut accumulated = String::new();
         let mut error: Option<String> = None;
+        let mut cancelled = false;
 
         loop {
             tokio::select! {
                 () = cancel.cancelled() => {
-                    let _ = app_handle.emit(
-                        STREAM_EVENT,
-                        StreamPayload::Cancelled { run_id: run_id_bg.clone() },
-                    );
+                    cancelled = true;
                     break;
                 }
                 next = stream.next() => {
@@ -460,6 +475,31 @@ pub async fn agent_send_message(
 
         app_handle.state::<AppState>().drop_agent_run(&run_id_bg);
 
+        if cancelled {
+            // Persist whatever the assistant produced before cancel so the
+            // user keeps the partial answer in history.
+            if !accumulated.is_empty() {
+                let assistant_msg = Message {
+                    role: Role::Assistant,
+                    content: accumulated,
+                    tool_call_id: None,
+                };
+                let store_c = store.clone();
+                let cid = convo_id.clone();
+                let _ = tokio::task::spawn_blocking(move || {
+                    store_c.append_message(&cid, &assistant_msg, None)
+                })
+                .await;
+            }
+            let _ = app_handle.emit(
+                STREAM_EVENT,
+                StreamPayload::Cancelled {
+                    run_id: run_id_bg.clone(),
+                },
+            );
+            return;
+        }
+
         if let Some(msg) = error {
             let _ = app_handle.emit(
                 STREAM_EVENT,
@@ -472,6 +512,13 @@ pub async fn agent_send_message(
         }
 
         if accumulated.is_empty() {
+            let _ = app_handle.emit(
+                STREAM_EVENT,
+                StreamPayload::Done {
+                    run_id: run_id_bg,
+                    message_id: String::new(),
+                },
+            );
             return;
         }
 
@@ -482,20 +529,24 @@ pub async fn agent_send_message(
         };
         let store_c = store.clone();
         let cid = convo_id.clone();
-        let id =
+        let persist_result =
             tokio::task::spawn_blocking(move || store_c.append_message(&cid, &assistant_msg, None))
-                .await
-                .ok()
-                .and_then(Result::ok)
-                .unwrap_or_default();
-
-        let _ = app_handle.emit(
-            STREAM_EVENT,
-            StreamPayload::Done {
+                .await;
+        let payload = match persist_result {
+            Ok(Ok(id)) => StreamPayload::Done {
                 run_id: run_id_bg,
                 message_id: id,
             },
-        );
+            Ok(Err(e)) => StreamPayload::Error {
+                run_id: run_id_bg,
+                message: format!("persist assistant: {e}"),
+            },
+            Err(e) => StreamPayload::Error {
+                run_id: run_id_bg,
+                message: format!("persist join: {e}"),
+            },
+        };
+        let _ = app_handle.emit(STREAM_EVENT, payload);
     });
 
     Ok(SendMessageResponse { run_id })

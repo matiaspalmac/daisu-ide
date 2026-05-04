@@ -186,6 +186,14 @@ export const useAgent = create<AgentState>((set, get) => ({
     listenerRef = listen<StreamPayload>(AGENT_STREAM_EVENT, (e) => {
       const payload = e.payload;
       const state = get();
+      // Started can race ahead of sendMessage()'s resolved runId — adopt
+      // it eagerly when the conversation matches so deltas aren't filtered.
+      if (payload.type === "started") {
+        if (payload.conversationId === state.activeConvoId) {
+          set({ runId: payload.runId });
+        }
+        return;
+      }
       if (state.runId && payload.runId !== state.runId) return;
 
       if (payload.type === "delta") {
@@ -207,7 +215,13 @@ export const useAgent = create<AgentState>((set, get) => ({
         }
       } else if (payload.type === "done") {
         const msgs = state.messages.map((m) =>
-          m.pending ? { ...m, pending: false, id: payload.messageId } : m,
+          m.pending
+            ? {
+                ...m,
+                pending: false,
+                id: payload.messageId || m.id,
+              }
+            : m,
         );
         set({ messages: msgs, isStreaming: false, runId: null });
         void get().refreshConversations();

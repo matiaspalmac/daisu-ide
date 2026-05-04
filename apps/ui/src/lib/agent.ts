@@ -153,7 +153,7 @@ export function cancelRun(runId: string): Promise<boolean> {
 }
 
 export type StreamPayload =
-  | { type: "started"; runId: string; messageId: string }
+  | { type: "started"; runId: string; conversationId: string }
   | { type: "delta"; runId: string; text: string }
   | { type: "warning"; runId: string; message: string }
   | { type: "done"; runId: string; messageId: string }

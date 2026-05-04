@@ -101,19 +101,21 @@ impl MemoryStore {
             "SELECT id, title, provider, model, created_at, updated_at \
              FROM conversations WHERE id = ?1",
         )?;
-        let row = stmt
-            .query_row([id], |row| {
-                Ok(ConversationSummary {
-                    id: row.get(0)?,
-                    title: row.get(1)?,
-                    provider: row.get(2)?,
-                    model: row.get(3)?,
-                    created_at: row.get(4)?,
-                    updated_at: row.get(5)?,
-                })
+        let row = stmt.query_row([id], |row| {
+            Ok(ConversationSummary {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                provider: row.get(2)?,
+                model: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
             })
-            .ok();
-        Ok(row)
+        });
+        match row {
+            Ok(r) => Ok(Some(r)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
     }
 
     pub fn get_messages(&self, conversation_id: &str) -> AgentResult<Vec<StoredMessage>> {
