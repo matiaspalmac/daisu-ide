@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
   ArrowsInLineVertical,
@@ -28,6 +29,7 @@ import { copy } from "../../lib/copy";
 import { translateError } from "../../lib/error-translate";
 
 export function Sidebar(): JSX.Element {
+  const { t } = useTranslation();
   const rootPath = useWorkspace((s) => s.rootPath);
   const childrenIndex = useWorkspace((s) => s.childrenIndex);
   const walkDone = useWorkspace((s) => s.walkDone);
@@ -181,15 +183,15 @@ export function Sidebar(): JSX.Element {
 
   const handleCollapseAll = useCallback((): void => {
     pushToast({
-      message: "Colapsar todo disponible en milestones futuros",
+      message: t("sidebar.collapseAllToast"),
       level: "info",
     });
-  }, [pushToast]);
+  }, [pushToast, t]);
 
   return (
     <aside
       className="daisu-sidebar relative h-full flex flex-col min-w-0 bg-[var(--bg-panel)]"
-      aria-label="Workspace explorer"
+      aria-label={t("sidebar.explorerAria")}
     >
       <div className="daisu-sidebar-header">
         <div className="daisu-sidebar-title">
@@ -204,8 +206,8 @@ export function Sidebar(): JSX.Element {
           <div className="daisu-sidebar-actions">
             <button
               type="button"
-              title="Nuevo archivo"
-              aria-label="Nuevo archivo"
+              title={t("sidebar.newFile")}
+              aria-label={t("sidebar.newFile")}
               onClick={() => void handleAction("newFile")}
               disabled={!rootPath}
               className={headerBtnCls}
@@ -214,8 +216,8 @@ export function Sidebar(): JSX.Element {
             </button>
             <button
               type="button"
-              title="Nueva carpeta"
-              aria-label="Nueva carpeta"
+              title={t("sidebar.newFolder")}
+              aria-label={t("sidebar.newFolder")}
               onClick={() => void handleAction("newFolder")}
               disabled={!rootPath}
               className={headerBtnCls}
@@ -224,8 +226,8 @@ export function Sidebar(): JSX.Element {
             </button>
             <button
               type="button"
-              title="Buscar en el proyecto (Ctrl+Shift+F)"
-              aria-label="Buscar"
+              title={t("sidebar.searchProject")}
+              aria-label={t("sidebar.search")}
               onClick={() => setSidebarMode("search")}
               disabled={!rootPath}
               className={headerBtnCls}
@@ -234,8 +236,8 @@ export function Sidebar(): JSX.Element {
             </button>
             <button
               type="button"
-              title="Refrescar"
-              aria-label="Refrescar"
+              title={t("sidebar.refresh")}
+              aria-label={t("sidebar.refresh")}
               onClick={handleRefresh}
               disabled={!rootPath}
               className={headerBtnCls}
@@ -244,8 +246,8 @@ export function Sidebar(): JSX.Element {
             </button>
             <button
               type="button"
-              title="Colapsar todo"
-              aria-label="Colapsar todo"
+              title={t("sidebar.collapseAll")}
+              aria-label={t("sidebar.collapseAll")}
               onClick={handleCollapseAll}
               className={headerBtnCls}
             >
@@ -265,17 +267,17 @@ export function Sidebar(): JSX.Element {
           <span className="daisu-glyph" aria-hidden="true">検</span>
           <input
             type="text"
-            placeholder="filtrar archivos…"
+            placeholder={t("sidebar.filterPlaceholder")}
             value={sidebarFilter}
             onChange={(e) => setSidebarFilter(e.target.value)}
-            aria-label="Filtrar archivos en sidebar"
+            aria-label={t("sidebar.filterAria")}
           />
           {sidebarFilter && (
             <button
               type="button"
               className="daisu-sidebar-filter-clear"
               onClick={() => setSidebarFilter("")}
-              aria-label="Limpiar filtro"
+              aria-label={t("sidebar.clearFilter")}
             >
               <X size={11} />
             </button>
@@ -286,7 +288,7 @@ export function Sidebar(): JSX.Element {
         <div className="daisu-pinned">
           <div className="daisu-pinned-header">
             <span className="daisu-glyph" aria-hidden="true">印</span>
-            FIJADOS
+            {t("sidebar.pinned")}
           </div>
           <ul className="daisu-pinned-list">
             {pinnedList.map((p) => (
@@ -304,8 +306,8 @@ export function Sidebar(): JSX.Element {
                   type="button"
                   className="daisu-pinned-unpin"
                   onClick={() => togglePin(p.path)}
-                  aria-label={`Desfijar ${p.name}`}
-                  title="Desfijar"
+                  aria-label={t("sidebar.unpinName", { name: p.name })}
+                  title={t("sidebar.unpin")}
                 >
                   <PushPinSlash size={11} />
                 </button>
@@ -322,8 +324,8 @@ export function Sidebar(): JSX.Element {
               className="daisu-search-expand"
               onClick={() => setSearchExpanded((v) => !v)}
               aria-expanded={searchExpanded}
-              aria-label={searchExpanded ? "Colapsar reemplazar y filtros" : "Expandir reemplazar y filtros"}
-              title={searchExpanded ? "Ocultar reemplazar y filtros" : "Mostrar reemplazar y filtros"}
+              aria-label={searchExpanded ? t("sidebar.collapseFilters") : t("sidebar.expandFilters")}
+              title={searchExpanded ? t("sidebar.hideFilters") : t("sidebar.showFilters")}
             >
               {searchExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
             </button>

@@ -1,5 +1,6 @@
 import type { JSX, KeyboardEvent } from "react";
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Files,
   GitBranch,
@@ -18,6 +19,7 @@ interface Item {
 }
 
 export function ActivityBar(): JSX.Element {
+  const { t } = useTranslation();
   const storedActive = useUI((s) => s.activeActivityIcon);
   const setActive = useUI((s) => s.setActiveActivityIcon);
   const toggleSidebar = useUI((s) => s.toggleSidebar);
@@ -33,7 +35,7 @@ export function ActivityBar(): JSX.Element {
   const placeholder = (id: ActivityIcon, label: string) => () => {
     setActive(id);
     pushToast({
-      message: `${label} disponible en milestones futuros`,
+      message: t("activity.comingSoon", { feature: label }),
       level: "info",
     });
   };
@@ -44,7 +46,7 @@ export function ActivityBar(): JSX.Element {
     {
       id: "files",
       icon: Files,
-      label: "Explorador",
+      label: t("activity.explorer"),
       action: () => {
         // Click on the already-active+open Files → collapse. Otherwise →
         // ensure sidebar mode = files, expand if collapsed, sync active icon.
@@ -61,7 +63,7 @@ export function ActivityBar(): JSX.Element {
     {
       id: "search",
       icon: MagnifyingGlass,
-      label: "Buscar",
+      label: t("activity.search"),
       action: () => {
         // Mirror Files behaviour. Active+open search → collapse sidebar.
         // Otherwise switch to search view and ensure sidebar visible.
@@ -78,8 +80,8 @@ export function ActivityBar(): JSX.Element {
     {
       id: "git",
       icon: GitBranch,
-      label: "Control de fuente",
-      action: placeholder("git", "Control de fuente"),
+      label: t("activity.sourceControl"),
+      action: placeholder("git", t("activity.sourceControl")),
     },
   ];
 
@@ -102,7 +104,7 @@ export function ActivityBar(): JSX.Element {
     <aside
       role="tablist"
       aria-orientation="vertical"
-      aria-label="Vistas de actividad"
+      aria-label={t("activity.viewsAria")}
       className="w-[var(--activitybar-w)] bg-[var(--bg-panel)] border-r border-[var(--border-subtle)] flex flex-col items-center py-2 gap-1"
     >
       {items.map((it, idx) => (
@@ -134,8 +136,8 @@ export function ActivityBar(): JSX.Element {
 
       <button
         type="button"
-        title="Configuración"
-        aria-label="Configuración"
+        title={t("activity.settings")}
+        aria-label={t("activity.settings")}
         onClick={() => openSettings()}
         className="w-10 h-10 grid place-items-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] hover:text-[var(--warn)] hover:bg-[var(--warn-soft)] transition-colors"
       >

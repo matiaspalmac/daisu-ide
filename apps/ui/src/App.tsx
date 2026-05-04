@@ -31,6 +31,9 @@ import { useEditorCursorWiring } from "./hooks/useEditorCursor";
 import { useGit } from "./stores/gitStore";
 import { copy } from "./lib/copy";
 import { isTauri } from "./lib/tauri-env";
+import i18n, { setLanguage, type AppLanguage } from "./i18n";
+import { probeOllama, pickBestModel } from "./lib/ollama-detect";
+import { isTauri as checkTauri } from "./lib/tauri-env";
 
 // react-resizable-panels v4 uses percentage-string sizing on each Panel
 // `defaultSize` prop. Layout persistence (useDefaultLayout) was dropped
@@ -62,6 +65,61 @@ export function App(): JSX.Element {
     loadSettings().catch(() => undefined);
   }, [loadSettings]);
 
+  const language = useSettings((s) => s.settings.general.language);
+  const languageInitialized = useSettings((s) => s.settings.general.languageInitialized);
+  const setSetting = useSettings((s) => s.set);
+  const settingsLoaded = useSettings((s) => s.loaded);
+  useEffect(() => {
+    setLanguage(language);
+  }, [language]);
+
+  // First-launch OS locale detection. Runs once per profile (gated by
+  // `languageInitialized` flag); afterwards the user's choice in Settings →
+  // General wins. Falls back to "en" on non-Tauri builds or unknown locales.
+  useEffect(() => {
+    if (!settingsLoaded) return;
+    if (languageInitialized) return;
+    if (!checkTauri()) {
+      void setSetting("general", { languageInitialized: true });
+      return;
+    }
+    void import("@tauri-apps/plugin-os").then(async ({ locale }) => {
+      const sys = (await locale()) ?? "";
+      const tag = sys.toLowerCase();
+      const detected: AppLanguage = tag.startsWith("es")
+        ? "es"
+        : tag.startsWith("ja")
+          ? "ja"
+          : "en";
+      await setSetting("general", {
+        language: detected,
+        languageInitialized: true,
+      });
+    }).catch(() => {
+      void setSetting("general", { languageInitialized: true });
+    });
+  }, [settingsLoaded, languageInitialized, setSetting]);
+
+  // Autodetect Ollama install on startup. If the user is on the default
+  // provider and the configured model isn't actually pulled, swap to the
+  // best available model so the agent works out-of-the-box.
+  const aiProvider = useSettings((s) => s.settings.aiProvider);
+  useEffect(() => {
+    if (!settingsLoaded) return;
+    if (aiProvider.id !== "ollama") return;
+    let cancelled = false;
+    void probeOllama(aiProvider.ollamaBaseUrl).then((probe) => {
+      if (cancelled || !probe.reachable) return;
+      const best = pickBestModel(probe.models, aiProvider.model);
+      if (best !== aiProvider.model) {
+        void setSetting("aiProvider", { model: best });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [settingsLoaded, aiProvider.id, aiProvider.ollamaBaseUrl, aiProvider.model, setSetting]);
+
   const rootPath = useWorkspace((s) => s.rootPath);
   useEffect(() => {
     useGit.getState().setWorkspacePath(rootPath ?? null);
@@ -78,7 +136,7 @@ export function App(): JSX.Element {
       const persisted = persistDirtyUntitledScratch(useTabs.getState().tabs);
       if (persisted > 0) {
         useUI.getState().pushToast({
-          message: `${persisted} pestaña(s) Untitled guardadas en buffer — recupera desde Inicio`,
+          message: i18n.t("welcome.scratchPersisted", { count: persisted }),
           level: "warning",
         });
       }

@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "@phosphor-icons/react";
+import { useTranslation } from "react-i18next";
 import { useUI } from "../../stores/uiStore";
 import {
   SettingsSidebar,
@@ -11,7 +12,7 @@ import { EditorSettings } from "./categories/EditorSettings";
 import { ThemeSettings } from "./categories/ThemeSettings";
 import { KeybindingSettings } from "./categories/KeybindingSettings";
 import { AdvancedSettings } from "./categories/AdvancedSettings";
-import { Disenio } from "./categories/Disenio";
+import { Design } from "./categories/Design";
 import { IntegrationsSettings } from "./categories/IntegrationsSettings";
 import { AiSettings } from "./categories/AiSettings";
 import { McpSettings } from "./categories/McpSettings";
@@ -33,6 +34,7 @@ const VALID_CATEGORIES: SettingsCategoryId[] = [
 ];
 
 export function SettingsModal(): JSX.Element | null {
+  const { t } = useTranslation();
   const open = useUI((s) => s.settingsModalOpen);
   const closeSettings = useUI((s) => s.closeSettings);
   const requestedCategory = useUI((s) => s.settingsActiveCategory);
@@ -64,12 +66,12 @@ export function SettingsModal(): JSX.Element | null {
           <header className="daisu-settings-header">
             <Dialog.Title className="daisu-settings-title">
               <span className="daisu-glyph" aria-hidden="true">設</span>
-              Configuración
+              {t("settings.title")}
             </Dialog.Title>
             <button
               type="button"
               className="daisu-icon-btn"
-              aria-label="Cerrar configuración"
+              aria-label={t("settings.closeAria")}
               onClick={() => closeSettings()}
             >
               <X size={16} />
@@ -81,27 +83,27 @@ export function SettingsModal(): JSX.Element | null {
               {active === "general" && <GeneralSettings />}
               {active === "editor" && <EditorSettings />}
               {active === "themes" && <ThemeSettings />}
-              {active === "design" && <Disenio />}
+              {active === "design" && <Design />}
               {active === "integrations" && <IntegrationsSettings />}
               {active === "ai" && <AiSettings />}
               {active === "mcp" && <McpSettings />}
               {active === "chat" && (
                 <StubCategory
-                  title="Chat"
-                  message="Configuración avanzada de chat e historial llega en M4."
+                  title={t("settings.categories.chat")}
+                  message={t("settings.stub.chat")}
                 />
               )}
               {active === "security" && (
                 <StubCategory
-                  title="Seguridad"
-                  message="Almacenamiento de API keys via OS keychain + permisos de plugins en M3."
+                  title={t("settings.categories.security")}
+                  message={t("settings.stub.security")}
                 />
               )}
               {active === "keybindings" && <KeybindingSettings />}
               {active === "info" && (
                 <StubCategory
-                  title="Información"
-                  message="Versión, licencias y sistema. Detallado en M3."
+                  title={t("settings.categories.info")}
+                  message={t("settings.stub.info")}
                 />
               )}
               {active === "advanced" && <AdvancedSettings />}

@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Crosshair, List, Minus, Square, User, X } from "@phosphor-icons/react";
@@ -17,18 +18,21 @@ import { useWorkspace } from "../../stores/workspaceStore";
 import { useSettings } from "../../stores/settingsStore";
 import { translateError } from "../../lib/error-translate";
 
-function periodInfo(d: Date): { glyph: string; label: string } {
+type PeriodKey = "morning" | "afternoon" | "evening" | "night";
+
+function periodInfo(d: Date): { glyph: string; key: PeriodKey } {
   const h = d.getHours();
-  if (h >= 5 && h < 12) return { glyph: "朝", label: "mañana" };
-  if (h >= 12 && h < 18) return { glyph: "昼", label: "tarde" };
-  if (h >= 18 && h < 21) return { glyph: "夕", label: "atardecer" };
-  return { glyph: "夜", label: "noche" };
+  if (h >= 5 && h < 12) return { glyph: "朝", key: "morning" };
+  if (h >= 12 && h < 18) return { glyph: "昼", key: "afternoon" };
+  if (h >= 18 && h < 21) return { glyph: "夕", key: "evening" };
+  return { glyph: "夜", key: "night" };
 }
 function formatClock(d: Date): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 export function TitleBar(): JSX.Element {
+  const { t } = useTranslation();
   const openSettings = useUI((s) => s.openSettings);
   const toggleSearch = useUI((s) => s.toggleSearchPanel);
   const pushToast = useUI((s) => s.pushToast);
@@ -47,13 +51,14 @@ export function TitleBar(): JSX.Element {
   }, []);
   const clock = formatClock(now);
   const period = periodInfo(now);
+  const periodLabel = t(`titlebar.period.${period.key}`);
 
   const handleOpen = useCallback(async (): Promise<void> => {
     try {
       const selected = await openDialog({
         multiple: false,
         directory: false,
-        title: "Open file",
+        title: t("menu.openFile"),
       });
       if (typeof selected === "string") {
         await openTab(selected);
@@ -77,11 +82,11 @@ export function TitleBar(): JSX.Element {
   const handleSave = useCallback(async (): Promise<void> => {
     try {
       await saveActive();
-      pushToast({ message: "Guardado", level: "success" });
+      pushToast({ message: t("common.saved"), level: "success" });
     } catch (err) {
       pushToast({ message: translateError(err), level: "error" });
     }
-  }, [saveActive, pushToast]);
+  }, [saveActive, pushToast, t]);
 
   // getCurrentWindow throws when running in a plain browser (vite dev opened
   // outside Tauri webview). Guard so the titlebar still renders for designers
@@ -104,8 +109,8 @@ export function TitleBar(): JSX.Element {
           type="button"
           className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
           onClick={() => openSettings()}
-          title="Menú"
-          aria-label="Menú"
+          title={t("titlebar.menu")}
+          aria-label={t("titlebar.menu")}
         >
           <List size={14} />
         </button>
@@ -120,30 +125,30 @@ export function TitleBar(): JSX.Element {
               type="button"
               className="px-3 hover:text-[var(--fg-primary)] hover:bg-[var(--accent-soft)]"
             >
-              Archivo
+              {t("menu.file")}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem onSelect={() => newTab()}>
-              Nuevo archivo
+              {t("menu.newFile")}
               <DropdownMenuShortcut>Ctrl+N</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => void handleOpen()}>
-              Abrir archivo…
+              {t("menu.openFile")}
               <DropdownMenuShortcut>Ctrl+O</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => void handleOpenFolder()}>
-              Abrir carpeta…
+              {t("menu.openFolder")}
               <DropdownMenuShortcut>Ctrl+K O</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => void handleSave()}>
-              Guardar
+              {t("menu.save")}
               <DropdownMenuShortcut>Ctrl+S</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => void win?.close()}>
-              Salir
+              {t("menu.exit")}
               <DropdownMenuShortcut>Alt+F4</DropdownMenuShortcut>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -155,29 +160,29 @@ export function TitleBar(): JSX.Element {
               type="button"
               className="px-3 hover:text-[var(--fg-primary)] hover:bg-[var(--accent-soft)]"
             >
-              Edición
+              {t("menu.edit")}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem disabled>
-              Deshacer
+              {t("menu.undo")}
               <DropdownMenuShortcut>Ctrl+Z</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem disabled>
-              Rehacer
+              {t("menu.redo")}
               <DropdownMenuShortcut>Ctrl+Y</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled>
-              Cortar
+              {t("menu.cut")}
               <DropdownMenuShortcut>Ctrl+X</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem disabled>
-              Copiar
+              {t("menu.copy")}
               <DropdownMenuShortcut>Ctrl+C</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem disabled>
-              Pegar
+              {t("menu.paste")}
               <DropdownMenuShortcut>Ctrl+V</DropdownMenuShortcut>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -189,12 +194,12 @@ export function TitleBar(): JSX.Element {
               type="button"
               className="px-3 hover:text-[var(--fg-primary)] hover:bg-[var(--accent-soft)]"
             >
-              Selección
+              {t("menu.selection")}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem disabled>
-              Seleccionar todo
+              {t("menu.selectAll")}
               <DropdownMenuShortcut>Ctrl+A</DropdownMenuShortcut>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -206,24 +211,24 @@ export function TitleBar(): JSX.Element {
               type="button"
               className="px-3 hover:text-[var(--fg-primary)] hover:bg-[var(--accent-soft)]"
             >
-              Vista
+              {t("menu.view")}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem onSelect={() => useUI.getState().toggleSidebar()}>
-              Alternar barra lateral
+              {t("menu.toggleSidebar")}
               <DropdownMenuShortcut>Ctrl+B</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => toggleSearch()}>
-              Alternar buscar
+              {t("menu.toggleSearch")}
               <DropdownMenuShortcut>Ctrl+Shift+F</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => useUI.getState().toggleAgentsPanel()}>
-              Alternar panel chat
+              {t("menu.toggleChatPanel")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => openSettings()}>
-              Configuración
+              {t("menu.settings")}
               <DropdownMenuShortcut>Ctrl+,</DropdownMenuShortcut>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -235,11 +240,11 @@ export function TitleBar(): JSX.Element {
               type="button"
               className="px-3 hover:text-[var(--fg-primary)] hover:bg-[var(--accent-soft)]"
             >
-              Terminal
+              {t("menu.terminal")}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem disabled>Próximamente</DropdownMenuItem>
+            <DropdownMenuItem disabled>{t("common.comingSoon")}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>
@@ -248,8 +253,8 @@ export function TitleBar(): JSX.Element {
       {/* Centered clock — absolute so it stays centered regardless of side widths */}
       <div
         className="daisu-titlebar-clock"
-        title={`${period.label} — ${clock}`}
-        aria-label={`Hora actual ${clock}, ${period.label}`}
+        title={`${periodLabel} — ${clock}`}
+        aria-label={t("titlebar.clockLabel", { clock, period: periodLabel })}
       >
         <span className="daisu-titlebar-clock-glyph" aria-hidden="true">{period.glyph}</span>
         <span className="daisu-titlebar-clock-time">{clock}</span>
@@ -263,8 +268,8 @@ export function TitleBar(): JSX.Element {
         type="button"
         className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
         onClick={() => toggleFocusMode()}
-        title={focusMode ? "Salir de modo enfoque (静)" : "Modo enfoque (静)"}
-        aria-label="Modo enfoque"
+        title={focusMode ? t("titlebar.focusExit") : t("titlebar.focusEnter")}
+        aria-label={t("titlebar.focusLabel")}
         aria-pressed={focusMode}
       >
         {focusMode ? <span className="daisu-glyph" style={{ fontSize: 14, opacity: 1 }}>静</span> : <Crosshair size={13} />}
@@ -275,8 +280,8 @@ export function TitleBar(): JSX.Element {
         <button
           type="button"
           className="w-8 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
-          title="Cuenta"
-          aria-label="Cuenta"
+          title={t("titlebar.account")}
+          aria-label={t("titlebar.account")}
         >
           <User size={14} />
         </button>
@@ -287,7 +292,7 @@ export function TitleBar(): JSX.Element {
         type="button"
         className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--accent-soft)]"
         onClick={() => void win?.minimize()}
-        aria-label="Minimizar"
+        aria-label={t("titlebar.minimize")}
       >
         <Minus size={14} />
       </button>
@@ -295,7 +300,7 @@ export function TitleBar(): JSX.Element {
         type="button"
         className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--accent-soft)]"
         onClick={() => void win?.toggleMaximize()}
-        aria-label="Maximizar"
+        aria-label={t("titlebar.maximize")}
       >
         <Square size={12} />
       </button>
@@ -303,7 +308,7 @@ export function TitleBar(): JSX.Element {
         type="button"
         className="w-10 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--fg-inverse)] hover:bg-[var(--danger)]"
         onClick={() => void win?.close()}
-        aria-label="Cerrar"
+        aria-label={t("titlebar.close")}
       >
         <X size={14} />
       </button>

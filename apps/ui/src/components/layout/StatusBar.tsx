@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { GitBranch, Sidebar, SidebarSimple, Gear } from "@phosphor-icons/react";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useUI } from "../../stores/uiStore";
@@ -20,6 +21,7 @@ const panelToggleCls =
   "h-5 px-1.5 inline-flex items-center gap-1 text-[var(--warn)] hover:text-[var(--warn-bright)] hover:bg-[var(--warn-soft)] rounded-[var(--radius-sm)] transition-colors";
 
 export function StatusBar(): JSX.Element {
+  const { t } = useTranslation();
   const openSettings = useUI((s) => s.openSettings);
   const toggleSidebar = useUI((s) => s.toggleSidebar);
   const toggleAgents = useUI((s) => s.toggleAgentsPanel);
@@ -59,12 +61,12 @@ export function StatusBar(): JSX.Element {
                   <GitBranch size={10} />
                   {gitInfo.branch}
                   {gitInfo.ahead > 0 && (
-                    <span className="daisu-workspace-ahead" title={`${gitInfo.ahead} commits adelante`}>
+                    <span className="daisu-workspace-ahead" title={t("status.aheadCommits", { count: gitInfo.ahead })}>
                       ↑{gitInfo.ahead}
                     </span>
                   )}
                   {gitInfo.behind > 0 && (
-                    <span className="daisu-workspace-behind" title={`${gitInfo.behind} commits atrás`}>
+                    <span className="daisu-workspace-behind" title={t("status.behindCommits", { count: gitInfo.behind })}>
                       ↓{gitInfo.behind}
                     </span>
                   )}
@@ -84,8 +86,8 @@ export function StatusBar(): JSX.Element {
         <button
           type="button"
           className={utilityCls}
-          title="Configuración (Ctrl+,)"
-          aria-label="Configuración"
+          title={t("status.settingsTooltip")}
+          aria-label={t("status.settings")}
           onClick={() => openSettings()}
         >
           <Gear size={12} />
@@ -98,8 +100,8 @@ export function StatusBar(): JSX.Element {
         <button
           type="button"
           className={panelToggleCls}
-          title="Panel lateral (Ctrl+B)"
-          aria-label="Panel lateral"
+          title={t("status.sidebarTooltip")}
+          aria-label={t("status.sidebar")}
           onClick={() => toggleSidebar()}
         >
           <Sidebar size={12} />
@@ -107,8 +109,8 @@ export function StatusBar(): JSX.Element {
         <button
           type="button"
           className={panelToggleCls}
-          title="Panel de chat (Ctrl+Shift+B)"
-          aria-label="Panel de chat"
+          title={t("status.chatPanelTooltip")}
+          aria-label={t("status.chatPanel")}
           onClick={() => toggleAgents()}
         >
           <SidebarSimple size={12} />

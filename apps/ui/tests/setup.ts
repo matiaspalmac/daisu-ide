@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import "../src/i18n";
 import { expect } from "vitest";
 import * as matchers from "vitest-axe/matchers";
 import type { AxeMatchers } from "vitest-axe/matchers";

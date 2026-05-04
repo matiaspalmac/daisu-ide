@@ -7,6 +7,8 @@ const SettingsSchema = z.object({
     autoSwitchSystemTheme: z.boolean().default(true),
     confirmCloseDirty: z.boolean().default(true),
     restoreSessionOnStart: z.boolean().default(true),
+    language: z.enum(["en", "es", "ja"]).default("en"),
+    languageInitialized: z.boolean().default(false),
   }).prefault({}),
   editor: z.object({
     fontSize: z.number().min(8).max(48).default(13),

@@ -52,7 +52,7 @@ describe("<SettingsModal>", () => {
   it("close button sets settingsModalOpen=false", () => {
     useUI.setState({ settingsModalOpen: true } as never);
     render(<SettingsModal />);
-    fireEvent.click(screen.getByLabelText(/cerrar configuración/i));
+    fireEvent.click(screen.getByLabelText(/close settings/i));
     expect(useUI.getState().settingsModalOpen).toBe(false);
   });
 });

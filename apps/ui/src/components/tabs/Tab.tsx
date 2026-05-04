@@ -1,4 +1,5 @@
 import type { JSX, MouseEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { PushPin, X } from "@phosphor-icons/react";
 import type { OpenTab } from "../../stores/tabsStore";
 import { useGit } from "../../stores/gitStore";
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function Tab(props: Props): JSX.Element {
+  const { t } = useTranslation();
   const { tab, active, onActivate, onClose, closestEdge, dragHandleRef } = props;
   const dirty = tab.content !== tab.savedContent;
   const gitStatus = useGit((s) => (tab.path ? s.status(tab.path) : null));
@@ -58,7 +60,7 @@ export function Tab(props: Props): JSX.Element {
         <PushPin
           size={11}
           weight="fill"
-          aria-label="Pinned"
+          aria-label={t("tabs.pinned")}
           className="daisu-tab-pin text-[var(--warn)] shrink-0"
         />
       )}
@@ -66,15 +68,15 @@ export function Tab(props: Props): JSX.Element {
       <span className={`daisu-tab-name${gitClass}`}>{tab.name}</span>
       {dirty && (
         <span
-          aria-label="Sin guardar"
-          title="Sin guardar"
+          aria-label={t("tabs.unsaved")}
+          title={t("tabs.unsaved")}
           className={cn("daisu-tab-dirty-dot", active && "is-active")}
         />
       )}
       {!tab.pinned && (
         <button
           type="button"
-          aria-label="Close"
+          aria-label={t("tabs.close")}
           className="daisu-tab-close hover:text-[var(--accent)]"
           onClick={(e) => {
             e.stopPropagation();

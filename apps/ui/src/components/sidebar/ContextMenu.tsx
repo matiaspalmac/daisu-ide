@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import { copy } from "../../lib/copy";
 
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function TreeContextMenu(props: Props): JSX.Element {
+  const { t } = useTranslation();
   const renameDisabled = props.selectionSize !== 1;
   const oneSelected = props.selectionSize === 1;
   const anySelected = props.selectionSize >= 1;
@@ -56,7 +58,7 @@ export function TreeContextMenu(props: Props): JSX.Element {
               {item(copy.contextMenu.newFile, "newFile")}
               {item(copy.contextMenu.newFolder, "newFolder")}
               <ContextMenu.Separator className="daisu-cmenu-separator" />
-              {item("Fijar / Desfijar", "togglePin", !oneSelected)}
+              {item(t("tabs.togglePin"), "togglePin", !oneSelected)}
               <ContextMenu.Separator className="daisu-cmenu-separator" />
               {item(copy.contextMenu.cut, "cut", !anySelected)}
               {item(copy.contextMenu.copy, "copy", !anySelected)}

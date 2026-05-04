@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { House, Plus } from "@phosphor-icons/react";
 import { cn } from "@/lib/cn";
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
@@ -21,6 +22,7 @@ import { useUI } from "../../stores/uiStore";
 const OVERFLOW_BUDGET_PX = 64;
 
 export function TabBar(): JSX.Element | null {
+  const { t } = useTranslation();
   const tabs = useTabs((s) => s.tabs);
   const activeTabId = useTabs((s) => s.activeTabId);
   const reorder = useTabs((s) => s.reorder);
@@ -169,8 +171,8 @@ export function TabBar(): JSX.Element | null {
       <button
         type="button"
         onClick={() => newTab()}
-        title="Nuevo archivo"
-        aria-label="Nuevo archivo"
+        title={t("tabs.newFile")}
+        aria-label={t("tabs.newFile")}
         className="w-8 h-8 grid place-items-center text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] border-l border-[var(--border-subtle)] flex-shrink-0"
       >
         <Plus size={14} />

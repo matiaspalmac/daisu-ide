@@ -1,0 +1,381 @@
+{
+  "common": {
+    "save": "保存",
+    "saving": "保存中…",
+    "saved": "保存しました",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "delete": "削除",
+    "open": "開く",
+    "loading": "読み込み中…",
+    "comingSoon": "近日公開",
+    "send": "送信",
+    "settings": "設定",
+    "account": "アカウント",
+    "menu": "メニュー",
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "search": "検索",
+    "newFile": "新しいファイル",
+    "newFolder": "新しいフォルダ",
+    "openFile": "ファイルを開く",
+    "openFolder": "フォルダを開く"
+  },
+  "language": {
+    "label": "言語",
+    "description": "インターフェースの言語。再起動は不要です。",
+    "en": "English",
+    "es": "Español",
+    "ja": "日本語"
+  },
+  "menu": {
+    "file": "ファイル",
+    "edit": "編集",
+    "selection": "選択",
+    "view": "表示",
+    "terminal": "ターミナル",
+    "newFile": "新しいファイル",
+    "openFile": "ファイルを開く…",
+    "openFolder": "フォルダを開く…",
+    "save": "保存",
+    "exit": "終了",
+    "undo": "元に戻す",
+    "redo": "やり直し",
+    "cut": "切り取り",
+    "copy": "コピー",
+    "paste": "貼り付け",
+    "selectAll": "すべて選択",
+    "toggleSidebar": "サイドバーの切り替え",
+    "toggleSearch": "検索の切り替え",
+    "toggleChatPanel": "チャットパネルの切り替え",
+    "settings": "設定"
+  },
+  "titlebar": {
+    "menu": "メニュー",
+    "account": "アカウント",
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "close": "閉じる",
+    "focusEnter": "集中モード (静)",
+    "focusExit": "集中モードを終了 (静)",
+    "focusLabel": "集中モード",
+    "clockLabel": "現在時刻 {{clock}}、{{period}}",
+    "period": {
+      "morning": "朝",
+      "afternoon": "昼",
+      "evening": "夕",
+      "night": "夜"
+    }
+  },
+  "sidebar": {
+    "newFile": "新しいファイル",
+    "newFolder": "新しいフォルダ",
+    "search": "検索",
+    "searchProject": "プロジェクト内を検索 (Ctrl+Shift+F)",
+    "explorerAria": "ワークスペースエクスプローラ",
+    "refresh": "更新",
+    "collapseAll": "すべて折りたたむ",
+    "collapseAllToast": "すべて折りたたむは今後のマイルストーンで提供",
+    "filterPlaceholder": "ファイルをフィルタ…",
+    "filterAria": "サイドバーのファイルをフィルタ",
+    "clearFilter": "フィルタをクリア",
+    "pinned": "ピン留め",
+    "unpin": "ピン解除",
+    "unpinName": "{{name}} のピンを解除",
+    "collapseFilters": "置換とフィルタを折りたたむ",
+    "expandFilters": "置換とフィルタを展開",
+    "hideFilters": "置換とフィルタを非表示",
+    "showFilters": "置換とフィルタを表示"
+  },
+  "settings": {
+    "title": "設定",
+    "closeAria": "設定を閉じる",
+    "categories": {
+      "general": "一般",
+      "shortcuts": "ショートカット",
+      "editor": "エディタ",
+      "appearance": "外観",
+      "design": "デザイン",
+      "chat": "チャット",
+      "agent": "エージェント",
+      "mcp": "MCP",
+      "integrations": "統合",
+      "security": "セキュリティ",
+      "info": "情報",
+      "advanced": "詳細"
+    },
+    "stub": {
+      "default": "近日公開 — このカテゴリは今後のマイルストーンで提供されます。",
+      "chat": "チャットと履歴の詳細設定は M4 で提供されます。",
+      "security": "API キーの OS キーチェーン保存とプラグイン権限は M3 で対応。",
+      "info": "バージョン、ライセンス、システム情報。M3 で詳細化。"
+    },
+    "sidebarAria": "設定カテゴリ",
+    "design": {
+      "title": "デザイン",
+      "subtitle": "インターフェース要素の配置をカスタマイズ",
+      "components": "コンポーネント",
+      "panelButtons": "パネルボタン",
+      "toggleAria": "{{name}} を切り替え",
+      "side": {
+        "left": "左",
+        "right": "右"
+      },
+      "footer": "変更はリアルタイムで反映され、ローカルに保存されます。",
+      "cards": {
+        "activityBar": {
+          "title": "アクティビティバー",
+          "desc": "エクスプローラ、検索、拡張機能のサイドナビ"
+        },
+        "statusBar": {
+          "title": "ステータスバー",
+          "desc": "エディタとプロジェクトの情報"
+        },
+        "sidebar": {
+          "title": "サイドバー",
+          "desc": "ファイルエクスプローラ、検索、その他のツール"
+        },
+        "terminal": {
+          "title": "ターミナル",
+          "desc": "コマンド実行用の統合ターミナル"
+        },
+        "chatPanel": {
+          "title": "チャットパネル",
+          "desc": "コード支援のための AI チャット"
+        },
+        "panelToggles": {
+          "title": "パネル切替",
+          "desc": "ステータスバーのシアン/オレンジボタンでパネル表示を切替"
+        },
+        "utilityCluster": {
+          "title": "ユーティリティクラスタ",
+          "desc": "ステータスバー上のエラー、警告、通知、設定"
+        },
+        "hamburger": {
+          "title": "ハンバーガーメニュー",
+          "desc": "タイトルバーのメインメニューボタン"
+        },
+        "menuStrip": {
+          "title": "メニューストリップ",
+          "desc": "タイトルバーのファイル、編集、選択、表示、ターミナル"
+        },
+        "userAvatar": {
+          "title": "ユーザーアバター",
+          "desc": "タイトルバーのアカウントアイコン"
+        }
+      }
+    }
+  },
+  "chat": {
+    "title": "エージェント",
+    "label": "チャット",
+    "panelAria": "チャットパネル",
+    "newConversation": "新しい会話",
+    "deleteConversation": "会話を削除",
+    "history": "履歴",
+    "providerSettings": "プロバイダ設定",
+    "openFolderHint": "エージェントと会話するにはフォルダを開いてください。",
+    "emptyConversation": "下にメッセージを入力して開始。",
+    "startConversation": "会話を始める",
+    "startHint": "メッセージを入力して AI とチャットを開始",
+    "messageLabel": "エージェントへのメッセージ",
+    "placeholder": "エージェントに尋ねる。Enter で送信、Shift+Enter で改行。",
+    "placeholderShort": "メッセージを入力... (Shift+Enter = 改行)",
+    "send": "送信",
+    "stop": "停止",
+    "cancel": "キャンセル",
+    "cancelTooltip": "キャンセル (Esc)",
+    "roles": {
+      "user": "あなた",
+      "assistant": "エージェント",
+      "tool": "ツール"
+    },
+    "comingM4": "エージェントチャットは M4 で利用可能 — プロバイダは M3 で設定"
+  },
+  "palette": {
+    "symbols": {
+      "ariaLabel": "シンボルパレット",
+      "openFolderHint": "シンボルを検索するにはフォルダを開いてください",
+      "placeholder": "シンボルを検索… (関数、型、クラス)",
+      "loading": "検索中…",
+      "errorPrefix": "エラー",
+      "noMatches": "一致なし。設定 → AI から再インデックスしてください。",
+      "emptyHint": "ワークスペースのシンボルを検索"
+    },
+    "command": {
+      "fileSearch": "ファイルを検索…",
+      "fileSearchEmpty": "ファイルを検索するにはフォルダを開いてください",
+      "command": "コマンドを検索…"
+    }
+  },
+  "welcome": {
+    "aria": "ウェルカム画面",
+    "greeting": {
+      "night": "こんばんは",
+      "morning": "おはよう",
+      "afternoon": "こんにちは",
+      "evening": "こんばんは"
+    },
+    "recents": "最近",
+    "actions": {
+      "newFile": "新しいファイル",
+      "openFile": "ファイルを開く",
+      "openFolder": "フォルダを開く",
+      "recoverScratch": "未保存のタブ {{count}} 個を復元"
+    },
+    "scratchRecovered": "Untitled タブ {{count}} 個を復元しました",
+    "scratchPersisted": "Untitled タブ {{count}} 個をバッファに保存 — ホームから復元可能",
+    "haiku": {
+      "0": "古池や蛙飛びこむ水の音",
+      "1": "閑さや岩にしみ入る蝉の声",
+      "2": "雀の子そこのけそこのけお馬が通る",
+      "3": "やせ蛙負けるな一茶これにあり",
+      "4": "朝顔につるべ取られてもらひ水",
+      "5": "菜の花や月は東に日は西に",
+      "6": "目には青葉山ほととぎす初鰹",
+      "7": "夏草や兵どもが夢の跡",
+      "8": "雪とけて村いっぱいの子どもかな",
+      "9": "我と来て遊べや親のない雀",
+      "10": "柿くへば鐘が鳴るなり法隆寺",
+      "11": "この道や行く人なしに秋の暮"
+    }
+  },
+  "ai": {
+    "title": "エージェント · AI",
+    "intro": "Daisu はチャット、補完、エージェント用に LLM プロバイダに接続します。デフォルトはローカルの Ollama (プライバシー、キー不要)。Claude、GPT、Gemini を使うならクラウドプロバイダに切り替えてください。",
+    "providerHeading": "プロバイダ",
+    "loadingProviders": "プロバイダを読み込み中…",
+    "loadError": "プロバイダを読み込めませんでした: {{error}}",
+    "retry": "再試行",
+    "comingSoon": "近日公開",
+    "implPhase": "M3 Phase 1+ で実装",
+    "keyConfigured": "API キー設定済み",
+    "keyRequired": "API キーが必要",
+    "localNoKey": "ローカル · キー不要",
+    "modelHeading": "モデル",
+    "modelLabel": "モデル識別子",
+    "modelHint": "例: <code>llama3.2</code>、<code>claude-haiku-4-5-20251001</code>、<code>gpt-4o-mini</code>。正確な ID はプロバイダのドキュメントで確認してください。",
+    "detect": "検出",
+    "detecting": "検出中…",
+    "detectFound": "{{count}} 個のモデルを検出 · 選択: {{model}}",
+    "detectUnreachable": "{{url}} で Ollama に接続できません",
+    "detectNoModels": "Ollama は起動していますがモデルがありません。`ollama pull qwen2.5-coder:7b` (または任意のモデル) を実行して再検出してください。",
+    "baseUrlLabel": "ベース URL",
+    "baseUrlHint": "ローカルサーバーのエンドポイント。Ollama デフォルト <code>http://localhost:11434</code>、LM Studio デフォルト <code>http://localhost:1234/v1</code>。",
+    "apiKeyHeading": "API キー",
+    "apiKeyDesc": "OS のキーチェーン (Windows Credential Manager) に保存されます。プレーンテキストでディスクには書き込まれません。",
+    "apiKeyLabel": "{{provider}} の API キー",
+    "apiKeyPlaceholderSet": "•••••••• (設定済み)",
+    "saveButton": "保存",
+    "savingButton": "保存中…",
+    "deleteButton": "削除",
+    "symbolIndex": "シンボルインデックス",
+    "indexFullHint": "Daisu はワークスペースの関数、構造体、クラス、型を tree-sitter + SQLite FTS5 でインデックス化します。高速検索 (Ctrl+T) とエージェントコンテキストに使用。ベクトル埋め込みは後のフェーズに延期。",
+    "reindex": "再インデックス",
+    "reindexing": "インデックス中…",
+    "openFolderToIndex": "インデックスするにはフォルダを開いてください",
+    "symbolsCount": "{{count}} シンボル",
+    "lastIndex": " · 最終: {{when}}",
+    "noIndexYet": "インデックスなし",
+    "connectionTest": "接続テスト",
+    "testing": "テスト中…",
+    "testButton": "接続をテスト",
+    "indexedToast": "{{count}} シンボルを {{ms}}ms でインデックス",
+    "modelReplied": "モデル {{model}} の応答: \"{{sample}}\"",
+    "permissionsHeading": "エージェントの権限",
+    "permissionsDesc": "現在のワークスペースで永続化されたツール決定の一覧。削除すると再確認が求められます。",
+    "openWorkspaceForPerms": "権限を表示するにはワークスペースを開いてください。",
+    "noEntries": "まだエントリなし。",
+    "refresh": "更新",
+    "deleteAll": "すべて削除"
+  },
+  "integrations": {
+    "discordRpc": "Discord Rich Presence",
+    "discordHint": "Discord プロフィールに編集中の内容を表示。Discord が開いている必要があります。Discord が未起動の場合、接続は静かに失敗します。",
+    "enable": "Discord Rich Presence を有効化",
+    "enableDesc": "Daisu 起動時に Discord に接続しアクティビティを公開します。",
+    "showProject": "プロジェクト名を表示",
+    "showProjectDesc": "開いているフォルダ名をコンテキストとして公開します。",
+    "showFile": "編集中のファイルを表示",
+    "showFileDesc": "アクティブファイル名を公開。プライバシーのため無効化可能。",
+    "appId": "アプリケーション ID",
+    "appIdHint": "Discord アプリケーション ID (Discord Developer Portal)。カスタムアセット付きの独自アプリがない限りデフォルトを使用。"
+  },
+  "mcp": {
+    "hint": "Model Context Protocol サーバー。各サーバーはエージェントが実行時に呼び出すツールを公開します。SSE トランスポートは未実装。",
+    "noServers": "サーバー未設定。",
+    "noCommand": "(コマンドなし)",
+    "noUrl": "(URL なし)",
+    "tools": "{{count}} tools",
+    "off": "off",
+    "connect": "接続",
+    "disconnect": "切断",
+    "edit": "編集",
+    "addServer": "サーバーを追加",
+    "name": "名前",
+    "nameRequired": "名前は必須です。",
+    "duplicate": "同じ名前のサーバーがすでに存在します。",
+    "transport": "トランスポート",
+    "transportStdio": "stdio (子プロセス)",
+    "transportSse": "sse (未実装)",
+    "command": "コマンド",
+    "argsLabel": "Args (1 行ごと)",
+    "envLabel": "Env (KEY=value、1 行ごと)",
+    "url": "URL",
+    "deleteAria": "削除"
+  },
+  "tabs": {
+    "newConversation": "新しい会話",
+    "newFile": "新しいファイル",
+    "unsaved": "未保存",
+    "pinned": "ピン留め",
+    "close": "閉じる",
+    "togglePin": "ピン留め / 解除"
+  },
+  "inlineEdit": {
+    "title": "編集提案",
+    "noDiffs": "現在のファイルと提案に差分はありません。",
+    "hunkAria": "ハンク {{idx}} を承認",
+    "hunkLabel": "ハンク {{idx}} — {{oldStart}}…{{oldEnd}} → {{newStart}}…{{newEnd}} 行",
+    "selectNone": "選択解除",
+    "selectAll": "すべて選択",
+    "rejectAll": "すべて拒否",
+    "acceptSelected": "選択を承認 ({{count}})"
+  },
+  "configPanel": {
+    "title": "設定",
+    "back": "チャットに戻る",
+    "activeProvider": "アクティブなプロバイダ",
+    "modeCloud": "クラウド",
+    "modeLocal": "ローカル",
+    "configure": "エージェントを設定",
+    "panelAria": "AI プロバイダ設定",
+    "footer": "API キーは OS のキーチェーンに保存されます。プロバイダ、モデル、認証情報は <strong>設定 → エージェント</strong> から変更してください。"
+  },
+  "status": {
+    "settings": "設定",
+    "settingsTooltip": "設定 (Ctrl+,)",
+    "behindCommits": "{{count}} コミット遅れ",
+    "aheadCommits": "{{count}} コミット先行",
+    "sidebar": "サイドバー",
+    "sidebarTooltip": "サイドバー (Ctrl+B)",
+    "chatPanel": "チャットパネル",
+    "chatPanelTooltip": "チャットパネル (Ctrl+Shift+B)"
+  },
+  "activity": {
+    "explorer": "エクスプローラ",
+    "search": "検索",
+    "sourceControl": "ソース管理",
+    "settings": "設定",
+    "viewsAria": "アクティビティビュー",
+    "comingSoon": "{{feature}} は今後のマイルストーンで提供"
+  },
+  "commandPalette": {
+    "files": "ファイル",
+    "commands": "コマンド",
+    "ariaLabel": "{{kind}} パレット",
+    "noMatches": "一致なし"
+  },
+  "agentSaved": "保存しました",
+  "errorPrefix": "エラー: {{msg}}"
+}
