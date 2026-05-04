@@ -47,6 +47,8 @@ encoding_rs = "0.8"
 parking_lot = "0.12"
 uuid = { version = "1", features = ["v4"] }
 discord-rich-presence = "0.2"
+daisu-agent = { path = "../daisu-agent" }
+futures = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-registry = "0.6"

@@ -13,6 +13,7 @@ import { KeybindingSettings } from "./categories/KeybindingSettings";
 import { AdvancedSettings } from "./categories/AdvancedSettings";
 import { Disenio } from "./categories/Disenio";
 import { IntegrationsSettings } from "./categories/IntegrationsSettings";
+import { AiSettings } from "./categories/AiSettings";
 import { StubCategory } from "./categories/StubCategory";
 
 const VALID_CATEGORIES: SettingsCategoryId[] = [
@@ -21,6 +22,7 @@ const VALID_CATEGORIES: SettingsCategoryId[] = [
   "themes",
   "design",
   "chat",
+  "ai",
   "integrations",
   "security",
   "keybindings",
@@ -79,6 +81,7 @@ export function SettingsModal(): JSX.Element | null {
               {active === "themes" && <ThemeSettings />}
               {active === "design" && <Disenio />}
               {active === "integrations" && <IntegrationsSettings />}
+              {active === "ai" && <AiSettings />}
               {active === "chat" && (
                 <StubCategory
                   title="Chat"
