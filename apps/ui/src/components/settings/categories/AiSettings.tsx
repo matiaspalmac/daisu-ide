@@ -6,6 +6,7 @@ import {
   ArrowClockwise,
 } from "@phosphor-icons/react";
 import { useSettings } from "../../../stores/settingsStore";
+import { useWorkspace } from "../../../stores/workspaceStore";
 import {
   type AgentProviderId,
   type AgentProviderInfo,
@@ -14,6 +15,11 @@ import {
   clearProviderKey,
   testProvider,
 } from "../../../lib/agent";
+import {
+  indexRebuild,
+  indexStatus,
+  type IndexStatus,
+} from "../../../lib/agent-index";
 
 const PROVIDER_DEFAULT_MODELS: Record<AgentProviderId, string> = {
   ollama: "llama3.2",
@@ -40,11 +46,43 @@ export function AiSettings(): JSX.Element {
   const [savingKey, setSavingKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const rootPath = useWorkspace((s) => s.rootPath);
+  const [idxStatus, setIdxStatus] = useState<IndexStatus | null>(null);
+  const [reindexing, setReindexing] = useState(false);
+  const [reindexMsg, setReindexMsg] = useState<string | null>(null);
 
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!rootPath) {
+      setIdxStatus(null);
+      return;
+    }
+    indexStatus(rootPath)
+      .then(setIdxStatus)
+      .catch(() => setIdxStatus(null));
+  }, [rootPath]);
+
+  async function handleReindex(): Promise<void> {
+    if (!rootPath) return;
+    setReindexing(true);
+    setReindexMsg(null);
+    try {
+      const res = await indexRebuild(rootPath);
+      setReindexMsg(
+        `Indexados ${res.indexed} símbolos en ${res.durationMs}ms`,
+      );
+      const next = await indexStatus(rootPath);
+      setIdxStatus(next);
+    } catch (e) {
+      setReindexMsg(`Error: ${String((e as Error).message ?? e)}`);
+    } finally {
+      setReindexing(false);
+    }
+  }
 
   // Reset the in-flight key draft and any test/save status when the user
   // switches provider — otherwise an unsaved secret could be written under
@@ -318,6 +356,38 @@ export function AiSettings(): JSX.Element {
           )}
         </>
       )}
+
+      <h3 className="daisu-settings-section-title">Índice de símbolos</h3>
+      <p className="daisu-settings-section-desc">
+        Daisu indexa funciones, structs, clases y tipos del workspace via
+        tree-sitter + SQLite FTS5. Se usa para búsqueda rápida (Ctrl+T) y
+        contexto de agentes. Embeddings vectoriales — diferidos a una fase
+        siguiente.
+      </p>
+      <div className="daisu-field-row">
+        <button
+          type="button"
+          className="daisu-btn daisu-btn-primary"
+          disabled={!rootPath || reindexing}
+          onClick={() => void handleReindex()}
+        >
+          {reindexing ? "Indexando…" : "Reindexar"}
+        </button>
+        <span className="daisu-test-status" aria-live="polite">
+          {!rootPath && "Abrí una carpeta para indexar"}
+          {rootPath && idxStatus && (
+            <>
+              {idxStatus.symbols} símbolos
+              {idxStatus.lastRebuild != null &&
+                ` · último: ${new Date(
+                  idxStatus.lastRebuild * 1000,
+                ).toLocaleTimeString()}`}
+            </>
+          )}
+          {rootPath && !idxStatus && "Sin índice todavía"}
+          {reindexMsg && ` · ${reindexMsg}`}
+        </span>
+      </div>
 
       <h3 className="daisu-settings-section-title">Test de conexión</h3>
       <div className="daisu-field-row">

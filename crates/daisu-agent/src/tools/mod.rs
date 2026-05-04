@@ -35,6 +35,11 @@ pub fn registry() -> Vec<ToolDescriptor> {
             tier: PermissionTier::Auto,
         },
         ToolDescriptor {
+            name: "search_symbols",
+            description: "Search the workspace symbol index (functions, types, classes).",
+            tier: PermissionTier::Auto,
+        },
+        ToolDescriptor {
             name: "git_status",
             description: "Report git working tree status.",
             tier: PermissionTier::Auto,

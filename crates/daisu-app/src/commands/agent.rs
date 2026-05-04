@@ -12,17 +12,24 @@
 #![allow(
     clippy::missing_errors_doc,
     clippy::needless_pass_by_value,
-    clippy::struct_excessive_bools
+    clippy::struct_excessive_bools,
+    clippy::similar_names
 )]
 
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
 use daisu_agent::{
+    index::{IndexStatus, Indexer, SymbolHit},
     keychain,
     provider::{anthropic::AnthropicProvider, ollama::OllamaProvider, ProviderId, ToolCapability},
     AgentResult, CompletionRequest, LlmProvider, Message, Role,
 };
 use serde::{Deserialize, Serialize};
+use tauri::State;
 
 use crate::error::{AppError, AppResult};
+use crate::state::AppState;
 
 fn map_agent(e: daisu_agent::AgentError) -> AppError {
     AppError::Internal(format!("agent: {e}"))
@@ -202,4 +209,96 @@ async fn load_key(provider: &str) -> AppResult<String> {
         Some(k) => Ok(k),
         None => Err(AppError::Internal("no api key configured".into())),
     }
+}
+
+// ─── Symbol index (M3 Phase 4) ──────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexRebuildRequest {
+    pub workspace_path: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexRebuildResponse {
+    pub indexed: usize,
+    pub duration_ms: u128,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexSearchRequest {
+    pub workspace_path: String,
+    pub query: String,
+    pub limit: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexStatusRequest {
+    pub workspace_path: String,
+}
+
+fn db_path_for(workspace: &Path) -> PathBuf {
+    workspace.join(".daisu").join("symbols.db")
+}
+
+fn get_or_open_indexer(state: &AppState, workspace: &Path) -> AppResult<Arc<Indexer>> {
+    if let Some(existing) = state.indexer_for(workspace) {
+        return Ok(existing);
+    }
+    let db_path = db_path_for(workspace);
+    let indexer = Indexer::new(workspace, &db_path).map_err(map_agent)?;
+    let arc = Arc::new(indexer);
+    state.insert_indexer(workspace.to_path_buf(), arc.clone());
+    Ok(arc)
+}
+
+#[tauri::command]
+pub async fn agent_index_rebuild(
+    state: State<'_, AppState>,
+    req: IndexRebuildRequest,
+) -> AppResult<IndexRebuildResponse> {
+    let workspace = PathBuf::from(&req.workspace_path);
+    let indexer = get_or_open_indexer(&state, &workspace)?;
+    let started = std::time::Instant::now();
+    let indexed = tokio::task::spawn_blocking(move || indexer.rebuild())
+        .await
+        .map_err(|e| AppError::Internal(format!("index join: {e}")))?
+        .map_err(map_agent)?;
+    Ok(IndexRebuildResponse {
+        indexed,
+        duration_ms: started.elapsed().as_millis(),
+    })
+}
+
+#[tauri::command]
+pub async fn agent_index_search(
+    state: State<'_, AppState>,
+    req: IndexSearchRequest,
+) -> AppResult<Vec<SymbolHit>> {
+    let workspace = PathBuf::from(&req.workspace_path);
+    let indexer = get_or_open_indexer(&state, &workspace)?;
+    let query = req.query;
+    let limit = req.limit;
+    let hits = tokio::task::spawn_blocking(move || indexer.search(&query, limit))
+        .await
+        .map_err(|e| AppError::Internal(format!("index join: {e}")))?
+        .map_err(map_agent)?;
+    Ok(hits)
+}
+
+#[tauri::command]
+pub async fn agent_index_status(
+    state: State<'_, AppState>,
+    req: IndexStatusRequest,
+) -> AppResult<IndexStatus> {
+    let workspace = PathBuf::from(&req.workspace_path);
+    let indexer = get_or_open_indexer(&state, &workspace)?;
+    let status = tokio::task::spawn_blocking(move || indexer.status())
+        .await
+        .map_err(|e| AppError::Internal(format!("index join: {e}")))?
+        .map_err(map_agent)?;
+    Ok(status)
 }

@@ -17,6 +17,7 @@ import { ToastViewport } from "./components/ui/Toast";
 import { CloseConfirmModal } from "./components/tabs/CloseConfirmModal";
 import { SettingsModal } from "./components/settings/SettingsModal";
 import { CommandPalette } from "./components/palette/CommandPalette";
+import { SymbolSearchPalette } from "./components/agent/SymbolSearchPalette";
 import { useUI } from "./stores/uiStore";
 import { useSettings } from "./stores/settingsStore";
 import { useWorkspace } from "./stores/workspaceStore";
@@ -276,6 +277,7 @@ export function App(): JSX.Element {
       <CloseConfirmModalConnected />
       <SettingsModal />
       <CommandPalette />
+      <SymbolSearchPalette />
       <ResizeHandles />
     </main>
     </IconContext.Provider>

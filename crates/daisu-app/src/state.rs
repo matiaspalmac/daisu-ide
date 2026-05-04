@@ -4,9 +4,11 @@
 //! `open_workspace` can cancel a prior walker) and the current root path.
 //! Phase 5 adds the dedicated git watcher handle and its cancellation token.
 
-use std::path::PathBuf;
-use std::sync::Mutex;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
+use daisu_agent::index::Indexer;
 use notify::RecommendedWatcher;
 use tokio_util::sync::CancellationToken;
 
@@ -15,6 +17,7 @@ pub struct AppState {
     pub walker_token: Mutex<Option<CancellationToken>>,
     git_cancel: parking_lot::Mutex<Option<CancellationToken>>,
     git_watcher: parking_lot::Mutex<Option<RecommendedWatcher>>,
+    indexers: parking_lot::Mutex<HashMap<PathBuf, Arc<Indexer>>>,
 }
 
 impl Default for AppState {
@@ -24,6 +27,7 @@ impl Default for AppState {
             walker_token: Mutex::new(None),
             git_cancel: parking_lot::Mutex::new(None),
             git_watcher: parking_lot::Mutex::new(None),
+            indexers: parking_lot::Mutex::new(HashMap::new()),
         }
     }
 }
@@ -114,5 +118,23 @@ impl AppState {
     /// Drop the active git watcher (stops it). Called from `close_workspace`.
     pub fn drop_git_watcher(&self) {
         *self.git_watcher.lock() = None;
+    }
+
+    /// Look up a cached symbol indexer for `workspace`, if any. The cache is
+    /// keyed on the absolute workspace path; callers should normalize before
+    /// querying.
+    #[must_use]
+    pub fn indexer_for(&self, workspace: &Path) -> Option<Arc<Indexer>> {
+        self.indexers.lock().get(workspace).cloned()
+    }
+
+    /// Store an `Indexer` in the per-workspace cache.
+    pub fn insert_indexer(&self, workspace: PathBuf, indexer: Arc<Indexer>) {
+        self.indexers.lock().insert(workspace, indexer);
+    }
+
+    /// Drop a cached indexer (called when the workspace closes).
+    pub fn drop_indexer(&self, workspace: &Path) {
+        self.indexers.lock().remove(workspace);
     }
 }
