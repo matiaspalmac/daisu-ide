@@ -9,6 +9,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use daisu_agent::index::Indexer;
+use daisu_agent::memory::MemoryStore;
+use daisu_agent::runtime::CancelToken as AgentCancelToken;
+use daisu_agent::{PermissionGate, ToolRegistry};
 use notify::RecommendedWatcher;
 use tokio_util::sync::CancellationToken;
 
@@ -18,6 +21,14 @@ pub struct AppState {
     git_cancel: parking_lot::Mutex<Option<CancellationToken>>,
     git_watcher: parking_lot::Mutex<Option<RecommendedWatcher>>,
     indexers: parking_lot::Mutex<HashMap<PathBuf, Arc<Indexer>>>,
+    /// Shared, stateless tool registry. Built once at startup.
+    pub tool_registry: Arc<ToolRegistry>,
+    /// Per-workspace permission gates, keyed by canonicalised path.
+    /// Created lazily on first `agent_tool_dispatch` call. The cache is
+    /// bounded by `MAX_GATES`; oldest entries evict in insertion order.
+    pub permission_gates: parking_lot::Mutex<HashMap<PathBuf, Arc<PermissionGate>>>,
+    agent_memory: parking_lot::Mutex<HashMap<PathBuf, Arc<MemoryStore>>>,
+    agent_runs: parking_lot::Mutex<HashMap<String, AgentCancelToken>>,
 }
 
 impl Default for AppState {
@@ -28,6 +39,10 @@ impl Default for AppState {
             git_cancel: parking_lot::Mutex::new(None),
             git_watcher: parking_lot::Mutex::new(None),
             indexers: parking_lot::Mutex::new(HashMap::new()),
+            tool_registry: Arc::new(ToolRegistry::default()),
+            permission_gates: parking_lot::Mutex::new(HashMap::new()),
+            agent_memory: parking_lot::Mutex::new(HashMap::new()),
+            agent_runs: parking_lot::Mutex::new(HashMap::new()),
         }
     }
 }
@@ -166,5 +181,78 @@ impl AppState {
     pub fn drop_indexer(&self, workspace: &Path) {
         let key = Self::normalise_workspace(workspace);
         self.indexers.lock().remove(&key);
+    }
+
+    /// Drop a cached permission gate. Called from `close_workspace` so
+    /// per-workspace state doesn't accumulate forever in long sessions.
+    pub fn drop_permission_gate(&self, workspace: &PathBuf) {
+        self.permission_gates.lock().remove(workspace);
+    }
+
+    /// Insert a permission gate under a workspace key, evicting the
+    /// oldest entry once the cache exceeds `MAX_GATES`. Bounded so users
+    /// who jump between many projects don't grow the cache without
+    /// limit.
+    pub fn cache_permission_gate(&self, workspace: PathBuf, gate: Arc<PermissionGate>) {
+        const MAX_GATES: usize = 16;
+        let mut guard = self.permission_gates.lock();
+        if guard.len() >= MAX_GATES {
+            if let Some(stale) = guard.keys().next().cloned() {
+                guard.remove(&stale);
+            }
+        }
+        guard.insert(workspace, gate);
+    }
+
+    /// Open or reuse the per-workspace agent memory store.
+    ///
+    /// # Errors
+    ///
+    /// Returns the formatted error if `SQLite` cannot open or migrate the
+    /// `.daisu/agent.db` file under `workspace`.
+    pub fn agent_memory(&self, workspace: &PathBuf) -> Result<Arc<MemoryStore>, String> {
+        let mut guard = self.agent_memory.lock();
+        if let Some(s) = guard.get(workspace) {
+            return Ok(s.clone());
+        }
+        let path = workspace.join(".daisu").join("agent.db");
+        let store = MemoryStore::open(&path).map_err(|e| format!("agent memory: {e}"))?;
+        let arc = Arc::new(store);
+        guard.insert(workspace.clone(), arc.clone());
+        Ok(arc)
+    }
+
+    pub fn register_agent_run(&self, run_id: String, token: AgentCancelToken) {
+        self.agent_runs.lock().insert(run_id, token);
+    }
+
+    pub fn cancel_agent_run(&self, run_id: &str) -> bool {
+        if let Some(token) = self.agent_runs.lock().remove(run_id) {
+            token.cancel();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn drop_agent_run(&self, run_id: &str) {
+        self.agent_runs.lock().remove(run_id);
+    }
+
+    /// Drop the cached agent memory store for a workspace. Call from
+    /// `close_workspace` so `SQLite` handles release WAL files when the user
+    /// switches projects. Idempotent.
+    pub fn drop_agent_memory(&self, workspace: &PathBuf) {
+        self.agent_memory.lock().remove(workspace);
+    }
+
+    /// Drop every cached agent store + cancel every active run. Used when
+    /// the app shuts down or the workspace fully resets, so a long-running
+    /// stream doesn't outlive the workspace it was bound to.
+    pub fn reset_agent_state(&self) {
+        for (_, token) in self.agent_runs.lock().drain() {
+            token.cancel();
+        }
+        self.agent_memory.lock().clear();
     }
 }

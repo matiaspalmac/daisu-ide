@@ -4,6 +4,8 @@ import {
   WarningCircle,
   Robot,
   ArrowClockwise,
+  CaretDown,
+  CaretRight,
 } from "@phosphor-icons/react";
 import { useSettings } from "../../../stores/settingsStore";
 import { useWorkspace } from "../../../stores/workspaceStore";
@@ -20,6 +22,11 @@ import {
   indexStatus,
   type IndexStatus,
 } from "../../../lib/agent-index";
+import {
+  listAllowlist,
+  clearAllowlist,
+  type AllowlistEntry,
+} from "../../../lib/agent-tools";
 
 const PROVIDER_DEFAULT_MODELS: Record<AgentProviderId, string> = {
   ollama: "llama3.2",
@@ -389,6 +396,8 @@ export function AiSettings(): JSX.Element {
         </span>
       </div>
 
+      <PermisosSection />
+
       <h3 className="daisu-settings-section-title">Test de conexión</h3>
       <div className="daisu-field-row">
         <button
@@ -427,5 +436,126 @@ export function AiSettings(): JSX.Element {
         </span>
       </div>
     </div>
+  );
+}
+
+function PermisosSection(): JSX.Element {
+  const workspacePath = useWorkspace((s) => s.rootPath);
+  const [expanded, setExpanded] = useState(false);
+  const [entries, setEntries] = useState<AllowlistEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refresh(): Promise<void> {
+    if (!workspacePath) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setEntries(await listAllowlist(workspacePath));
+    } catch (e) {
+      setError(String((e as Error).message ?? e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (expanded) void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, workspacePath]);
+
+  async function handleClearAll(): Promise<void> {
+    if (!workspacePath) return;
+    try {
+      await clearAllowlist(workspacePath);
+      await refresh();
+    } catch (e) {
+      setError(String((e as Error).message ?? e));
+    }
+  }
+
+  return (
+    <>
+      <h3 className="daisu-settings-section-title">
+        <button
+          type="button"
+          className="daisu-btn-ghost flex items-center gap-1"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
+          Permisos del agente
+        </button>
+      </h3>
+      {expanded && (
+        <div className="daisu-field">
+          <div className="daisu-field-text">
+            <p className="daisu-field-desc">
+              Lista de herramientas con decisiones persistidas para el
+              workspace actual. Borra para volver a pedir confirmación.
+            </p>
+          </div>
+          {!workspacePath && (
+            <p className="daisu-field-desc">
+              Abre un workspace para ver permisos.
+            </p>
+          )}
+          {workspacePath && (
+            <>
+              {loading && <p className="daisu-field-desc">Cargando…</p>}
+              {error && (
+                <p className="daisu-test-status is-fail" role="alert">
+                  <WarningCircle size={12} weight="fill" />
+                  {error}
+                </p>
+              )}
+              {!loading && entries.length === 0 && (
+                <p className="daisu-field-desc">Sin entradas todavía.</p>
+              )}
+              {entries.length > 0 && (
+                <ul className="text-xs space-y-1 mt-2">
+                  {entries.map((e) => (
+                    <li
+                      key={`${e.tool_name}:${e.scope_glob}`}
+                      className="font-mono flex items-center gap-2"
+                    >
+                      <span
+                        className={
+                          e.decision === "allow"
+                            ? "text-success"
+                            : "text-warn"
+                        }
+                      >
+                        {e.decision}
+                      </span>
+                      <span>{e.tool_name}</span>
+                      <span className="text-[var(--fg-muted)]">
+                        {e.scope_glob}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="daisu-field-row mt-2">
+                <button
+                  type="button"
+                  className="daisu-btn"
+                  onClick={() => void refresh()}
+                >
+                  Refrescar
+                </button>
+                <button
+                  type="button"
+                  className="daisu-btn"
+                  disabled={entries.length === 0}
+                  onClick={() => void handleClearAll()}
+                >
+                  Borrar todo
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </>
   );
 }

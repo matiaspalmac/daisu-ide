@@ -5,8 +5,11 @@
 //! decision can be persisted as an allowlist entry. Sandbox tools
 //! always prompt and run with a constrained working directory.
 //!
-//! The runtime fills in `request_approval` with a Tauri-driven
-//! channel; this module only owns the decision logic.
+//! `gate.rs` owns the async approval pipeline + SQLite persistence.
+
+pub mod gate;
+
+pub use gate::{AllowlistEntry, EventEmitter, NoopEmitter, PermissionGate, PermissionRequestEvent};
 
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +21,7 @@ pub enum PermissionTier {
     Sandbox,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Decision {
     AllowOnce,
