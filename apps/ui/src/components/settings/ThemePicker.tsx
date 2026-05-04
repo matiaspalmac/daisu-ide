@@ -1,4 +1,5 @@
 import { useEffect, useState, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { Check } from "@phosphor-icons/react";
 import { useThemes } from "../../stores/themesStore";
 import { useSettings } from "../../stores/settingsStore";
@@ -11,6 +12,7 @@ interface ThemeSwatch {
 }
 
 export function ThemePicker(): JSX.Element {
+  const { t } = useTranslation();
   const bundled = useThemes((s) => s.bundled);
   const loadBundled = useThemes((s) => s.loadBundled);
   const activeThemeId = useSettings((s) => s.settings.themes.activeThemeId);
@@ -44,23 +46,24 @@ export function ThemePicker(): JSX.Element {
     };
   }, [bundled]);
 
-  const select = (t: ThemeDescriptor): void => {
-    void setSetting("themes", { activeThemeId: t.id });
+  const select = (theme: ThemeDescriptor): void => {
+    void setSetting("themes", { activeThemeId: theme.id });
   };
+  const activeAria = t("settingsThemes.activeAria");
 
   return (
-    <div className="daisu-theme-grid" role="radiogroup" aria-label="Bundled themes">
-      {bundled.map((t) => {
-        const sw = swatches[t.id] ?? { bg: "#1f1f1f", fg: "#ccc" };
-        const active = activeThemeId === t.id;
+    <div className="daisu-theme-grid" role="radiogroup" aria-label={t("settingsThemes.pickerAria")}>
+      {bundled.map((theme) => {
+        const sw = swatches[theme.id] ?? { bg: "#1f1f1f", fg: "#ccc" };
+        const active = activeThemeId === theme.id;
         return (
           <button
             type="button"
-            key={t.id}
+            key={theme.id}
             role="radio"
             aria-checked={active}
             className={`daisu-theme-card${active ? " is-active" : ""}`}
-            onClick={() => select(t)}
+            onClick={() => select(theme)}
           >
             <span
               className="daisu-theme-swatch"
@@ -69,9 +72,9 @@ export function ThemePicker(): JSX.Element {
             >
               Aa
             </span>
-            <span className="daisu-theme-name">{t.name}</span>
-            <span className="daisu-theme-kind">{t.kind}</span>
-            {active && <Check size={14} className="daisu-theme-check" aria-label="Active" />}
+            <span className="daisu-theme-name">{theme.name}</span>
+            <span className="daisu-theme-kind">{theme.kind}</span>
+            {active && <Check size={14} className="daisu-theme-check" aria-label={activeAria} />}
           </button>
         );
       })}

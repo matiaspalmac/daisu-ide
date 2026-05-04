@@ -1,10 +1,12 @@
 import { useEffect, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { ThemePicker } from "../ThemePicker";
 import { ToggleField } from "../controls/ToggleField";
 import { SelectField } from "../controls/SelectField";
 import { useThemes } from "../../../stores/themesStore";
 
 export function ThemeSettings(): JSX.Element {
+  const { t } = useTranslation();
   const bundled = useThemes((s) => s.bundled);
   const loadBundled = useThemes((s) => s.loadBundled);
 
@@ -21,7 +23,7 @@ export function ThemeSettings(): JSX.Element {
 
   return (
     <div className="daisu-settings-panel">
-      <h2 className="daisu-settings-panel-title">Themes</h2>
+      <h2 className="daisu-settings-panel-title">{t("settingsThemes.title")}</h2>
       <ThemePicker />
       <ToggleField
         category="themes"

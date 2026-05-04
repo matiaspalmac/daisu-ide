@@ -6,6 +6,7 @@ import {
   type JSX,
   type ReactNode,
 } from "react";
+import { useTranslation } from "react-i18next";
 import * as Popover from "@radix-ui/react-popover";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { Check } from "@phosphor-icons/react";
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function BranchPicker(props: Props): JSX.Element {
+  const { t } = useTranslation();
   const branches = useGit((s) => s.branches);
   const loadBranches = useGit((s) => s.loadBranches);
   const checkoutBranch = useGit((s) => s.checkoutBranch);
@@ -53,7 +55,7 @@ export function BranchPicker(props: Props): JSX.Element {
     }
     try {
       await checkoutBranch(b.name, false);
-      pushToast({ message: `Switched to ${b.name}`, level: "success" });
+      pushToast({ message: t("branch.switchedTo", { name: b.name }), level: "success" });
     } catch (err) {
       pushToast({ message: translateError(err), level: "error" });
     } finally {
@@ -67,7 +69,7 @@ export function BranchPicker(props: Props): JSX.Element {
     setPendingDirty(null);
     try {
       await checkoutBranch(b.name, true);
-      pushToast({ message: `Force-switched to ${b.name}`, level: "success" });
+      pushToast({ message: t("branch.forceSwitched", { name: b.name }), level: "success" });
     } catch (err) {
       pushToast({ message: translateError(err), level: "error" });
     } finally {
@@ -89,7 +91,7 @@ export function BranchPicker(props: Props): JSX.Element {
               ref={inputRef}
               type="text"
               className="daisu-language-filter"
-              placeholder="Filter branches..."
+              placeholder={t("branch.filterPlaceholder")}
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
@@ -106,7 +108,7 @@ export function BranchPicker(props: Props): JSX.Element {
                 </button>
               ))}
               {filtered.length === 0 && (
-                <div className="daisu-language-empty">No branches</div>
+                <div className="daisu-language-empty">{t("branch.noBranches")}</div>
               )}
             </div>
           </Popover.Content>
@@ -124,11 +126,10 @@ export function BranchPicker(props: Props): JSX.Element {
             aria-describedby={undefined}
           >
             <AlertDialog.Title className="daisu-modal-title">
-              Switch to {pendingDirty?.name}?
+              {t("branch.switchTitle", { name: pendingDirty?.name ?? "" })}
             </AlertDialog.Title>
             <AlertDialog.Description className="daisu-modal-body">
-              The working tree has uncommitted changes. Force checkout will
-              discard them. This cannot be undone.
+              {t("branch.switchDesc")}
             </AlertDialog.Description>
             <div className="daisu-modal-actions">
               <button
@@ -136,14 +137,14 @@ export function BranchPicker(props: Props): JSX.Element {
                 className="daisu-btn"
                 onClick={() => setPendingDirty(null)}
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
                 className="daisu-btn-primary"
                 onClick={() => void forceCheckout()}
               >
-                Force checkout
+                {t("branch.forceCheckout")}
               </button>
             </div>
           </AlertDialog.Content>

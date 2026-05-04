@@ -117,7 +117,7 @@ export function TabBar(): JSX.Element | null {
         break;
       case "revealInExplorer":
         pushToast({
-          message: "Reveal in Explorer arrives in Phase 4.",
+          message: t("tabBar.revealComing"),
           level: "info",
         });
         break;
@@ -127,14 +127,14 @@ export function TabBar(): JSX.Element | null {
   const inicioActive = activeTabId === null;
 
   return (
-    <div ref={containerRef} className="daisu-tabbar" role="tablist" aria-label="Open tabs">
+    <div ref={containerRef} className="daisu-tabbar" role="tablist" aria-label={t("tabBar.openTabsAria")}>
       <button
         type="button"
         role="tab"
         aria-selected={inicioActive}
         onClick={() => setActive(null)}
-        title="Inicio"
-        aria-label="Inicio"
+        title={t("tabBar.home")}
+        aria-label={t("tabBar.home")}
         className={cn(
           "daisu-tab group relative",
           inicioActive && "is-active",
@@ -147,7 +147,7 @@ export function TabBar(): JSX.Element | null {
           />
         )}
         <House size={13} className="text-[var(--fg-muted)]" />
-        <span className="daisu-tab-name">Inicio</span>
+        <span className="daisu-tab-name">{t("tabBar.home")}</span>
       </button>
       {visibleTabs.map((tab) => (
         <DraggableTab

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { Tree, type MoveHandler, type RenameHandler, type TreeApi } from "react-arborist";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useUI } from "../../stores/uiStore";
@@ -7,6 +8,7 @@ import type { FileEntry } from "../../api/tauri";
 import { Node } from "./Node";
 
 export function FileTree(): JSX.Element | null {
+  const { t } = useTranslation();
   const rootPath = useWorkspace((s) => s.rootPath);
   const tree = useWorkspace((s) => s.tree);
   const childrenIndex = useWorkspace((s) => s.childrenIndex);
@@ -72,7 +74,7 @@ export function FileTree(): JSX.Element | null {
       ref={containerRef}
       className="daisu-filetree h-full w-full"
       role="tree"
-      aria-label="Workspace file tree"
+      aria-label={t("fileTree.aria")}
     >
       <Tree<FileEntry>
           ref={treeRef}

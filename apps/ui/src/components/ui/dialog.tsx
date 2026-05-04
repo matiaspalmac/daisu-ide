@@ -6,6 +6,7 @@ import {
   type ElementRef,
   type HTMLAttributes,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 
 export const Dialog = DialogPrimitive.Root;
@@ -32,30 +33,33 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 export const DialogContent = forwardRef<
   ElementRef<typeof DialogPrimitive.Content>,
   ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-1/2 top-1/2 z-[201] grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
-        "border border-[var(--border-subtle)] bg-[var(--bg-panel)] text-[var(--fg-primary)]",
-        "rounded-[var(--radius-lg)] shadow-[var(--glow-cyan-md)]",
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close
-        className="absolute right-3 top-3 rounded-[var(--radius-sm)] p-1 text-[var(--fg-muted)] opacity-70 transition-opacity hover:opacity-100 hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
-        aria-label="Close"
+>(({ className, children, ...props }, ref) => {
+  const { t } = useTranslation();
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          "fixed left-1/2 top-1/2 z-[201] grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
+          "border border-[var(--border-subtle)] bg-[var(--bg-panel)] text-[var(--fg-primary)]",
+          "rounded-[var(--radius-lg)] shadow-[var(--glow-cyan-md)]",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          className,
+        )}
+        {...props}
       >
-        <X size={14} />
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+        {children}
+        <DialogPrimitive.Close
+          className="absolute right-3 top-3 rounded-[var(--radius-sm)] p-1 text-[var(--fg-muted)] opacity-70 transition-opacity hover:opacity-100 hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+          aria-label={t("common.close")}
+        >
+          <X size={14} />
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 export const DialogHeader = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (

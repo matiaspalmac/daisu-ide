@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useTabs } from "../../stores/tabsStore";
 import { useUI } from "../../stores/uiStore";
@@ -8,7 +9,8 @@ import { translateError } from "../../lib/error-translate";
 const ENCODINGS = ["UTF-8", "UTF-16LE", "UTF-16BE", "Windows-1252"];
 
 export function EncodingSegment(): JSX.Element | null {
-  const tab = useTabs((s) => s.tabs.find((t) => t.id === s.activeTabId) ?? null);
+  const { t } = useTranslation();
+  const tab = useTabs((s) => s.tabs.find((tt) => tt.id === s.activeTabId) ?? null);
   const pushToast = useUI((s) => s.pushToast);
   if (!tab || !tab.path) return null;
   const path = tab.path;
@@ -30,7 +32,7 @@ export function EncodingSegment(): JSX.Element | null {
             : t,
         ),
       }));
-      pushToast({ message: `Reloaded with ${encoding}`, level: "success" });
+      pushToast({ message: t("statusbarSegment.encodingReloaded", { encoding }), level: "success" });
     } catch (err) {
       pushToast({ message: translateError(err), level: "error" });
     }
@@ -42,7 +44,7 @@ export function EncodingSegment(): JSX.Element | null {
         <button
           type="button"
           className="daisu-status-segment daisu-status-clickable"
-          title="File encoding"
+          title={t("statusbarSegment.encodingTitle")}
         >
           {tab.encoding}
         </button>
@@ -55,7 +57,7 @@ export function EncodingSegment(): JSX.Element | null {
               className="daisu-dropdown-item"
               onSelect={() => void reload(e)}
             >
-              Reload with {e}
+              {t("statusbarSegment.reloadWith", { encoding: e })}
             </DropdownMenu.Item>
           ))}
         </DropdownMenu.Content>

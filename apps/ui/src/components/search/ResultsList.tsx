@@ -1,10 +1,12 @@
 import { useMemo, useState, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { CaretDown, CaretRight } from "@phosphor-icons/react";
 import { useSearch } from "../../stores/searchStore";
 import { ResultLine } from "./ResultLine";
 import type { SearchHit } from "../../api/tauri";
 
 export function ResultsList(): JSX.Element {
+  const { t } = useTranslation();
   const hits = useSearch((s) => s.hits);
   const filesSearched = useSearch((s) => s.filesSearched);
   const truncated = useSearch((s) => s.truncated);
@@ -24,8 +26,8 @@ export function ResultsList(): JSX.Element {
     return (
       <div className="daisu-search-empty">
         {filesSearched > 0
-          ? `No results in ${filesSearched} files`
-          : "Type to search"}
+          ? t("search.noResultsIn", { count: filesSearched })
+          : t("search.typeToSearch")}
       </div>
     );
   }
@@ -42,10 +44,12 @@ export function ResultsList(): JSX.Element {
   return (
     <div className="daisu-search-results">
       <div className="daisu-search-summary">
-        {hits.length} result{hits.length === 1 ? "" : "s"} in {grouped.length}{" "}
-        file{grouped.length === 1 ? "" : "s"}
+        {t("search.summary", {
+          count: hits.length,
+          fileCount: t("search.fileCount", { count: grouped.length }),
+        })}
         {truncated && (
-          <span className="daisu-search-truncated"> (truncated)</span>
+          <span className="daisu-search-truncated"> {t("search.truncated")}</span>
         )}
       </div>
       {grouped.map(([path, fileHits]) => {

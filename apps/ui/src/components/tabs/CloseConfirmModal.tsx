@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import type { PendingClose } from "../../stores/tabsStore";
 
@@ -11,16 +12,17 @@ interface Props {
 const PREVIEW_CAP = 8;
 
 export function CloseConfirmModal(props: Props): JSX.Element | null {
+  const { t } = useTranslation();
   const { pending, tabsByName, onResolve } = props;
   if (!pending) return null;
 
   const isSingle = pending.mode === "single";
   const firstName = pending.ids[0]
-    ? tabsByName.get(pending.ids[0]) ?? "this file"
-    : "this file";
+    ? tabsByName.get(pending.ids[0]) ?? t("closeConfirm.defaultName")
+    : t("closeConfirm.defaultName");
   const titleText = isSingle
-    ? `Save changes to ${firstName}?`
-    : `Save changes to ${pending.ids.length} files?`;
+    ? t("closeConfirm.titleSingle", { name: firstName })
+    : t("closeConfirm.titleMulti", { count: pending.ids.length });
   const visibleNames = pending.ids
     .slice(0, PREVIEW_CAP)
     .map((id) => tabsByName.get(id) ?? id);
@@ -34,13 +36,17 @@ export function CloseConfirmModal(props: Props): JSX.Element | null {
           <AlertDialog.Title className="daisu-modal-title">{titleText}</AlertDialog.Title>
           <AlertDialog.Description className="daisu-modal-body">
             {isSingle ? (
-              <>Your changes will be lost if you don't save them.</>
+              <>{t("closeConfirm.descSingle")}</>
             ) : (
               <ul className="daisu-modal-list">
                 {visibleNames.map((n) => (
                   <li key={n}>{n}</li>
                 ))}
-                {overflow > 0 && <li className="daisu-modal-list-more">and {overflow} more</li>}
+                {overflow > 0 && (
+                  <li className="daisu-modal-list-more">
+                    {t("closeConfirm.andMore", { count: overflow })}
+                  </li>
+                )}
               </ul>
             )}
           </AlertDialog.Description>
@@ -50,21 +56,21 @@ export function CloseConfirmModal(props: Props): JSX.Element | null {
               className="daisu-btn"
               onClick={() => onResolve("discard")}
             >
-              Don't Save
+              {t("closeConfirm.dontSave")}
             </button>
             <button
               type="button"
               className="daisu-btn"
               onClick={() => onResolve("cancel")}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="button"
               className="daisu-btn-primary"
               onClick={() => onResolve("save")}
             >
-              {isSingle ? "Save" : "Save All"}
+              {isSingle ? t("closeConfirm.save") : t("closeConfirm.saveAll")}
             </button>
           </div>
         </AlertDialog.Content>

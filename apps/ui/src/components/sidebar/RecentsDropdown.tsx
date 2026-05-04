@@ -1,7 +1,7 @@
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ClockCounterClockwise } from "@phosphor-icons/react";
-import { copy } from "../../lib/copy";
 import type { RecentEntry } from "../../stores/workspaceStore";
 
 interface Props {
@@ -12,14 +12,15 @@ interface Props {
 }
 
 export function RecentsDropdown(props: Props): JSX.Element {
+  const { t } = useTranslation();
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
           className="daisu-recents-trigger"
-          aria-label={copy.buttons.recent}
-          title={copy.buttons.recent}
+          aria-label={t("explorer.recent")}
+          title={t("explorer.recent")}
         >
           <ClockCounterClockwise size={13} />
         </button>
@@ -30,11 +31,11 @@ export function RecentsDropdown(props: Props): JSX.Element {
             className="daisu-dropdown-item"
             onSelect={() => props.onOpenFolderPicker()}
           >
-            {copy.recents.openFolderItem}
+            {t("explorer.recentOpenFolder")}
           </DropdownMenu.Item>
           <DropdownMenu.Separator className="daisu-dropdown-separator" />
           {props.recents.length === 0 ? (
-            <div className="daisu-dropdown-empty">{copy.recents.none}</div>
+            <div className="daisu-dropdown-empty">{t("explorer.recentNone")}</div>
           ) : (
             props.recents.map((r) => (
               <DropdownMenu.Item
@@ -54,7 +55,7 @@ export function RecentsDropdown(props: Props): JSX.Element {
                 className="daisu-dropdown-item"
                 onSelect={() => props.onClearRecents()}
               >
-                {copy.recents.clear}
+                {t("explorer.recentClear")}
               </DropdownMenu.Item>
             </>
           )}

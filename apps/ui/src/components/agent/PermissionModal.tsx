@@ -1,4 +1,5 @@
 import { useEffect, type JSX } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import { isTauri } from "../../lib/tauri-env";
  * rejected prompt back to the chat composer.
  */
 export function PermissionModal(): JSX.Element | null {
+  const { t } = useTranslation();
   const current = usePermissionStore((s) => s.current);
   const enqueue = usePermissionStore((s) => s.enqueue);
   const clearCurrent = usePermissionStore((s) => s.clearCurrent);
@@ -72,12 +74,14 @@ export function PermissionModal(): JSX.Element | null {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            Permiso requerido · {current.tool_name}
+            {t("permissionModal.title", { tool: current.tool_name })}
           </DialogTitle>
           <DialogDescription>
-            El agente quiere ejecutar la herramienta{" "}
-            <code>{current.tool_name}</code> ({current.tier}) en el alcance{" "}
-            <code>{current.scope}</code>.
+            <Trans
+              i18nKey="permissionModal.description"
+              values={{ tool: current.tool_name, tier: current.tier, scope: current.scope }}
+              components={[<code key="0" />, <code key="1" />]}
+            />
           </DialogDescription>
         </DialogHeader>
         <div className="px-4 py-3 text-xs text-[var(--fg-secondary)]">
@@ -89,29 +93,29 @@ export function PermissionModal(): JSX.Element | null {
             className="daisu-btn"
             onClick={() => void decide("deny")}
           >
-            Denegar
+            {t("permissionModal.deny")}
           </button>
           <button
             type="button"
             className="daisu-btn"
             onClick={() => void decide("deny")}
-            title="Denegar esta vez (sin persistir el rechazo)"
+            title={t("permissionModal.denyEditTooltip")}
           >
-            Denegar y editar
+            {t("permissionModal.denyEdit")}
           </button>
           <button
             type="button"
             className="daisu-btn"
             onClick={() => void decide("allowonce")}
           >
-            Permitir una vez
+            {t("permissionModal.allowOnce")}
           </button>
           <button
             type="button"
             className="daisu-btn daisu-btn-primary"
             onClick={() => void decide("allowalways")}
           >
-            Permitir siempre
+            {t("permissionModal.allowAlways")}
           </button>
         </DialogFooter>
       </DialogContent>

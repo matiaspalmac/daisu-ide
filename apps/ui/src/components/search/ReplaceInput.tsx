@@ -1,8 +1,10 @@
 import { useState, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearch } from "../../stores/searchStore";
 import { ReplaceConfirmDialog } from "./ReplaceConfirmDialog";
 
 export function ReplaceInput(): JSX.Element {
+  const { t } = useTranslation();
   const hits = useSearch((s) => s.hits);
   const excluded = useSearch((s) => s.excludedHitIds);
   const replaceAll = useSearch((s) => s.replaceAll);
@@ -23,7 +25,7 @@ export function ReplaceInput(): JSX.Element {
       <input
         type="text"
         className="daisu-input daisu-search-input"
-        placeholder="Replace"
+        placeholder={t("search.replace")}
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
@@ -32,8 +34,8 @@ export function ReplaceInput(): JSX.Element {
         className="daisu-search-toggle daisu-search-toggle-text"
         disabled={!canReplace}
         onClick={() => setConfirmOpen(true)}
-        title="Replace All"
-        aria-label="Replace All"
+        title={t("search.replaceAll")}
+        aria-label={t("search.replaceAll")}
       >
         AB
       </button>

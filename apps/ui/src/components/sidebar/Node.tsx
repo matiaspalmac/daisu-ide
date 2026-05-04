@@ -1,4 +1,5 @@
 import type { CSSProperties, JSX } from "react";
+import { useTranslation } from "react-i18next";
 import type { NodeApi, TreeApi } from "react-arborist";
 import { CaretRight, Folder, FolderOpen } from "@phosphor-icons/react";
 import clsx from "clsx";
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function Node({ node, style, dragHandle }: Props): JSX.Element {
+  const { t } = useTranslation();
   const status = useGit((s) => s.status(node.data.path));
   const tintClass = status ? `daisu-git-${status.toLowerCase()}` : "";
   const showConflictDot = status === "Conflict";
@@ -53,9 +55,9 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
       {node.isLeaf ? (
         <FileIcon name={node.data.name} size={14} />
       ) : node.isOpen ? (
-        <FolderOpen size={14} aria-label="Folder" className="daisu-tree-icon text-[var(--fg-muted)]" />
+        <FolderOpen size={14} aria-label={t("sidebarNode.folderAria")} className="daisu-tree-icon text-[var(--fg-muted)]" />
       ) : (
-        <Folder size={14} aria-label="Folder" className="daisu-tree-icon text-[var(--fg-muted)]" />
+        <Folder size={14} aria-label={t("sidebarNode.folderAria")} className="daisu-tree-icon text-[var(--fg-muted)]" />
       )}
       {node.isEditing ? (
         <input
@@ -77,7 +79,7 @@ export function Node({ node, style, dragHandle }: Props): JSX.Element {
       {showConflictDot && (
         <span
           className="ml-auto mr-1 w-1 h-1 rounded-full bg-[var(--danger)] shadow-[0_0_4px_var(--danger)]"
-          aria-label={`Git status ${status}`}
+          aria-label={t("sidebarNode.gitStatusAria", { status })}
         />
       )}
     </div>

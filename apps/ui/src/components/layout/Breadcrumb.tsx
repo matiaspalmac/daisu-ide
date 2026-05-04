@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useTabs } from "../../stores/tabsStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 
@@ -9,6 +10,7 @@ import { useWorkspace } from "../../stores/workspaceStore";
  * folder segment is a no-op for now (Phase 1: visual orientation only).
  */
 export function Breadcrumb(): JSX.Element | null {
+  const { t } = useTranslation();
   const activeTabId = useTabs((s) => s.activeTabId);
   const tabs = useTabs((s) => s.tabs);
   const rootPath = useWorkspace((s) => s.rootPath);
@@ -29,7 +31,7 @@ export function Breadcrumb(): JSX.Element | null {
   if (!segments) return null;
 
   return (
-    <nav className="daisu-breadcrumb" aria-label="Ruta del archivo">
+    <nav className="daisu-breadcrumb" aria-label={t("breadcrumb.aria")}>
       {segments.map((s, i) => {
         const isLast = i === segments.length - 1;
         return (

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from "react";
+import { useTranslation } from "react-i18next";
 import * as Popover from "@radix-ui/react-popover";
 import { useTabs } from "../../stores/tabsStore";
 import {
@@ -8,7 +9,8 @@ import {
 import { loadLanguageList, type LanguageEntry } from "../../lib/language-list";
 
 export function LanguagePicker(): JSX.Element | null {
-  const tab = useTabs((s) => s.tabs.find((t) => t.id === s.activeTabId) ?? null);
+  const { t } = useTranslation();
+  const tab = useTabs((s) => s.tabs.find((tt) => tt.id === s.activeTabId) ?? null);
   const setLanguage = useTabs((s) => s.setLanguage);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
@@ -52,7 +54,7 @@ export function LanguagePicker(): JSX.Element | null {
         <button
           type="button"
           className="daisu-status-segment daisu-status-clickable"
-          title="Editor language"
+          title={t("statusbarSegment.languageTitle")}
         >
           {tab.language}
         </button>
@@ -67,7 +69,7 @@ export function LanguagePicker(): JSX.Element | null {
             ref={inputRef}
             type="text"
             className="daisu-language-filter"
-            placeholder="Filter languages..."
+            placeholder={t("statusbarSegment.languageFilter")}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -83,7 +85,7 @@ export function LanguagePicker(): JSX.Element | null {
               </button>
             ))}
             {filtered.length === 0 && (
-              <div className="daisu-language-empty">No matches</div>
+              <div className="daisu-language-empty">{t("statusbarSegment.languageNoMatches")}</div>
             )}
           </div>
         </Popover.Content>

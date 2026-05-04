@@ -29,7 +29,6 @@ import { useTheme } from "./hooks/useTheme";
 import { useGitWatcher } from "./hooks/useGitWatcher";
 import { useEditorCursorWiring } from "./hooks/useEditorCursor";
 import { useGit } from "./stores/gitStore";
-import { copy } from "./lib/copy";
 import { isTauri } from "./lib/tauri-env";
 import i18n, { setLanguage, type AppLanguage } from "./i18n";
 import { probeOllama, pickBestModel } from "./lib/ollama-detect";
@@ -239,7 +238,7 @@ export function App(): JSX.Element {
         try {
           await openWorkspace(path);
         } catch {
-          pushToast({ message: copy.toasts.droppedNonDir, level: "warning" });
+          pushToast({ message: i18n.t("explorer.droppedNonDir"), level: "warning" });
         }
       })
     );

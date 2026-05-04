@@ -1,13 +1,15 @@
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { ToggleField } from "../controls/ToggleField";
 import { SelectField } from "../controls/SelectField";
 import { NumberField } from "../controls/NumberField";
 import { TextField } from "../controls/TextField";
 
 export function EditorSettings(): JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className="daisu-settings-panel">
-      <h2 className="daisu-settings-panel-title">Editor</h2>
+      <h2 className="daisu-settings-panel-title">{t("settingsEditor.title")}</h2>
       <NumberField category="editor" field="fontSize" label="Font size" min={8} max={48} />
       <TextField category="editor" field="fontFamily" label="Font family" />
       <NumberField category="editor" field="tabSize" label="Tab size" min={1} max={16} />

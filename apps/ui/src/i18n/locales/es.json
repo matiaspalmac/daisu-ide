@@ -377,5 +377,201 @@
     "noMatches": "Sin coincidencias"
   },
   "agentSaved": "Guardado",
-  "errorPrefix": "Error: {{msg}}"
+  "errorPrefix": "Error: {{msg}}",
+  "permissionModal": {
+    "title": "Permiso requerido · {{tool}}",
+    "description": "El agente quiere ejecutar la herramienta <0>{{tool}}</0> ({{tier}}) en el alcance <1>{{scope}}</1>.",
+    "deny": "Denegar",
+    "denyEdit": "Denegar y editar",
+    "denyEditTooltip": "Denegar esta vez (sin persistir el rechazo)",
+    "allowOnce": "Permitir una vez",
+    "allowAlways": "Permitir siempre"
+  },
+  "breadcrumb": {
+    "aria": "Ruta del archivo"
+  },
+  "editor": {
+    "areaAria": "Área del editor"
+  },
+  "searchPanel": {
+    "aria": "Búsqueda en el workspace",
+    "title": "Buscar",
+    "closeAria": "Cerrar panel de búsqueda"
+  },
+  "statusBar": {
+    "aria": "Barra de estado"
+  },
+  "search": {
+    "placeholder": "Buscar",
+    "matchCase": "Coincidir mayúsculas",
+    "wholeWord": "Coincidir palabra completa",
+    "regex": "Usar expresión regular",
+    "multiline": "Multilínea",
+    "replace": "Reemplazar",
+    "replaceAll": "Reemplazar todo",
+    "replaceTitle_one": "¿Reemplazar {{count}} coincidencia en {{fileCount}} archivo?",
+    "replaceTitle_other": "¿Reemplazar {{count}} coincidencias en {{fileCount}} archivos?",
+    "replaceFiles_one": "{{count}} archivo",
+    "replaceFiles_other": "{{count}} archivos",
+    "andMore": "y {{count}} más",
+    "confirmReplace": "Reemplazar",
+    "noResultsIn": "Sin resultados en {{count}} archivos",
+    "typeToSearch": "Escribe para buscar",
+    "summary_one": "{{count}} resultado en {{fileCount}}",
+    "summary_other": "{{count}} resultados en {{fileCount}}",
+    "fileCount_one": "{{count}} archivo",
+    "fileCount_other": "{{count}} archivos",
+    "truncated": "(truncado)",
+    "searching": "Buscando en {{filesSearched}} archivos... {{hits}}",
+    "completion": "{{hits}} en {{filesSearched}} archivos",
+    "hits_one": "{{count}} coincidencia",
+    "hits_other": "{{count}} coincidencias",
+    "toggleAria": "Alternar panel de búsqueda"
+  },
+  "sidebarNode": {
+    "folderAria": "Carpeta",
+    "gitStatusAria": "Estado git {{status}}"
+  },
+  "fileTree": {
+    "aria": "Árbol de archivos del workspace"
+  },
+  "branch": {
+    "switchedTo": "Cambiado a {{name}}",
+    "forceSwitched": "Cambiado a {{name}} (forzado)",
+    "fetched_one": "Recibido {{count}} commit nuevo desde {{remote}}",
+    "fetched_other": "Recibidos {{count}} commits nuevos desde {{remote}}",
+    "filterPlaceholder": "Filtrar ramas...",
+    "noBranches": "Sin ramas",
+    "switchTitle": "¿Cambiar a {{name}}?",
+    "switchDesc": "El árbol de trabajo tiene cambios sin commit. El checkout forzado los descartará. Esta acción no se puede deshacer.",
+    "forceCheckout": "Forzar checkout",
+    "switchAria": "Cambiar de rama",
+    "fetchAria": "Fetch desde origin",
+    "fetchTitle": "Fetch desde origin",
+    "ahead": "Adelante",
+    "behind": "Atrás"
+  },
+  "statusbarSegment": {
+    "cursorTitle": "Posición del cursor",
+    "cursorLabel": "Ln {{line}}, Col {{col}}",
+    "cursorSelection": " ({{count}} sel)",
+    "encodingTitle": "Codificación del archivo",
+    "encodingReloaded": "Recargado con {{encoding}}",
+    "reloadWith": "Recargar con {{encoding}}",
+    "eolTitle": "Fin de línea",
+    "eolConverted": "EOL convertido a {{target}}",
+    "indentSpaces": "Espacios",
+    "indentTabSize": "Tamaño de tab",
+    "indentLabel": "{{kind}}: {{size}}",
+    "indentTitle": "Indentación (clic para abrir configuración)",
+    "languageTitle": "Lenguaje del editor",
+    "languageFilter": "Filtrar lenguajes...",
+    "languageNoMatches": "Sin coincidencias",
+    "searchProgressTitle": "Alternar panel de búsqueda"
+  },
+  "settingsAdvanced": {
+    "title": "Avanzado",
+    "exportTitle": "Exportar configuración de Daisu",
+    "exportFile": "daisu-settings.json",
+    "importTitle": "Importar configuración de Daisu",
+    "exportedToast": "Configuración exportada.",
+    "importedToast": "Configuración importada.",
+    "resetAllLabel": "Restablecer toda la configuración",
+    "resetAllDesc": "Restaura fuentes, temas, atajos y opciones a los valores por defecto.",
+    "resetAllButton": "Restablecer todo",
+    "resetDialogTitle": "¿Restablecer toda la configuración?",
+    "resetDialogDesc": "Esto restaura todas las configuraciones (fuentes, temas, atajos, opciones) a los valores por defecto. Esta acción no se puede deshacer.",
+    "resetButton": "Restablecer",
+    "resetToast": "Configuración restablecida.",
+    "exportLabel": "Exportar configuración…",
+    "exportDesc": "Guarda el archivo de configuración actual como JSON.",
+    "exportButton": "Exportar",
+    "importLabel": "Importar configuración…",
+    "importDesc": "Carga un archivo JSON exportado previamente. Cada categoría se valida.",
+    "importButton": "Importar"
+  },
+  "settingsEditor": {
+    "title": "Editor"
+  },
+  "settingsThemes": {
+    "title": "Temas",
+    "pickerAria": "Temas incluidos",
+    "activeAria": "Activo"
+  },
+  "settingsKeybindings": {
+    "title": "Atajos de teclado",
+    "hint": "Haz clic en el lápiz para grabar un nuevo atajo. Presiona Esc, haz clic fuera o espera 5 s para cancelar. Restablecer vuelve al valor por defecto."
+  },
+  "keybind": {
+    "press": "Presiona el atajo...",
+    "editAria": "Editar atajo",
+    "resetAria": "Restablecer al valor por defecto",
+    "overrideToast": "{{combo}} ya está asignado a \"{{label}}\". Override guardado."
+  },
+  "keybindList": {
+    "action": "Acción",
+    "category": "Categoría",
+    "binding": "Atajo",
+    "gotoSeries": "Ir a la pestaña 1 (serie 1–9)"
+  },
+  "closeConfirm": {
+    "titleSingle": "¿Guardar cambios en {{name}}?",
+    "titleMulti": "¿Guardar cambios en {{count}} archivos?",
+    "defaultName": "este archivo",
+    "descSingle": "Los cambios se perderán si no los guardas.",
+    "andMore": "y {{count}} más",
+    "dontSave": "No guardar",
+    "save": "Guardar",
+    "saveAll": "Guardar todo"
+  },
+  "tabBar": {
+    "openTabsAria": "Pestañas abiertas",
+    "home": "Inicio",
+    "revealComing": "Mostrar en Explorador llega en la fase 4."
+  },
+  "tabContext": {
+    "close": "Cerrar",
+    "closeOthers": "Cerrar otras",
+    "closeAll": "Cerrar todas",
+    "pin": "Fijar",
+    "unpin": "Desfijar",
+    "copyPath": "Copiar ruta",
+    "revealInExplorer": "Mostrar en Explorador"
+  },
+  "tabOverflow": {
+    "moreAria": "+{{count}} pestañas más"
+  },
+  "explorer": {
+    "heading": "Explorador",
+    "noFolderTitle": "Ninguna carpeta abierta",
+    "noFolderBody": "Abre una carpeta para empezar a programar.",
+    "walkingLabel": "Leyendo carpeta…",
+    "emptyFolderTitle": "Esta carpeta está vacía.",
+    "readErrorTitle": "No se pudo leer la carpeta",
+    "openFolder": "Abrir carpeta",
+    "newFile": "Nuevo archivo",
+    "newFolder": "Nueva carpeta",
+    "retry": "Reintentar",
+    "openDifferent": "Abrir otra carpeta",
+    "recent": "Recientes",
+    "recentOpenFolder": "Abrir carpeta…",
+    "recentClear": "Limpiar recientes",
+    "recentNone": "Sin workspaces recientes",
+    "movedToTrash_one": "Movido {{count}} elemento a la papelera",
+    "movedToTrash_other": "Movidos {{count}} elementos a la papelera",
+    "undo": "Deshacer",
+    "droppedNonDir": "Suelta una carpeta para abrirla.",
+    "ctxNewFile": "Nuevo archivo",
+    "ctxNewFolder": "Nueva carpeta",
+    "ctxCut": "Cortar",
+    "ctxCopy": "Copiar",
+    "ctxPaste": "Pegar",
+    "ctxRename": "Renombrar",
+    "ctxDelete": "Eliminar",
+    "ctxCopyPath": "Copiar ruta",
+    "ctxCopyRelativePath": "Copiar ruta relativa",
+    "ctxRevealInExplorer": "Mostrar en Explorador",
+    "searchHeading": "BUSCAR",
+    "explorerHeading": "EXPLORADOR"
+  }
 }

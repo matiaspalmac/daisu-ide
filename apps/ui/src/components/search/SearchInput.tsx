@@ -1,7 +1,9 @@
 import type { JSX } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearch } from "../../stores/searchStore";
 
 export function SearchInput(): JSX.Element {
+  const { t } = useTranslation();
   const query = useSearch((s) => s.query);
   const options = useSearch((s) => s.options);
   const setQuery = useSearch((s) => s.setQuery);
@@ -19,7 +21,7 @@ export function SearchInput(): JSX.Element {
       <input
         type="text"
         className="daisu-input daisu-search-input"
-        placeholder="Search"
+        placeholder={t("search.placeholder")}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -32,8 +34,8 @@ export function SearchInput(): JSX.Element {
       <button
         type="button"
         className={`daisu-search-toggle daisu-search-toggle-text${options.caseSensitive ? " is-on" : ""}`}
-        aria-label="Match case"
-        title="Match case"
+        aria-label={t("search.matchCase")}
+        title={t("search.matchCase")}
         onClick={() => toggle("caseSensitive")}
       >
         Aa
@@ -41,8 +43,8 @@ export function SearchInput(): JSX.Element {
       <button
         type="button"
         className={`daisu-search-toggle daisu-search-toggle-text${options.wholeWord ? " is-on" : ""}`}
-        aria-label="Match whole word"
-        title="Match whole word"
+        aria-label={t("search.wholeWord")}
+        title={t("search.wholeWord")}
         onClick={() => toggle("wholeWord")}
       >
         <span className="daisu-search-toggle-underline">ab</span>
@@ -50,8 +52,8 @@ export function SearchInput(): JSX.Element {
       <button
         type="button"
         className={`daisu-search-toggle daisu-search-toggle-text${options.regex ? " is-on" : ""}`}
-        aria-label="Use regular expression"
-        title="Use regular expression"
+        aria-label={t("search.regex")}
+        title={t("search.regex")}
         onClick={() => toggle("regex")}
       >
         .*
@@ -59,8 +61,8 @@ export function SearchInput(): JSX.Element {
       <button
         type="button"
         className={`daisu-search-toggle daisu-search-toggle-text${options.multiline ? " is-on" : ""}`}
-        aria-label="Multiline"
-        title="Multiline"
+        aria-label={t("search.multiline")}
+        title={t("search.multiline")}
         onClick={() => toggle("multiline")}
       >
         ¶

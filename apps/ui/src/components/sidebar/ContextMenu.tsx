@@ -1,7 +1,6 @@
 import type { JSX, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import * as ContextMenu from "@radix-ui/react-context-menu";
-import { copy } from "../../lib/copy";
 
 export type TreeAction =
   | "newFile"
@@ -48,28 +47,28 @@ export function TreeContextMenu(props: Props): JSX.Element {
         <ContextMenu.Content className="daisu-cmenu" collisionPadding={8}>
           {props.target === "empty-area" ? (
             <>
-              {item(copy.contextMenu.newFile, "newFile")}
-              {item(copy.contextMenu.newFolder, "newFolder")}
+              {item(t("explorer.ctxNewFile"), "newFile")}
+              {item(t("explorer.ctxNewFolder"), "newFolder")}
               <ContextMenu.Separator className="daisu-cmenu-separator" />
-              {item(copy.contextMenu.paste, "paste", pasteDisabled)}
+              {item(t("explorer.ctxPaste"), "paste", pasteDisabled)}
             </>
           ) : (
             <>
-              {item(copy.contextMenu.newFile, "newFile")}
-              {item(copy.contextMenu.newFolder, "newFolder")}
+              {item(t("explorer.ctxNewFile"), "newFile")}
+              {item(t("explorer.ctxNewFolder"), "newFolder")}
               <ContextMenu.Separator className="daisu-cmenu-separator" />
               {item(t("tabs.togglePin"), "togglePin", !oneSelected)}
               <ContextMenu.Separator className="daisu-cmenu-separator" />
-              {item(copy.contextMenu.cut, "cut", !anySelected)}
-              {item(copy.contextMenu.copy, "copy", !anySelected)}
-              {item(copy.contextMenu.paste, "paste", pasteDisabled)}
+              {item(t("explorer.ctxCut"), "cut", !anySelected)}
+              {item(t("explorer.ctxCopy"), "copy", !anySelected)}
+              {item(t("explorer.ctxPaste"), "paste", pasteDisabled)}
               <ContextMenu.Separator className="daisu-cmenu-separator" />
-              {item(copy.contextMenu.rename, "rename", renameDisabled)}
-              {item(copy.contextMenu.delete, "delete", !anySelected)}
+              {item(t("explorer.ctxRename"), "rename", renameDisabled)}
+              {item(t("explorer.ctxDelete"), "delete", !anySelected)}
               <ContextMenu.Separator className="daisu-cmenu-separator" />
-              {item(copy.contextMenu.copyPath, "copyPath", !oneSelected)}
-              {item(copy.contextMenu.copyRelativePath, "copyRelativePath", !oneSelected)}
-              {item(copy.contextMenu.revealInExplorer, "revealInExplorer", !oneSelected)}
+              {item(t("explorer.ctxCopyPath"), "copyPath", !oneSelected)}
+              {item(t("explorer.ctxCopyRelativePath"), "copyRelativePath", !oneSelected)}
+              {item(t("explorer.ctxRevealInExplorer"), "revealInExplorer", !oneSelected)}
             </>
           )}
         </ContextMenu.Content>
