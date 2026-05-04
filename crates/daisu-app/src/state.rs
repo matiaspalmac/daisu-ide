@@ -5,8 +5,10 @@
 //! Phase 5 adds the dedicated git watcher handle and its cancellation token.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::Mutex;
 
+use daisu_agent::McpRegistry;
 use notify::RecommendedWatcher;
 use tokio_util::sync::CancellationToken;
 
@@ -15,6 +17,7 @@ pub struct AppState {
     pub walker_token: Mutex<Option<CancellationToken>>,
     git_cancel: parking_lot::Mutex<Option<CancellationToken>>,
     git_watcher: parking_lot::Mutex<Option<RecommendedWatcher>>,
+    pub mcp_registry: Arc<McpRegistry>,
 }
 
 impl Default for AppState {
@@ -24,6 +27,7 @@ impl Default for AppState {
             walker_token: Mutex::new(None),
             git_cancel: parking_lot::Mutex::new(None),
             git_watcher: parking_lot::Mutex::new(None),
+            mcp_registry: Arc::new(McpRegistry::new()),
         }
     }
 }

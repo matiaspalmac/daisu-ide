@@ -21,6 +21,7 @@ export type SettingsCategoryId =
   | "design"
   | "chat"
   | "ai"
+  | "mcp"
   | "integrations"
   | "security"
   | "keybindings"
@@ -30,7 +31,8 @@ export type SettingsCategoryId =
 interface CategoryItem {
   id: SettingsCategoryId;
   label: string;
-  icon: PhosphorIcon;
+  icon?: PhosphorIcon;
+  glyph?: string;
 }
 
 const CATEGORIES: CategoryItem[] = [
@@ -41,6 +43,7 @@ const CATEGORIES: CategoryItem[] = [
   { id: "design", label: "Diseño", icon: SquaresFour },
   { id: "chat", label: "Chat", icon: Chat },
   { id: "ai", label: "Agente", icon: Robot },
+  { id: "mcp", label: "MCP", glyph: "連" },
   { id: "integrations", label: "Integraciones", icon: Plugs },
   { id: "security", label: "Seguridad", icon: Shield },
   { id: "info", label: "Información", icon: Info },
@@ -65,7 +68,13 @@ export function SettingsSidebar(props: Props): JSX.Element {
           aria-current={props.active === c.id}
           onClick={() => props.onSelect(c.id)}
         >
-          <c.icon size={14} />
+          {c.icon ? (
+            <c.icon size={14} />
+          ) : (
+            <span className="daisu-glyph" aria-hidden="true">
+              {c.glyph}
+            </span>
+          )}
           <span>{c.label}</span>
         </button>
       ))}

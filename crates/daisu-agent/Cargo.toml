@@ -21,7 +21,7 @@ doc_markdown = "allow"
 
 [dependencies]
 async-trait.workspace = true
-tokio = { workspace = true, features = ["sync", "rt", "macros", "time", "io-util"] }
+tokio = { workspace = true, features = ["sync", "rt", "macros", "time", "io-util", "process"] }
 tokio-stream.workspace = true
 tokio-util = { workspace = true, features = ["io"] }
 futures.workspace = true

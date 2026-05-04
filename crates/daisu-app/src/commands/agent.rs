@@ -18,11 +18,16 @@
 use daisu_agent::{
     keychain,
     provider::{anthropic::AnthropicProvider, ollama::OllamaProvider, ProviderId, ToolCapability},
-    AgentResult, CompletionRequest, LlmProvider, Message, Role,
+    AgentResult, CompletionRequest, LlmProvider, McpServerConfig, McpToolResult, Message, Role,
 };
 use serde::{Deserialize, Serialize};
+use tauri::{Emitter, State};
 
 use crate::error::{AppError, AppResult};
+use crate::AppState;
+
+/// Tauri event emitted when an MCP server connect attempt succeeds or fails.
+const MCP_STATUS_EVENT: &str = "agent://mcp-status";
 
 fn map_agent(e: daisu_agent::AgentError) -> AppError {
     AppError::Internal(format!("agent: {e}"))
@@ -190,6 +195,150 @@ async fn build_provider(provider: &str, base_url: Option<&str>) -> AppResult<Box
             "provider not yet implemented: {other}"
         ))),
     }
+}
+
+// -- MCP commands -----------------------------------------------------------
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpStatusInfo {
+    pub name: String,
+    pub connected: bool,
+    pub tool_count: usize,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpToolInfo {
+    pub server: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub schema: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpConnectRequest {
+    pub config: McpServerConfig,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpDisconnectRequest {
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpListToolsRequest {
+    #[serde(default)]
+    pub server_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpCallToolRequest {
+    pub server: String,
+    pub tool: String,
+    #[serde(default = "default_args")]
+    pub arguments: serde_json::Value,
+}
+
+fn default_args() -> serde_json::Value {
+    serde_json::json!({})
+}
+
+#[tauri::command]
+pub async fn agent_mcp_connect(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    req: McpConnectRequest,
+) -> AppResult<McpStatusInfo> {
+    let registry = state.mcp_registry.clone();
+    let name = req.config.name.clone();
+    match registry.connect(req.config).await {
+        Ok(client) => {
+            let status = client.status().await;
+            let _ = app.emit(
+                MCP_STATUS_EVENT,
+                serde_json::json!({ "name": name, "ok": true }),
+            );
+            Ok(McpStatusInfo {
+                name: status.name,
+                connected: status.connected,
+                tool_count: status.tool_count,
+            })
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            let _ = app.emit(
+                MCP_STATUS_EVENT,
+                serde_json::json!({ "name": name, "ok": false, "error": msg }),
+            );
+            Err(map_agent(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn agent_mcp_disconnect(
+    state: State<'_, AppState>,
+    req: McpDisconnectRequest,
+) -> AppResult<bool> {
+    Ok(state.mcp_registry.disconnect(&req.name).await)
+}
+
+#[tauri::command]
+pub async fn agent_mcp_status(state: State<'_, AppState>) -> AppResult<Vec<McpStatusInfo>> {
+    Ok(state
+        .mcp_registry
+        .statuses()
+        .await
+        .into_iter()
+        .map(|s| McpStatusInfo {
+            name: s.name,
+            connected: s.connected,
+            tool_count: s.tool_count,
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub async fn agent_mcp_list_tools(
+    state: State<'_, AppState>,
+    req: McpListToolsRequest,
+) -> AppResult<Vec<McpToolInfo>> {
+    let all = state.mcp_registry.tools().await;
+    let filtered: Vec<McpToolInfo> = all
+        .into_iter()
+        .filter(|(server, _)| {
+            req.server_name
+                .as_ref()
+                .is_none_or(|filter| filter == server)
+        })
+        .map(|(server, tool)| McpToolInfo {
+            server,
+            name: tool.name,
+            description: tool.description,
+            schema: tool.input_schema,
+        })
+        .collect();
+    Ok(filtered)
+}
+
+#[tauri::command]
+pub async fn agent_mcp_call_tool(
+    state: State<'_, AppState>,
+    req: McpCallToolRequest,
+) -> AppResult<McpToolResult> {
+    let client =
+        state.mcp_registry.get(&req.server).await.ok_or_else(|| {
+            AppError::Internal(format!("mcp server not connected: {}", req.server))
+        })?;
+    client
+        .call_tool(&req.tool, req.arguments)
+        .await
+        .map_err(map_agent)
 }
 
 async fn load_key(provider: &str) -> AppResult<String> {

@@ -9,6 +9,7 @@
 
 pub mod error;
 pub mod keychain;
+pub mod mcp;
 pub mod memory;
 pub mod permission;
 pub mod provider;
@@ -16,6 +17,10 @@ pub mod runtime;
 pub mod tools;
 
 pub use error::{AgentError, AgentResult};
+pub use mcp::{
+    ConnectOutcome, McpClient, McpRegistry, McpServerConfig, McpStatus, McpTool, McpToolResult,
+    McpTransportKind,
+};
 pub use provider::{
     CompletionRequest, CompletionResponse, LlmProvider, Message, ProviderId, Role, StreamEvent,
 };
