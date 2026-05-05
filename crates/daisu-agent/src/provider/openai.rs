@@ -14,9 +14,10 @@ use serde_json::json;
 
 use super::{
     CompletionRequest, CompletionResponse, LlmProvider, ModelInfo, ProviderId, Role, StreamEvent,
-    StreamResult, TokenUsage, ToolCapability,
+    StreamResult, TokenUsage, ToolCall, ToolCapability, ToolChoice,
 };
 use crate::error::{AgentError, AgentResult};
+use std::collections::HashMap;
 
 const API_BASE: &str = "https://api.openai.com/v1";
 
@@ -37,9 +38,12 @@ impl OpenAiProvider {
     }
 
     fn build_body(req: &CompletionRequest, stream: bool) -> serde_json::Value {
-        // The Responses API uses `instructions` for the system prompt and
-        // `input` as a list of typed items. We map our flat Message list
-        // into role-tagged `message` items with text content parts.
+        // The Responses API uses `instructions` for the system prompt
+        // and `input` as a list of typed items. Three item shapes
+        // matter for tool-calling:
+        //   - { type:"message", role, content:[{type, text}] }       — text turns
+        //   - { type:"function_call", call_id, name, arguments }     — assistant tool call
+        //   - { type:"function_call_output", call_id, output }       — tool result
         let instructions = req.system.clone().or_else(|| {
             req.messages
                 .iter()
@@ -47,30 +51,52 @@ impl OpenAiProvider {
                 .map(|m| m.content.clone())
         });
 
-        let input: Vec<_> = req
+        let mut input: Vec<serde_json::Value> = Vec::with_capacity(req.messages.len());
+        for m in req
             .messages
             .iter()
             .filter(|m| !matches!(m.role, Role::System))
-            .map(|m| {
-                let role = match m.role {
-                    Role::User | Role::Tool => "user",
-                    Role::Assistant => "assistant",
-                    Role::System => unreachable!(),
-                };
-                // Assistant historical text uses `output_text`, user uses
-                // `input_text`. Mixing them up is a 400.
-                let part_type = if matches!(m.role, Role::Assistant) {
-                    "output_text"
-                } else {
-                    "input_text"
-                };
-                json!({
-                    "type": "message",
-                    "role": role,
-                    "content": [{ "type": part_type, "text": m.content }],
-                })
-            })
-            .collect();
+        {
+            match m.role {
+                Role::Tool => {
+                    // Tool result message — links via tool_call_id.
+                    let call_id = m.tool_call_id.clone().unwrap_or_default();
+                    input.push(json!({
+                        "type": "function_call_output",
+                        "call_id": call_id,
+                        "output": m.content,
+                    }));
+                }
+                Role::Assistant => {
+                    if !m.content.is_empty() {
+                        input.push(json!({
+                            "type": "message",
+                            "role": "assistant",
+                            "content": [{ "type": "output_text", "text": m.content }],
+                        }));
+                    }
+                    if let Some(calls) = m.tool_calls.as_ref() {
+                        for c in calls {
+                            input.push(json!({
+                                "type": "function_call",
+                                "call_id": c.id,
+                                "name": c.name,
+                                "arguments": serde_json::to_string(&c.arguments)
+                                    .unwrap_or_else(|_| "{}".into()),
+                            }));
+                        }
+                    }
+                }
+                Role::User => {
+                    input.push(json!({
+                        "type": "message",
+                        "role": "user",
+                        "content": [{ "type": "input_text", "text": m.content }],
+                    }));
+                }
+                Role::System => unreachable!(),
+            }
+        }
 
         let mut body = json!({
             "model": req.model,
@@ -83,6 +109,33 @@ impl OpenAiProvider {
         }
         if let Some(temp) = req.temperature {
             body["temperature"] = json!(temp);
+        }
+        if !req.tools.is_empty() {
+            // Responses API uses a flat tool schema (no nested
+            // `function` wrapper that Chat Completions requires).
+            let tools: Vec<serde_json::Value> = req
+                .tools
+                .iter()
+                .map(|t| {
+                    let mut v = json!({
+                        "type": "function",
+                        "name": t.name,
+                        "parameters": t.input_schema,
+                    });
+                    if let Some(d) = t.description.as_deref() {
+                        v["description"] = json!(d);
+                    }
+                    v
+                })
+                .collect();
+            body["tools"] = json!(tools);
+            if let Some(choice) = req.tool_choice {
+                body["tool_choice"] = match choice {
+                    ToolChoice::Auto => json!("auto"),
+                    ToolChoice::Required => json!("required"),
+                    ToolChoice::None => json!("none"),
+                };
+            }
         }
         body
     }
@@ -104,6 +157,14 @@ enum OutputItem {
     Message {
         #[serde(default)]
         content: Vec<OutputContent>,
+    },
+    /// Tool call in non-streaming responses. `call_id` round-trips back
+    /// as the answering tool message's reference.
+    FunctionCall {
+        call_id: String,
+        name: String,
+        #[serde(default)]
+        arguments: String,
     },
     #[serde(other)]
     Other,
@@ -128,16 +189,60 @@ struct EnvelopeUsage {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type")]
 enum SseEvent {
     #[serde(rename = "response.output_text.delta")]
     OutputTextDelta { delta: String },
+    /// New output item begins (text message OR function_call). For
+    /// function_call we capture call_id + name; arguments stream via
+    /// later `response.function_call_arguments.delta` events keyed by
+    /// `item_id`.
+    #[serde(rename = "response.output_item.added")]
+    OutputItemAdded {
+        #[serde(default)]
+        output_index: u32,
+        item: OutputItemAddedPayload,
+    },
+    #[serde(rename = "response.function_call_arguments.delta")]
+    FunctionArgsDelta {
+        #[serde(default)]
+        #[allow(dead_code)]
+        item_id: String,
+        #[serde(default)]
+        output_index: u32,
+        delta: String,
+    },
+    #[serde(rename = "response.function_call_arguments.done")]
+    FunctionArgsDone {
+        #[serde(default)]
+        #[allow(dead_code)]
+        item_id: String,
+        #[serde(default)]
+        output_index: u32,
+        #[serde(default)]
+        arguments: String,
+    },
     #[serde(rename = "response.completed")]
     Completed { response: CompletedPayload },
     #[serde(rename = "response.failed")]
     Failed { response: FailedPayload },
     #[serde(rename = "error")]
     Error { message: String },
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum OutputItemAddedPayload {
+    FunctionCall {
+        #[serde(default)]
+        #[allow(dead_code)]
+        id: String,
+        #[serde(default)]
+        call_id: String,
+        name: String,
+    },
     #[serde(other)]
     Other,
 }
@@ -277,19 +382,36 @@ impl LlmProvider for OpenAiProvider {
         }
 
         let env: ResponsesEnvelope = serde_json::from_str(&text)?;
-        let content: String = env
-            .output
-            .into_iter()
-            .filter_map(|item| match item {
-                OutputItem::Message { content } => Some(content),
-                OutputItem::Other => None,
-            })
-            .flatten()
-            .filter_map(|c| match c {
-                OutputContent::OutputText { text } => Some(text),
-                OutputContent::Other => None,
-            })
-            .collect();
+        let mut content = String::new();
+        let mut tool_calls: Vec<ToolCall> = Vec::new();
+        for item in env.output {
+            match item {
+                OutputItem::Message { content: parts } => {
+                    for c in parts {
+                        if let OutputContent::OutputText { text } = c {
+                            content.push_str(&text);
+                        }
+                    }
+                }
+                OutputItem::FunctionCall {
+                    call_id,
+                    name,
+                    arguments,
+                } => {
+                    let args: serde_json::Value = if arguments.trim().is_empty() {
+                        json!({})
+                    } else {
+                        serde_json::from_str(&arguments).unwrap_or_else(|_| json!({}))
+                    };
+                    tool_calls.push(ToolCall {
+                        id: call_id,
+                        name,
+                        arguments: args,
+                    });
+                }
+                OutputItem::Other => {}
+            }
+        }
 
         Ok(CompletionResponse {
             content,
@@ -299,9 +421,11 @@ impl LlmProvider for OpenAiProvider {
                 input_tokens: u.input_tokens,
                 output_tokens: u.output_tokens,
             }),
+            tool_calls,
         })
     }
 
+    #[allow(clippy::too_many_lines)]
     fn stream(&self, req: CompletionRequest) -> StreamResult {
         let body = Self::build_body(&req, true);
         let client = self.client.clone();
@@ -331,6 +455,21 @@ impl LlmProvider for OpenAiProvider {
             let mut events = resp.bytes_stream().eventsource();
             let mut finish_reason: Option<String> = None;
             let mut usage: Option<TokenUsage> = None;
+            // Tracking by output_index because the OpenAI SSE stream
+            // identifies tool-call argument deltas by index alongside
+            // the (sometimes-absent) item_id. We keep both keys for
+            // robustness — whichever the server uses, we resolve.
+            struct PendingFn {
+                call_id: String,
+                name: String,
+                args_json: String,
+            }
+            let mut pending: HashMap<u32, PendingFn> = HashMap::new();
+            let mut emit_order: Vec<u32> = Vec::new();
+            // Completed calls keyed by output_index — preserves the
+            // server's emission order even when ArgsDone events arrive
+            // interleaved across multiple parallel tool calls.
+            let mut completed: HashMap<u32, ToolCall> = HashMap::new();
 
             while let Some(event) = events.next().await {
                 let event = event.map_err(|e| AgentError::Provider(format!("sse: {e}")))?;
@@ -338,6 +477,46 @@ impl LlmProvider for OpenAiProvider {
                 match serde_json::from_str::<SseEvent>(&event.data) {
                     Ok(SseEvent::OutputTextDelta { delta }) => {
                         yield StreamEvent::Delta { text: delta };
+                    }
+                    Ok(SseEvent::OutputItemAdded { output_index, item }) => {
+                        if let OutputItemAddedPayload::FunctionCall { call_id, name, .. } = item {
+                            emit_order.push(output_index);
+                            pending.insert(output_index, PendingFn {
+                                call_id: call_id.clone(),
+                                name: name.clone(),
+                                args_json: String::new(),
+                            });
+                            yield StreamEvent::ToolUseStart { id: call_id, name };
+                        }
+                    }
+                    Ok(SseEvent::FunctionArgsDelta { output_index, delta, .. }) => {
+                        if let Some(p) = pending.get_mut(&output_index) {
+                            p.args_json.push_str(&delta);
+                            let id = p.call_id.clone();
+                            yield StreamEvent::ToolUseArgsDelta { id, fragment: delta };
+                        }
+                    }
+                    Ok(SseEvent::FunctionArgsDone { output_index, arguments, .. }) => {
+                        if let Some(mut p) = pending.remove(&output_index) {
+                            // Final consolidated args ship in this event;
+                            // prefer them over the streamed accumulation
+                            // (the server does the same parse).
+                            if !arguments.is_empty() {
+                                p.args_json = arguments;
+                            }
+                            let parsed: serde_json::Value = if p.args_json.trim().is_empty() {
+                                json!({})
+                            } else {
+                                serde_json::from_str(&p.args_json).unwrap_or_else(|_| json!({}))
+                            };
+                            let id = p.call_id.clone();
+                            completed.insert(output_index, ToolCall {
+                                id: id.clone(),
+                                name: p.name,
+                                arguments: parsed,
+                            });
+                            yield StreamEvent::ToolUseDone { id };
+                        }
                     }
                     Ok(SseEvent::Completed { response }) => {
                         finish_reason = response.status;
@@ -348,12 +527,6 @@ impl LlmProvider for OpenAiProvider {
                         break;
                     }
                     Ok(SseEvent::Failed { response }) => {
-                        // The API is inconsistent: sometimes the failure
-                        // ships as `response.error.message`, sometimes
-                        // the error is `null` and the explanation lives
-                        // elsewhere. Falling back to the raw event data
-                        // preserves the diagnostic instead of dropping
-                        // a bare "openai: response failed" on the user.
                         let msg = response.error.map_or_else(
                             || format!("openai response failed: {}", event.data),
                             |e| e.message,
@@ -372,7 +545,20 @@ impl LlmProvider for OpenAiProvider {
                 }
             }
 
-            yield StreamEvent::Done { finish_reason, usage };
+            // Drain in server emission order. `emit_order` was populated
+            // from output_item.added events, so this preserves the
+            // order the model returned regardless of which call's
+            // arguments finished streaming first.
+            let ordered_calls: Vec<ToolCall> = emit_order
+                .into_iter()
+                .filter_map(|idx| completed.remove(&idx))
+                .collect();
+
+            yield StreamEvent::Done {
+                finish_reason,
+                usage,
+                tool_calls: ordered_calls,
+            };
         };
 
         Box::pin(stream)
@@ -439,6 +625,75 @@ mod tests {
                 assert_eq!(u.output_tokens, 20);
             }
             _ => panic!("expected Completed"),
+        }
+    }
+
+    #[test]
+    fn output_item_added_decodes_function_call() {
+        let raw = r#"{"type":"response.output_item.added","output_index":1,"item":{"type":"function_call","id":"fc_a","call_id":"call_a","name":"read_file"}}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        match parsed {
+            SseEvent::OutputItemAdded {
+                output_index,
+                item: OutputItemAddedPayload::FunctionCall { call_id, name, .. },
+            } => {
+                assert_eq!(output_index, 1);
+                assert_eq!(call_id, "call_a");
+                assert_eq!(name, "read_file");
+            }
+            _ => panic!("expected OutputItemAdded::FunctionCall"),
+        }
+    }
+
+    #[test]
+    fn function_args_delta_carries_fragment() {
+        let raw = r#"{"type":"response.function_call_arguments.delta","item_id":"fc_a","output_index":1,"delta":"{\"path\":\"x\"}"}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        match parsed {
+            SseEvent::FunctionArgsDelta {
+                output_index,
+                delta,
+                ..
+            } => {
+                assert_eq!(output_index, 1);
+                assert_eq!(delta, r#"{"path":"x"}"#);
+            }
+            _ => panic!("expected FunctionArgsDelta"),
+        }
+    }
+
+    #[test]
+    fn function_args_done_carries_full_arguments() {
+        let raw = r#"{"type":"response.function_call_arguments.done","item_id":"fc_a","output_index":1,"arguments":"{\"path\":\"src/main.rs\"}"}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        match parsed {
+            SseEvent::FunctionArgsDone {
+                output_index,
+                arguments,
+                ..
+            } => {
+                assert_eq!(output_index, 1);
+                assert_eq!(arguments, r#"{"path":"src/main.rs"}"#);
+            }
+            _ => panic!("expected FunctionArgsDone"),
+        }
+    }
+
+    #[test]
+    fn non_streaming_response_extracts_function_call_with_args() {
+        let raw = r#"{"output":[{"type":"function_call","call_id":"call_x","name":"list_dir","arguments":"{\"path\":\".\"}"}],"model":"gpt-5.5","status":"completed","usage":{"input_tokens":5,"output_tokens":2}}"#;
+        let env: ResponsesEnvelope = serde_json::from_str(raw).unwrap();
+        match &env.output[0] {
+            OutputItem::FunctionCall {
+                call_id,
+                name,
+                arguments,
+            } => {
+                assert_eq!(call_id, "call_x");
+                assert_eq!(name, "list_dir");
+                assert_eq!(arguments, r#"{"path":"."}"#);
+            }
+            _ => panic!("expected FunctionCall"),
         }
     }
 }

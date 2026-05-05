@@ -30,13 +30,13 @@ use daisu_agent::{
     permission::gate::PERMISSION_REQUEST_EVENT,
     provider::{
         anthropic::AnthropicProvider, gemini::GeminiProvider, lmstudio::LmStudioProvider,
-        ollama::OllamaProvider, openai::OpenAiProvider, ProviderId, ToolCapability,
+        ollama::OllamaProvider, openai::OpenAiProvider, ProviderId, ToolCapability, ToolDef,
     },
     runtime::CancelToken,
-    tools::{apply_accepted_hunks, EditHunk, ProposeEdit},
+    tools::{apply_accepted_hunks, EditHunk, ProposeEdit, ToolRegistry},
     AgentResult, AllowlistEntry, CompletionRequest, Decision, EventEmitter, LlmProvider,
     McpServerConfig, McpToolResult, Message, ModelInfo, PermissionGate, PermissionRequestEvent,
-    Role, StreamEvent, ToolCall, ToolDescriptor, ToolResult,
+    ProviderToolCall, Role, StreamEvent, ToolCall, ToolDescriptor, ToolResult,
 };
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -52,6 +52,60 @@ const MCP_STATUS_EVENT: &str = "agent://mcp-status";
 
 fn map_agent(e: daisu_agent::AgentError) -> AppError {
     AppError::Internal(format!("agent: {e}"))
+}
+
+/// Build the `ToolDef` list the LLM sees from the static tool registry.
+/// Parses each tool's `input_schema` JSON literal once per request.
+///
+/// Currently sources from `daisu_agent::tools::registry()` directly —
+/// the runtime `ToolRegistry` is taken as a parameter so the signature
+/// is stable when the registry becomes configurable (per-workspace
+/// tool sets, MCP-injected tools), but for now both paths produce the
+/// same set. A schema parse failure is logged via `eprintln!` rather
+/// than silently degrading; the literal is a compile-time string so
+/// any failure is a programmer error worth surfacing in dev builds.
+fn tool_defs_from_registry(_registry: &ToolRegistry) -> Vec<ToolDef> {
+    daisu_agent::tools::registry()
+        .into_iter()
+        .map(|d| {
+            let input_schema = serde_json::from_str(d.input_schema).unwrap_or_else(|err| {
+                eprintln!(
+                    "agent: invalid input_schema for tool {} — {err}; falling back to empty object",
+                    d.name
+                );
+                serde_json::json!({"type":"object"})
+            });
+            ToolDef {
+                name: d.name.to_string(),
+                description: Some(d.description.to_string()),
+                input_schema,
+            }
+        })
+        .collect()
+}
+
+/// Translate a stored row back into the in-memory provider message
+/// shape, including any persisted `tool_calls` JSON.
+fn stored_to_message(m: StoredMessage) -> Message {
+    let role = match m.role.as_str() {
+        "user" => Role::User,
+        "assistant" => Role::Assistant,
+        "tool" => Role::Tool,
+        "system" => Role::System,
+        _ => Role::User,
+    };
+    let tool_calls = m
+        .tool_calls_json
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .and_then(|s| serde_json::from_str::<Vec<ProviderToolCall>>(s).ok());
+    Message {
+        role,
+        content: m.content,
+        tool_call_id: m.tool_call_id,
+        tool_name: m.tool_name,
+        tool_calls,
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -206,8 +260,12 @@ pub async fn agent_provider_test(req: ProviderTestRequest) -> AppResult<Provider
             role: Role::User,
             content: "Say the single word 'ok'.".into(),
             tool_call_id: None,
+            tool_name: None,
+            tool_calls: None,
         }],
         system: None,
+        tools: Vec::new(),
+        tool_choice: None,
         max_tokens: 32,
         temperature: Some(0.0),
     };
@@ -685,6 +743,30 @@ enum StreamPayload {
         run_id: String,
         message: String,
     },
+    /// Model wants to call a tool. UI renders a collapsible block.
+    ToolUseStart {
+        run_id: String,
+        id: String,
+        name: String,
+    },
+    ToolUseArgsDelta {
+        run_id: String,
+        id: String,
+        fragment: String,
+    },
+    ToolUseDone {
+        run_id: String,
+        id: String,
+    },
+    /// Tool dispatch finished. `ok` reflects whether the dispatcher
+    /// returned a result vs an error vs a denial.
+    ToolResult {
+        run_id: String,
+        id: String,
+        name: String,
+        ok: bool,
+        output: serde_json::Value,
+    },
     Done {
         run_id: String,
         message_id: String,
@@ -699,6 +781,12 @@ enum StreamPayload {
 }
 
 const STREAM_EVENT: &str = "agent://stream";
+
+/// Cap on agentic iterations (provider call + tool dispatch counts as 1).
+/// Prevents a runaway loop with a misbehaving model — if the model keeps
+/// asking for more tools forever, we bail with an error after this many
+/// turns rather than burning tokens indefinitely.
+const MAX_AGENT_ITERATIONS: u32 = 10;
 
 #[tauri::command]
 pub async fn agent_send_message(
@@ -727,6 +815,8 @@ pub async fn agent_send_message(
         role: Role::User,
         content: req.user_text.clone(),
         tool_call_id: None,
+        tool_name: None,
+        tool_calls: None,
     };
     {
         let store_c = store.clone();
@@ -738,42 +828,22 @@ pub async fn agent_send_message(
             .map_err(map_agent)?;
     }
 
+    // Pre-resolve workspace + permission gate once so the spawned loop
+    // can dispatch tools without re-validating per iteration.
+    let workspace = validate_workspace(&req.workspace_path)?;
+    let gate = gate_for_workspace(&state, &app, &workspace)?;
+    let tool_registry = state.tool_registry.clone();
+
     let provider = build_provider(&convo.provider, req.base_url.as_deref()).await?;
-    let history = {
-        let store_c = store.clone();
-        let cid = req.conversation_id.clone();
-        tokio::task::spawn_blocking(move || store_c.get_messages(&cid))
-            .await
-            .map_err(|e| AppError::Internal(format!("agent join: {e}")))?
-            .map_err(map_agent)?
-    };
-
-    let messages: Vec<Message> = history
-        .into_iter()
-        .filter(|m| m.role != "system")
-        .map(|m| Message {
-            role: match m.role.as_str() {
-                "user" => Role::User,
-                "assistant" => Role::Assistant,
-                "tool" => Role::Tool,
-                _ => Role::User,
-            },
-            content: m.content,
-            tool_call_id: m.tool_call_id,
-        })
-        .collect();
-
-    let completion = CompletionRequest {
-        model: convo.model.clone(),
-        messages,
-        system: req.system_prompt,
-        max_tokens: 4096,
-        temperature: req.temperature,
-    };
+    let tools = tool_defs_from_registry(&state.tool_registry);
+    let system_prompt = req.system_prompt.clone();
+    let temperature = req.temperature;
 
     let app_handle = app.clone();
     let run_id_bg = run_id.clone();
     let convo_id = req.conversation_id.clone();
+    let model = convo.model.clone();
+    let scope_default = workspace.display().to_string();
 
     tokio::spawn(async move {
         let _ = app_handle.emit(
@@ -784,66 +854,275 @@ pub async fn agent_send_message(
             },
         );
 
-        let mut stream = provider.stream(completion);
-        let mut accumulated = String::new();
+        let mut last_message_id = String::new();
+        let mut iteration: u32 = 0;
         let mut error: Option<String> = None;
         let mut cancelled = false;
 
-        loop {
-            tokio::select! {
-                () = cancel.cancelled() => {
-                    cancelled = true;
-                    break;
+        while iteration < MAX_AGENT_ITERATIONS {
+            iteration += 1;
+
+            // Re-load history from disk every iteration so persisted tool
+            // results from the previous turn are part of the next prompt.
+            let history = {
+                let store_c = store.clone();
+                let cid = convo_id.clone();
+                match tokio::task::spawn_blocking(move || store_c.get_messages(&cid)).await {
+                    Ok(Ok(h)) => h,
+                    Ok(Err(e)) => {
+                        error = Some(format!("history: {e}"));
+                        break;
+                    }
+                    Err(e) => {
+                        error = Some(format!("history join: {e}"));
+                        break;
+                    }
                 }
-                next = stream.next() => {
-                    match next {
-                        Some(Ok(StreamEvent::Delta { text })) => {
-                            accumulated.push_str(&text);
-                            let _ = app_handle.emit(
-                                STREAM_EVENT,
-                                StreamPayload::Delta {
-                                    run_id: run_id_bg.clone(),
-                                    text,
-                                },
-                            );
-                        }
-                        Some(Ok(StreamEvent::Warning { message })) => {
-                            let _ = app_handle.emit(
-                                STREAM_EVENT,
-                                StreamPayload::Warning {
-                                    run_id: run_id_bg.clone(),
-                                    message,
-                                },
-                            );
-                        }
-                        Some(Ok(StreamEvent::Done { .. })) | None => break,
-                        Some(Err(e)) => {
-                            error = Some(format!("{e}"));
-                            break;
+            };
+            let messages: Vec<Message> = history
+                .into_iter()
+                .filter(|m| m.role != "system")
+                .map(stored_to_message)
+                .collect();
+
+            let completion = CompletionRequest {
+                model: model.clone(),
+                messages,
+                system: system_prompt.clone(),
+                max_tokens: 4096,
+                temperature,
+                tools: tools.clone(),
+                tool_choice: None,
+            };
+
+            let mut stream = provider.stream(completion);
+            let mut accumulated_text = String::new();
+            let mut emitted_tool_calls: Vec<ProviderToolCall> = Vec::new();
+
+            'inner: loop {
+                tokio::select! {
+                    () = cancel.cancelled() => {
+                        cancelled = true;
+                        break 'inner;
+                    }
+                    next = stream.next() => {
+                        match next {
+                            Some(Ok(StreamEvent::Delta { text })) => {
+                                accumulated_text.push_str(&text);
+                                let _ = app_handle.emit(
+                                    STREAM_EVENT,
+                                    StreamPayload::Delta {
+                                        run_id: run_id_bg.clone(),
+                                        text,
+                                    },
+                                );
+                            }
+                            Some(Ok(StreamEvent::ToolUseStart { id, name })) => {
+                                let _ = app_handle.emit(
+                                    STREAM_EVENT,
+                                    StreamPayload::ToolUseStart {
+                                        run_id: run_id_bg.clone(),
+                                        id,
+                                        name,
+                                    },
+                                );
+                            }
+                            Some(Ok(StreamEvent::ToolUseArgsDelta { id, fragment })) => {
+                                let _ = app_handle.emit(
+                                    STREAM_EVENT,
+                                    StreamPayload::ToolUseArgsDelta {
+                                        run_id: run_id_bg.clone(),
+                                        id,
+                                        fragment,
+                                    },
+                                );
+                            }
+                            Some(Ok(StreamEvent::ToolUseDone { id })) => {
+                                let _ = app_handle.emit(
+                                    STREAM_EVENT,
+                                    StreamPayload::ToolUseDone {
+                                        run_id: run_id_bg.clone(),
+                                        id,
+                                    },
+                                );
+                            }
+                            Some(Ok(StreamEvent::Warning { message })) => {
+                                let _ = app_handle.emit(
+                                    STREAM_EVENT,
+                                    StreamPayload::Warning {
+                                        run_id: run_id_bg.clone(),
+                                        message,
+                                    },
+                                );
+                            }
+                            Some(Ok(StreamEvent::Done { tool_calls, .. })) => {
+                                emitted_tool_calls = tool_calls;
+                                break 'inner;
+                            }
+                            None => break 'inner,
+                            Some(Err(e)) => {
+                                error = Some(format!("{e}"));
+                                break 'inner;
+                            }
                         }
                     }
                 }
             }
+
+            if cancelled || error.is_some() {
+                // Persist partial text before bailing so the user keeps it.
+                if !accumulated_text.is_empty() {
+                    let msg = Message {
+                        role: Role::Assistant,
+                        content: accumulated_text,
+                        tool_call_id: None,
+                        tool_name: None,
+                        tool_calls: if emitted_tool_calls.is_empty() {
+                            None
+                        } else {
+                            Some(emitted_tool_calls.clone())
+                        },
+                    };
+                    let store_c = store.clone();
+                    let cid = convo_id.clone();
+                    let _ = tokio::task::spawn_blocking(move || {
+                        store_c.append_message(&cid, &msg, None)
+                    })
+                    .await;
+                }
+                break;
+            }
+
+            // No tool calls → terminal turn. Persist + done.
+            if emitted_tool_calls.is_empty() {
+                if accumulated_text.is_empty() {
+                    break;
+                }
+                let assistant_msg = Message {
+                    role: Role::Assistant,
+                    content: accumulated_text,
+                    tool_call_id: None,
+                    tool_name: None,
+                    tool_calls: None,
+                };
+                let store_c = store.clone();
+                let cid = convo_id.clone();
+                match tokio::task::spawn_blocking(move || {
+                    store_c.append_message(&cid, &assistant_msg, None)
+                })
+                .await
+                {
+                    Ok(Ok(id)) => last_message_id = id,
+                    Ok(Err(e)) => error = Some(format!("persist assistant: {e}")),
+                    Err(e) => error = Some(format!("persist join: {e}")),
+                }
+                break;
+            }
+
+            // Has tool calls → persist assistant turn (text + tool_calls)
+            // and dispatch each call, persisting results as Tool messages.
+            let assistant_msg = Message {
+                role: Role::Assistant,
+                content: accumulated_text,
+                tool_call_id: None,
+                tool_name: None,
+                tool_calls: Some(emitted_tool_calls.clone()),
+            };
+            {
+                let store_c = store.clone();
+                let cid = convo_id.clone();
+                if let Err(e) = tokio::task::spawn_blocking(move || {
+                    store_c.append_message(&cid, &assistant_msg, None)
+                })
+                .await
+                .map_err(|e| format!("persist join: {e}"))
+                .and_then(|r| r.map_err(|e| format!("persist assistant: {e}")))
+                {
+                    error = Some(e);
+                    break;
+                }
+            }
+
+            // Dispatch each tool call.
+            let mut all_succeeded = true;
+            for call in emitted_tool_calls {
+                if cancel.is_cancelled() {
+                    cancelled = true;
+                    break;
+                }
+                let dispatch_call = ToolCall {
+                    name: call.name.clone(),
+                    arguments: call.arguments.clone(),
+                };
+                let result = tool_registry
+                    .dispatch(dispatch_call, &gate, &workspace, &scope_default)
+                    .await;
+                let (ok, output) = match &result {
+                    ToolResult::Ok { value } => (true, value.clone()),
+                    ToolResult::Denied { reason } => {
+                        all_succeeded = false;
+                        (false, serde_json::json!({ "denied": reason }))
+                    }
+                    ToolResult::Error { message } => {
+                        all_succeeded = false;
+                        (false, serde_json::json!({ "error": message }))
+                    }
+                };
+                let _ = app_handle.emit(
+                    STREAM_EVENT,
+                    StreamPayload::ToolResult {
+                        run_id: run_id_bg.clone(),
+                        id: call.id.clone(),
+                        name: call.name.clone(),
+                        ok,
+                        output: output.clone(),
+                    },
+                );
+                let result_text = serde_json::to_string(&output)
+                    .unwrap_or_else(|_| "(unserialisable result)".into());
+                let tool_msg = Message {
+                    role: Role::Tool,
+                    content: result_text,
+                    // Carry both: opaque id (Anthropic/OpenAI/LM Studio
+                    // link by this) AND function name (Gemini/Ollama
+                    // link by this). Each provider picks the field its
+                    // wire format expects.
+                    tool_call_id: Some(call.id.clone()),
+                    tool_name: Some(call.name.clone()),
+                    tool_calls: None,
+                };
+                let store_c = store.clone();
+                let cid = convo_id.clone();
+                if let Err(e) = tokio::task::spawn_blocking(move || {
+                    store_c.append_message(&cid, &tool_msg, None)
+                })
+                .await
+                .map_err(|e| format!("persist join: {e}"))
+                .and_then(|r| r.map_err(|e| format!("persist tool: {e}")))
+                {
+                    error = Some(e);
+                    break;
+                }
+            }
+
+            if cancelled || error.is_some() {
+                break;
+            }
+            // If everything succeeded, loop again to let the model use the
+            // results. Loop exit is gated on the model returning text without
+            // any further tool calls (handled at the top of the next iter).
+            let _ = all_succeeded;
+        }
+
+        if iteration >= MAX_AGENT_ITERATIONS && error.is_none() && !cancelled {
+            error = Some(format!(
+                "agent loop exceeded {MAX_AGENT_ITERATIONS} iterations — model kept calling tools without finalising"
+            ));
         }
 
         app_handle.state::<AppState>().drop_agent_run(&run_id_bg);
 
         if cancelled {
-            // Persist whatever the assistant produced before cancel so the
-            // user keeps the partial answer in history.
-            if !accumulated.is_empty() {
-                let assistant_msg = Message {
-                    role: Role::Assistant,
-                    content: accumulated,
-                    tool_call_id: None,
-                };
-                let store_c = store.clone();
-                let cid = convo_id.clone();
-                let _ = tokio::task::spawn_blocking(move || {
-                    store_c.append_message(&cid, &assistant_msg, None)
-                })
-                .await;
-            }
             let _ = app_handle.emit(
                 STREAM_EVENT,
                 StreamPayload::Cancelled {
@@ -852,7 +1131,6 @@ pub async fn agent_send_message(
             );
             return;
         }
-
         if let Some(msg) = error {
             let _ = app_handle.emit(
                 STREAM_EVENT,
@@ -863,43 +1141,13 @@ pub async fn agent_send_message(
             );
             return;
         }
-
-        if accumulated.is_empty() {
-            let _ = app_handle.emit(
-                STREAM_EVENT,
-                StreamPayload::Done {
-                    run_id: run_id_bg,
-                    message_id: String::new(),
-                },
-            );
-            return;
-        }
-
-        let assistant_msg = Message {
-            role: Role::Assistant,
-            content: accumulated,
-            tool_call_id: None,
-        };
-        let store_c = store.clone();
-        let cid = convo_id.clone();
-        let persist_result =
-            tokio::task::spawn_blocking(move || store_c.append_message(&cid, &assistant_msg, None))
-                .await;
-        let payload = match persist_result {
-            Ok(Ok(id)) => StreamPayload::Done {
+        let _ = app_handle.emit(
+            STREAM_EVENT,
+            StreamPayload::Done {
                 run_id: run_id_bg,
-                message_id: id,
+                message_id: last_message_id,
             },
-            Ok(Err(e)) => StreamPayload::Error {
-                run_id: run_id_bg,
-                message: format!("persist assistant: {e}"),
-            },
-            Err(e) => StreamPayload::Error {
-                run_id: run_id_bg,
-                message: format!("persist join: {e}"),
-            },
-        };
-        let _ = app_handle.emit(STREAM_EVENT, payload);
+        );
     });
 
     Ok(SendMessageResponse { run_id })

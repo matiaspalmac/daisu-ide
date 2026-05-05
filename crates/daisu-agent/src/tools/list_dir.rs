@@ -25,6 +25,7 @@ impl Tool for ListDir {
             name: "list_dir",
             description: "List entries in a workspace directory.",
             tier: PermissionTier::Auto,
+            input_schema: r#"{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}"#,
         }
     }
 

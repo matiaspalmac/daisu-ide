@@ -181,6 +181,17 @@ export type StreamPayload =
   | { type: "started"; runId: string; conversationId: string }
   | { type: "delta"; runId: string; text: string }
   | { type: "warning"; runId: string; message: string }
+  | { type: "toolUseStart"; runId: string; id: string; name: string }
+  | { type: "toolUseArgsDelta"; runId: string; id: string; fragment: string }
+  | { type: "toolUseDone"; runId: string; id: string }
+  | {
+      type: "toolResult";
+      runId: string;
+      id: string;
+      name: string;
+      ok: boolean;
+      output: unknown;
+    }
   | { type: "done"; runId: string; messageId: string }
   | { type: "error"; runId: string; message: string }
   | { type: "cancelled"; runId: string };

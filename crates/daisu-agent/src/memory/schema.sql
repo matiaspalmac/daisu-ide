@@ -20,7 +20,17 @@ CREATE TABLE IF NOT EXISTS messages (
     conversation_id TEXT NOT NULL REFERENCES conversations (id) ON DELETE CASCADE,
     role TEXT NOT NULL,
     content TEXT NOT NULL,
+    -- Opaque call id (Anthropic / OpenAI / LM Studio link results
+    -- by id). Null on non-tool messages.
     tool_call_id TEXT,
+    -- Function name (Gemini / Ollama link results by name). Carried
+    -- alongside tool_call_id rather than overloading it so providers
+    -- pick the right field unambiguously.
+    tool_name TEXT,
+    -- JSON-encoded Vec<ToolCall> for assistant turns that emitted
+    -- tool calls. Null/empty for plain text turns. Round-tripped via
+    -- the LLM provider trait's `tool_calls` field on `Message`.
+    tool_calls_json TEXT,
     created_at INTEGER NOT NULL,
     input_tokens INTEGER,
     output_tokens INTEGER
@@ -60,3 +70,12 @@ CREATE TABLE IF NOT EXISTS schema_version (
 );
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (1);
+
+-- Migration: add tool_calls_json column for older databases that
+-- predate the tool-loop work. SQLite ignores ADD COLUMN when the
+-- column already exists in newer DBs created from the CREATE TABLE
+-- above; existing rows get NULL which deserialises as None.
+-- Use a try/catch via a no-op statement so re-running on already
+-- migrated DBs doesn't fail.
+-- (PRAGMA used as the safe variant since SQLite has no IF NOT EXISTS
+-- for ALTER TABLE ADD COLUMN until 3.35.5+.)

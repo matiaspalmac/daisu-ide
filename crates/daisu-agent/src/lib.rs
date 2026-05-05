@@ -28,6 +28,6 @@ pub use permission::{
 };
 pub use provider::{
     CompletionRequest, CompletionResponse, LlmProvider, Message, ModelInfo, ProviderId, Role,
-    StreamEvent,
+    StreamEvent, ToolCall as ProviderToolCall, ToolChoice, ToolDef,
 };
 pub use tools::{Tool, ToolCall, ToolDescriptor, ToolRegistry, ToolResult};

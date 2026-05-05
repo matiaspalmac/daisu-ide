@@ -14,9 +14,10 @@ use serde_json::json;
 
 use super::{
     CompletionRequest, CompletionResponse, LlmProvider, ModelInfo, ProviderId, Role, StreamEvent,
-    StreamResult, TokenUsage, ToolCapability,
+    StreamResult, TokenUsage, ToolCall, ToolCapability, ToolChoice,
 };
 use crate::error::{AgentError, AgentResult};
+use std::collections::HashMap;
 
 pub struct LmStudioProvider {
     client: reqwest::Client,
@@ -40,13 +41,45 @@ impl LmStudioProvider {
             messages.push(json!({ "role": "system", "content": sys }));
         }
         for m in &req.messages {
-            let role = match m.role {
-                Role::System => "system",
-                Role::User => "user",
-                Role::Assistant => "assistant",
-                Role::Tool => "tool",
-            };
-            messages.push(json!({ "role": role, "content": m.content }));
+            match m.role {
+                Role::Tool => {
+                    let id = m.tool_call_id.clone().unwrap_or_default();
+                    messages.push(json!({
+                        "role": "tool",
+                        "tool_call_id": id,
+                        "content": m.content,
+                    }));
+                }
+                Role::Assistant => {
+                    let mut entry = json!({ "role": "assistant", "content": m.content });
+                    if let Some(calls) = m.tool_calls.as_ref() {
+                        if !calls.is_empty() {
+                            let arr: Vec<serde_json::Value> = calls
+                                .iter()
+                                .map(|c| {
+                                    json!({
+                                        "id": c.id,
+                                        "type": "function",
+                                        "function": {
+                                            "name": c.name,
+                                            "arguments": serde_json::to_string(&c.arguments)
+                                                .unwrap_or_else(|_| "{}".into()),
+                                        }
+                                    })
+                                })
+                                .collect();
+                            entry["tool_calls"] = json!(arr);
+                        }
+                    }
+                    messages.push(entry);
+                }
+                Role::User => {
+                    messages.push(json!({ "role": "user", "content": m.content }));
+                }
+                Role::System => {
+                    messages.push(json!({ "role": "system", "content": m.content }));
+                }
+            }
         }
         let mut body = json!({
             "model": req.model,
@@ -56,6 +89,32 @@ impl LmStudioProvider {
         });
         if let Some(t) = req.temperature {
             body["temperature"] = json!(t);
+        }
+        if !req.tools.is_empty() {
+            // Standard OpenAI Chat Completions tool schema (nested
+            // `function` wrapper, unlike Responses API).
+            let tools: Vec<serde_json::Value> = req
+                .tools
+                .iter()
+                .map(|t| {
+                    let mut fun = json!({
+                        "name": t.name,
+                        "parameters": t.input_schema,
+                    });
+                    if let Some(d) = t.description.as_deref() {
+                        fun["description"] = json!(d);
+                    }
+                    json!({ "type": "function", "function": fun })
+                })
+                .collect();
+            body["tools"] = json!(tools);
+            if let Some(choice) = req.tool_choice {
+                body["tool_choice"] = match choice {
+                    ToolChoice::Auto => json!("auto"),
+                    ToolChoice::Required => json!("required"),
+                    ToolChoice::None => json!("none"),
+                };
+            }
         }
         body
     }
@@ -86,6 +145,22 @@ struct Choice {
 struct ChoiceMessage {
     #[serde(default)]
     content: Option<String>,
+    #[serde(default)]
+    tool_calls: Vec<OaiToolCall>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct OaiToolCall {
+    #[serde(default)]
+    id: String,
+    function: OaiFunction,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct OaiFunction {
+    name: String,
+    #[serde(default)]
+    arguments: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -116,6 +191,29 @@ struct ChoiceDelta {
 struct DeltaBody {
     #[serde(default)]
     content: Option<String>,
+    #[serde(default)]
+    tool_calls: Vec<DeltaToolCall>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct DeltaToolCall {
+    /// Index of this tool call within the assistant turn. Multiple
+    /// chunks share the same index for the same call; we accumulate
+    /// `function.name` + `function.arguments` per index.
+    #[serde(default)]
+    index: u32,
+    #[serde(default)]
+    id: Option<String>,
+    #[serde(default)]
+    function: Option<DeltaFunction>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct DeltaFunction {
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    arguments: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -224,8 +322,37 @@ impl LlmProvider for LmStudioProvider {
         }
         let env: ChatEnvelope = serde_json::from_str(&text)?;
         let first = env.choices.into_iter().next();
-        let (content, finish) = first.map_or((String::new(), None), |c| {
-            (c.message.content.unwrap_or_default(), c.finish_reason)
+        let (content, finish, tool_calls) = first.map_or((String::new(), None, Vec::new()), |c| {
+            let calls: Vec<ToolCall> = c
+                .message
+                .tool_calls
+                .into_iter()
+                .enumerate()
+                .map(|(i, tc)| {
+                    let args: serde_json::Value = if tc.function.arguments.trim().is_empty() {
+                        json!({})
+                    } else {
+                        serde_json::from_str(&tc.function.arguments).unwrap_or_else(|_| json!({}))
+                    };
+                    ToolCall {
+                        // LM Studio echoes ids when the model emits them;
+                        // some local models don't, so synthesize a stable
+                        // fallback to keep the runtime correlation safe.
+                        id: if tc.id.is_empty() {
+                            format!("lms-{i}")
+                        } else {
+                            tc.id
+                        },
+                        name: tc.function.name,
+                        arguments: args,
+                    }
+                })
+                .collect();
+            (
+                c.message.content.unwrap_or_default(),
+                c.finish_reason,
+                calls,
+            )
         });
         Ok(CompletionResponse {
             content,
@@ -235,9 +362,11 @@ impl LlmProvider for LmStudioProvider {
                 input_tokens: u.prompt_tokens,
                 output_tokens: u.completion_tokens,
             }),
+            tool_calls,
         })
     }
 
+    #[allow(clippy::too_many_lines)]
     fn stream(&self, req: CompletionRequest) -> StreamResult {
         let body = Self::build_body(&req, true);
         let client = self.client.clone();
@@ -265,6 +394,21 @@ impl LlmProvider for LmStudioProvider {
             let mut events = resp.bytes_stream().eventsource();
             let mut finish_reason: Option<String> = None;
             let mut usage: Option<TokenUsage> = None;
+            // Per-index tool_call accumulator. OpenAI Chat Completions
+            // streams tool calls as a sequence of `delta.tool_calls`
+            // chunks where each chunk supplies *part* of one or more
+            // calls — first chunk has the id+name, later chunks append
+            // to `function.arguments` (a string). We emit
+            // ToolUseStart/ArgsDelta as we go and ToolUseDone at the
+            // end-of-stream signal.
+            struct PendingFn {
+                id: String,
+                name: String,
+                args_json: String,
+                emitted_start: bool,
+            }
+            let mut pending: HashMap<u32, PendingFn> = HashMap::new();
+            let mut emit_order: Vec<u32> = Vec::new();
 
             while let Some(event) = events.next().await {
                 let event = event.map_err(|e| AgentError::Provider(format!("sse: {e}")))?;
@@ -275,6 +419,58 @@ impl LlmProvider for LmStudioProvider {
                             if let Some(text) = choice.delta.content {
                                 if !text.is_empty() {
                                     yield StreamEvent::Delta { text };
+                                }
+                            }
+                            for tc in choice.delta.tool_calls {
+                                let idx = tc.index;
+                                let entry = pending.entry(idx).or_insert_with(|| {
+                                    emit_order.push(idx);
+                                    PendingFn {
+                                        id: String::new(),
+                                        name: String::new(),
+                                        args_json: String::new(),
+                                        emitted_start: false,
+                                    }
+                                });
+                                if let Some(id) = tc.id {
+                                    if !id.is_empty() {
+                                        entry.id = id;
+                                    }
+                                }
+                                if let Some(f) = tc.function {
+                                    if let Some(n) = f.name {
+                                        if !n.is_empty() {
+                                            entry.name = n;
+                                        }
+                                    }
+                                    if let Some(a) = f.arguments {
+                                        entry.args_json.push_str(&a);
+                                        if entry.emitted_start {
+                                            yield StreamEvent::ToolUseArgsDelta {
+                                                id: entry.id.clone(),
+                                                fragment: a,
+                                            };
+                                        }
+                                    }
+                                }
+                                // Emit Start once we have id+name. Some
+                                // models stream id and name in the first
+                                // chunk; others trickle them in.
+                                if !entry.emitted_start && !entry.name.is_empty() {
+                                    if entry.id.is_empty() {
+                                        entry.id = format!("lms-{idx}");
+                                    }
+                                    yield StreamEvent::ToolUseStart {
+                                        id: entry.id.clone(),
+                                        name: entry.name.clone(),
+                                    };
+                                    entry.emitted_start = true;
+                                    if !entry.args_json.is_empty() {
+                                        yield StreamEvent::ToolUseArgsDelta {
+                                            id: entry.id.clone(),
+                                            fragment: entry.args_json.clone(),
+                                        };
+                                    }
                                 }
                             }
                             if let Some(r) = choice.finish_reason {
@@ -294,7 +490,32 @@ impl LlmProvider for LmStudioProvider {
                 }
             }
 
-            yield StreamEvent::Done { finish_reason, usage };
+            // Finalise pending tool calls: parse args, emit Done events,
+            // assemble the final ToolCall vec in stream order.
+            let mut tool_calls: Vec<ToolCall> = Vec::new();
+            for idx in emit_order {
+                if let Some(p) = pending.remove(&idx) {
+                    if p.name.is_empty() { continue; }
+                    let parsed: serde_json::Value = if p.args_json.trim().is_empty() {
+                        json!({})
+                    } else {
+                        serde_json::from_str(&p.args_json).unwrap_or_else(|_| json!({}))
+                    };
+                    let id = if p.id.is_empty() {
+                        format!("lms-{idx}")
+                    } else {
+                        p.id
+                    };
+                    yield StreamEvent::ToolUseDone { id: id.clone() };
+                    tool_calls.push(ToolCall {
+                        id,
+                        name: p.name,
+                        arguments: parsed,
+                    });
+                }
+            }
+
+            yield StreamEvent::Done { finish_reason, usage, tool_calls };
         };
 
         Box::pin(stream)
@@ -328,5 +549,46 @@ mod tests {
         let chunk: ChatChunk = serde_json::from_str(raw).unwrap();
         assert_eq!(chunk.choices.len(), 1);
         assert_eq!(chunk.choices[0].delta.content.as_deref(), Some("hello"));
+    }
+
+    #[test]
+    fn delta_tool_calls_decode_per_index() {
+        let raw = r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_a","function":{"name":"read_file","arguments":"{\"path\":\""}}]},"finish_reason":null}]}"#;
+        let chunk: ChatChunk = serde_json::from_str(raw).unwrap();
+        let tcs = &chunk.choices[0].delta.tool_calls;
+        assert_eq!(tcs.len(), 1);
+        assert_eq!(tcs[0].index, 0);
+        assert_eq!(tcs[0].id.as_deref(), Some("call_a"));
+        let f = tcs[0].function.as_ref().expect("function");
+        assert_eq!(f.name.as_deref(), Some("read_file"));
+        assert_eq!(f.arguments.as_deref(), Some(r#"{"path":""#));
+    }
+
+    #[test]
+    fn second_chunk_appends_argument_fragment() {
+        // Real OpenAI Chat Completions streaming sends id+name on the
+        // first delta, then arg fragments on subsequent deltas.
+        let raw = r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"x.rs\"}"}}]}}]}"#;
+        let chunk: ChatChunk = serde_json::from_str(raw).unwrap();
+        let f = chunk.choices[0].delta.tool_calls[0]
+            .function
+            .as_ref()
+            .expect("function");
+        assert_eq!(f.name, None);
+        assert_eq!(f.arguments.as_deref(), Some(r#"x.rs"}"#));
+    }
+
+    #[test]
+    fn full_message_with_tool_calls_extracts() {
+        let raw = r#"{"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_a","function":{"name":"read_file","arguments":"{\"path\":\"src/main.rs\"}"}}]},"finish_reason":"tool_calls"}],"model":"qwen2.5-coder","usage":{"prompt_tokens":4,"completion_tokens":3}}"#;
+        let env: ChatEnvelope = serde_json::from_str(raw).unwrap();
+        let msg = &env.choices[0].message;
+        assert_eq!(msg.tool_calls.len(), 1);
+        assert_eq!(msg.tool_calls[0].id, "call_a");
+        assert_eq!(msg.tool_calls[0].function.name, "read_file");
+        assert_eq!(
+            msg.tool_calls[0].function.arguments,
+            r#"{"path":"src/main.rs"}"#
+        );
     }
 }
