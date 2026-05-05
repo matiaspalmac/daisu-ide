@@ -1,6 +1,11 @@
 import { create } from "zustand";
 
-export type PaletteMode = "files" | "commands" | "symbols";
+export type PaletteMode =
+  | "files"
+  | "commands"
+  | "symbols"
+  | "lspSymbols"
+  | "fileSymbols";
 
 interface PaletteState {
   open: boolean;

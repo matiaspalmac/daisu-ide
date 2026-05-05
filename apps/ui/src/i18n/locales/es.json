@@ -222,6 +222,16 @@
       "fileSearch": "Buscar archivo…",
       "fileSearchEmpty": "Abrí una carpeta para buscar archivos",
       "command": "Buscar comando…"
+    },
+    "lspSymbols": {
+      "placeholder": "Buscar símbolos del workspace (LSP)",
+      "empty": "No se encontraron símbolos",
+      "minChars": "Escribí al menos 2 caracteres"
+    },
+    "fileSymbols": {
+      "placeholder": "Ir a símbolo en archivo",
+      "empty": "No hay símbolos en este archivo",
+      "notSupported": "El servidor no provee símbolos para este lenguaje"
     }
   },
   "welcome": {

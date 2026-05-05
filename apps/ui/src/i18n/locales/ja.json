@@ -222,6 +222,16 @@
       "fileSearch": "ファイルを検索…",
       "fileSearchEmpty": "ファイルを検索するにはフォルダを開いてください",
       "command": "コマンドを検索…"
+    },
+    "lspSymbols": {
+      "placeholder": "ワークスペースのシンボルを検索 (LSP)",
+      "empty": "シンボルが見つかりません",
+      "minChars": "2 文字以上入力してください"
+    },
+    "fileSymbols": {
+      "placeholder": "ファイル内のシンボルへ移動",
+      "empty": "このファイルにシンボルはありません",
+      "notSupported": "このサーバーはこの言語のシンボルを提供しません"
     }
   },
   "welcome": {
