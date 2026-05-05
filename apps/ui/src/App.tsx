@@ -53,10 +53,13 @@ export function App(): JSX.Element {
   const focusMode = useUI((s) => s.focusMode);
   const terminalOpen = useTerminal((s) => s.open);
 
-  // Ctrl+` toggles the terminal panel; opens a new tab if none exist.
+  // Ctrl+` and Ctrl+J both toggle the terminal panel (VSCode parity);
+  // opens a new tab if none exist.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key === "`") {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      if (e.key === "`" || e.key === "j" || e.key === "J") {
         e.preventDefault();
         const s = useTerminal.getState();
         if (s.tabs.length === 0) s.newTab();
