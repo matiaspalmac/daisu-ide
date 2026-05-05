@@ -57,12 +57,19 @@ export async function trackModelOpen(
   model: monaco.editor.ITextModel,
 ): Promise<void> {
   const path = (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
-  await documentOpen(path, model.getValue());
+  try {
+    await documentOpen(path, model.getValue());
+  } catch {
+    // Backend unavailable (no workspace trusted, dev rebuild) — bridge
+    // is best-effort. Subsequent change/close calls are similarly
+    // guarded so transient IPC failures don't spam the console.
+    return;
+  }
   const debounced = debounce((text: string) => {
-    void documentChange(path, text);
+    void documentChange(path, text).catch(() => undefined);
   }, 200);
   model.onDidChangeContent(() => debounced(model.getValue()));
   model.onWillDispose(() => {
-    void documentClose(path);
+    void documentClose(path).catch(() => undefined);
   });
 }
