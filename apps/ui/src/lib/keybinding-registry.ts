@@ -51,6 +51,8 @@ export const ACTIONS: ActionDef[] = [
   { id: "view.toggleAgents", category: "View", label: "Toggle agents panel", defaultBinding: "$mod+j" },
   { id: "view.toggleSearch", category: "View", label: "Toggle search panel", defaultBinding: "$mod+Shift+f" },
   { id: "view.toggleFocusMode", category: "View", label: "Toggle focus mode (静)", defaultBinding: "$mod+\\" },
+  { id: "view.toggleProblems", category: "View", label: "Toggle problems panel", defaultBinding: "$mod+Shift+m" },
+  { id: "view.toggleOutput", category: "View", label: "Toggle output panel", defaultBinding: "$mod+Shift+u" },
 
   // Terminal (VSCode-parity defaults)
   { id: "terminal.toggle", category: "Terminal", label: "Toggle terminal", defaultBinding: "$mod+`" },

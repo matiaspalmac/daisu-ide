@@ -11,8 +11,8 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { EditorArea } from "./components/layout/EditorArea";
 import { RightPanel } from "./components/layout/RightPanel";
 import { StatusBar } from "./components/layout/StatusBar";
-import { TerminalPanel } from "./components/terminal/TerminalPanel";
-import { useTerminal } from "./stores/terminalStore";
+import { BottomPanel } from "./components/bottompanel/BottomPanel";
+import { useBottomPanel } from "./stores/bottomPanelStore";
 import { useSearchListeners } from "./hooks/useSearchListeners";
 import { useDiscordRpc } from "./hooks/useDiscordRpc";
 import { ToastViewport } from "./components/ui/Toast";
@@ -51,7 +51,7 @@ export function App(): JSX.Element {
   const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
   const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
   const focusMode = useUI((s) => s.focusMode);
-  const terminalOpen = useTerminal((s) => s.open);
+  const bottomPanelOpen = useBottomPanel((s) => s.open);
 
 
   useEffect(() => {
@@ -344,9 +344,9 @@ export function App(): JSX.Element {
         </Group>
         {activityBarVisible && activityBarOnRight && !focusMode && <ActivityBar />}
       </div>
-      {terminalOpen && (
-        <div className="h-[220px] flex-shrink-0">
-          <TerminalPanel />
+      {bottomPanelOpen && (
+        <div className="h-[260px] flex-shrink-0">
+          <BottomPanel />
         </div>
       )}
       {design.statusBarVisible && !focusMode && <StatusBar />}

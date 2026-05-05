@@ -5,6 +5,7 @@ import { useUI } from "../stores/uiStore";
 import { useWorkspace } from "../stores/workspaceStore";
 import { usePalette } from "../stores/paletteStore";
 import { useTerminal } from "../stores/terminalStore";
+import { useBottomPanel } from "../stores/bottomPanelStore";
 import { getActiveEditor } from "./monaco-editor-ref";
 import { runSlashCommand } from "./agent-slash";
 
@@ -87,11 +88,29 @@ export const ACTION_HANDLERS: Record<string, (ctx: ActionContext) => void> = {
   "view.toggleSearch": (ctx) => ctx.ui.toggleSearchPanel(),
   "view.toggleFocusMode": (ctx) => ctx.ui.toggleFocusMode(),
   "terminal.toggle": () => {
+    const bp = useBottomPanel.getState();
     const t = useTerminal.getState();
-    if (t.tabs.length === 0) t.newTab();
-    else t.toggle();
+    if (!bp.open || bp.active !== "terminal") {
+      bp.show("terminal");
+      if (t.tabs.length === 0) t.newTab();
+    } else {
+      bp.setOpen(false);
+    }
   },
-  "terminal.new": () => useTerminal.getState().newTab(),
+  "terminal.new": () => {
+    useBottomPanel.getState().show("terminal");
+    useTerminal.getState().newTab();
+  },
+  "view.toggleProblems": () => {
+    const bp = useBottomPanel.getState();
+    if (bp.open && bp.active === "problems") bp.setOpen(false);
+    else bp.show("problems");
+  },
+  "view.toggleOutput": () => {
+    const bp = useBottomPanel.getState();
+    if (bp.open && bp.active === "output") bp.setOpen(false);
+    else bp.show("output");
+  },
   "terminal.killActive": () => {
     const t = useTerminal.getState();
     if (t.activeId) t.closeTab(t.activeId);

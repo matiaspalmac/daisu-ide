@@ -45,15 +45,20 @@ pub async fn terminal_spawn(
     state: State<'_, AppState>,
     req: TermSpawnReq,
 ) -> AppResult<TermSpawnRes> {
-    let id = state
-        .term_manager
-        .spawn(TermSpawnOpts {
+    // PTY allocation + child spawn perform blocking IO; offload so we
+    // don't stall the Tauri async runtime (which froze the UI).
+    let mgr = state.term_manager.clone();
+    let id = tokio::task::spawn_blocking(move || {
+        mgr.spawn(TermSpawnOpts {
             cwd: req.cwd,
             shell: req.shell,
             cols: req.cols,
             rows: req.rows,
         })
-        .map_err(map_term)?;
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("spawn join: {e}")))?
+    .map_err(map_term)?;
     let mut sub = state.term_manager.subscribe(&id).map_err(map_term)?;
     let event_name = format!("{OUTPUT_EVENT_PREFIX}{id}");
     let exit_name = format!("{EXIT_EVENT_PREFIX}{id}");
@@ -88,7 +93,12 @@ pub async fn terminal_write(state: State<'_, AppState>, req: TermWriteReq) -> Ap
     let bytes = engine
         .decode(req.data.as_bytes())
         .map_err(|e| AppError::Internal(format!("base64: {e}")))?;
-    state.term_manager.write(&req.id, &bytes).map_err(map_term)
+    let mgr = state.term_manager.clone();
+    let id = req.id;
+    tokio::task::spawn_blocking(move || mgr.write(&id, &bytes))
+        .await
+        .map_err(|e| AppError::Internal(format!("write join: {e}")))?
+        .map_err(map_term)
 }
 
 #[derive(Debug, Deserialize)]

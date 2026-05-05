@@ -605,6 +605,18 @@
     "killTab": "タブを終了",
     "toggle": "ターミナル切り替え"
   },
+  "bottomPanel": {
+    "problems": "問題",
+    "output": "出力",
+    "debug": "デバッグコンソール",
+    "terminal": "ターミナル",
+    "ports": "ポート",
+    "close": "パネルを閉じる",
+    "problemsEmpty": "問題は検出されませんでした。",
+    "outputEmpty": "出力チャネルはまだありません。",
+    "debugComingSoon": "デバッグコンソール — 近日公開。",
+    "portsComingSoon": "ポート転送 — 近日公開。"
+  },
   "lsp": {
     "untrustedChip": "信頼されていないワークスペース",
     "trustButton": "ワークスペースを信頼",
