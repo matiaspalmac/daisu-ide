@@ -598,6 +598,13 @@
     "searchHeading": "BUSCAR",
     "explorerHeading": "EXPLORADOR"
   },
+  "terminal": {
+    "title": "Terminal",
+    "newTab": "Nueva terminal",
+    "close": "Cerrar terminal",
+    "killTab": "Matar pestaña",
+    "toggle": "Alternar terminal"
+  },
   "lsp": {
     "untrustedChip": "Workspace no confiado",
     "trustButton": "Confiar en workspace",

@@ -598,6 +598,13 @@
     "searchHeading": "検索",
     "explorerHeading": "エクスプローラ"
   },
+  "terminal": {
+    "title": "ターミナル",
+    "newTab": "新しいターミナル",
+    "close": "ターミナルを閉じる",
+    "killTab": "タブを終了",
+    "toggle": "ターミナル切り替え"
+  },
   "lsp": {
     "untrustedChip": "信頼されていないワークスペース",
     "trustButton": "ワークスペースを信頼",

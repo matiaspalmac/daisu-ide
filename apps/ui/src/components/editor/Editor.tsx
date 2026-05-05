@@ -8,6 +8,7 @@ import {
 } from "@monaco-editor/react";
 import type * as monacoNs from "monaco-editor";
 import * as monacoLocal from "monaco-editor";
+import { attach as attachLsp, trackModelOpen as trackLspModel } from "../../lsp/monacoBridge";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
@@ -122,6 +123,14 @@ export function Editor(): JSX.Element {
     editor.onKeyUp((e) => {
       const kind = keyKindFromCode(e.code);
       if (kind) keySoundEngine.play(kind, true);
+    });
+    // M4.1: wire LSP bridge + per-model didOpen/didChange/didClose.
+    void attachLsp(monaco);
+    const initialModel = editor.getModel();
+    if (initialModel) void trackLspModel(initialModel);
+    editor.onDidChangeModel(() => {
+      const newModel = editor.getModel();
+      if (newModel) void trackLspModel(newModel);
     });
   };
 

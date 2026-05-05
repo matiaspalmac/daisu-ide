@@ -11,6 +11,8 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { EditorArea } from "./components/layout/EditorArea";
 import { RightPanel } from "./components/layout/RightPanel";
 import { StatusBar } from "./components/layout/StatusBar";
+import { TerminalPanel } from "./components/terminal/TerminalPanel";
+import { useTerminal } from "./stores/terminalStore";
 import { useSearchListeners } from "./hooks/useSearchListeners";
 import { useDiscordRpc } from "./hooks/useDiscordRpc";
 import { ToastViewport } from "./components/ui/Toast";
@@ -49,6 +51,21 @@ export function App(): JSX.Element {
   const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
   const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
   const focusMode = useUI((s) => s.focusMode);
+  const terminalOpen = useTerminal((s) => s.open);
+
+  // Ctrl+` toggles the terminal panel; opens a new tab if none exist.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "`") {
+        e.preventDefault();
+        const s = useTerminal.getState();
+        if (s.tabs.length === 0) s.newTab();
+        else s.toggle();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     document.body.classList.toggle("daisu-focus-mode", focusMode);
@@ -340,6 +357,11 @@ export function App(): JSX.Element {
         </Group>
         {activityBarVisible && activityBarOnRight && !focusMode && <ActivityBar />}
       </div>
+      {terminalOpen && (
+        <div className="h-[220px] flex-shrink-0">
+          <TerminalPanel />
+        </div>
+      )}
       {design.statusBarVisible && !focusMode && <StatusBar />}
       <ToastViewport />
       <CloseConfirmModalConnected />
