@@ -27,6 +27,7 @@ pub use permission::{
     PermissionRequestEvent, PermissionTier,
 };
 pub use provider::{
-    CompletionRequest, CompletionResponse, LlmProvider, Message, ProviderId, Role, StreamEvent,
+    CompletionRequest, CompletionResponse, LlmProvider, Message, ModelInfo, ProviderId, Role,
+    StreamEvent,
 };
 pub use tools::{Tool, ToolCall, ToolDescriptor, ToolRegistry, ToolResult};

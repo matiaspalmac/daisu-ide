@@ -12,7 +12,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use super::{
-    CompletionRequest, CompletionResponse, LlmProvider, ProviderId, Role, StreamEvent,
+    CompletionRequest, CompletionResponse, LlmProvider, ModelInfo, ProviderId, Role, StreamEvent,
     StreamResult, TokenUsage, ToolCapability,
 };
 use crate::error::{AgentError, AgentResult};
@@ -133,6 +133,18 @@ struct ApiError {
     error: ApiErrorBody,
 }
 
+#[derive(Deserialize)]
+struct ModelListEnv {
+    data: Vec<AnthropicModel>,
+}
+
+#[derive(Deserialize)]
+struct AnthropicModel {
+    id: String,
+    #[serde(default)]
+    display_name: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 struct ApiErrorBody {
     #[allow(dead_code)]
@@ -155,6 +167,36 @@ impl LlmProvider for AnthropicProvider {
             function_calls: true,
             parallel_calls: true,
         }
+    }
+
+    fn default_model(&self) -> &str {
+        "claude-sonnet-4-6"
+    }
+
+    async fn list_models(&self) -> AgentResult<Vec<ModelInfo>> {
+        let resp = self
+            .client
+            .get(format!("{API_BASE}/models?limit=1000"))
+            .header("x-api-key", &self.api_key)
+            .header("anthropic-version", API_VERSION)
+            .send()
+            .await?;
+        let status = resp.status();
+        let text = resp.text().await?;
+        if !status.is_success() {
+            return Err(AgentError::Provider(format!("models {status}: {text}")));
+        }
+        let env: ModelListEnv = serde_json::from_str(&text)?;
+        Ok(env
+            .data
+            .into_iter()
+            .map(|m| ModelInfo {
+                id: m.id,
+                display_name: m.display_name,
+                context_window: Some(200_000),
+                supports_tools: true,
+            })
+            .collect())
     }
 
     async fn complete(&self, req: CompletionRequest) -> AgentResult<CompletionResponse> {

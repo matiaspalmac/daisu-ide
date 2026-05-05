@@ -75,6 +75,27 @@ export function testProvider(
   return invoke<ProviderTestResponse>("agent_provider_test", { req });
 }
 
+export interface ModelInfo {
+  id: string;
+  displayName?: string | null;
+  contextWindow?: number | null;
+  supportsTools: boolean;
+}
+
+export interface ProviderModelsResponse {
+  models: ModelInfo[];
+  defaultModel: string;
+}
+
+export function listProviderModels(
+  provider: AgentProviderId,
+  baseUrl?: string,
+): Promise<ProviderModelsResponse> {
+  return invoke<ProviderModelsResponse>("agent_provider_models", {
+    req: { provider, baseUrl },
+  });
+}
+
 // ----------------------------------------------------------------------------
 // Phase 1 — conversations + streaming
 // ----------------------------------------------------------------------------

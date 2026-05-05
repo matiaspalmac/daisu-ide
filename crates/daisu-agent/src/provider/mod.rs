@@ -117,6 +117,21 @@ pub struct ToolCapability {
     pub parallel_calls: bool,
 }
 
+/// Metadata describing a single model exposed by a provider's catalog.
+/// Returned from `list_models` so the UI can show every model the
+/// provider currently advertises without us hardcoding lists.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelInfo {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<u32>,
+    #[serde(default)]
+    pub supports_tools: bool,
+}
+
 pub type StreamResult = Pin<Box<dyn Stream<Item = AgentResult<StreamEvent>> + Send>>;
 
 #[async_trait]
@@ -124,6 +139,13 @@ pub trait LlmProvider: Send + Sync {
     fn id(&self) -> ProviderId;
     fn name(&self) -> &str;
     fn supported_tools(&self) -> ToolCapability;
+    /// Recommended default model for new conversations. UI pre-selects
+    /// this in the dropdown; users can pick any model from `list_models`.
+    fn default_model(&self) -> &str;
+    /// Fetch the live catalog of models the provider currently exposes.
+    /// Implementations hit the provider's models endpoint — we never
+    /// hardcode lists since they change every release.
+    async fn list_models(&self) -> AgentResult<Vec<ModelInfo>>;
     async fn complete(&self, req: CompletionRequest) -> AgentResult<CompletionResponse>;
     fn stream(&self, req: CompletionRequest) -> StreamResult;
 }

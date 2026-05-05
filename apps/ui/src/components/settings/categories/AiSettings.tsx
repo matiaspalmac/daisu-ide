@@ -13,7 +13,9 @@ import { useWorkspace } from "../../../stores/workspaceStore";
 import {
   type AgentProviderId,
   type AgentProviderInfo,
+  type ModelInfo,
   listProviders,
+  listProviderModels,
   setProviderKey,
   clearProviderKey,
   testProvider,
@@ -31,11 +33,11 @@ import {
 } from "../../../lib/agent-tools";
 
 const PROVIDER_DEFAULT_MODELS: Record<AgentProviderId, string> = {
-  ollama: "llama3.2",
-  anthropic: "claude-haiku-4-5-20251001",
-  openai: "gpt-4o-mini",
-  gemini: "gemini-2.5-flash",
-  lmstudio: "local-model",
+  ollama: "qwen3-coder",
+  anthropic: "claude-sonnet-4-6",
+  openai: "gpt-5.5",
+  gemini: "gemini-2.5-pro",
+  lmstudio: "loaded-model",
 };
 
 interface TestResult {
@@ -63,6 +65,9 @@ export function AiSettings(): JSX.Element {
   const [installedModels, setInstalledModels] = useState<string[]>([]);
   const [detecting, setDetecting] = useState(false);
   const [detectMsg, setDetectMsg] = useState<string | null>(null);
+  const [providerModels, setProviderModels] = useState<ModelInfo[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (ai.id !== "ollama") {
@@ -139,6 +144,8 @@ export function AiSettings(): JSX.Element {
     setKeyDraft("");
     setKeyError(null);
     setTestResult(null);
+    setProviderModels([]);
+    setModelsError(null);
   }, [ai.id]);
 
   async function refresh(): Promise<void> {
@@ -150,6 +157,29 @@ export function AiSettings(): JSX.Element {
       setLoadError(String((e as Error).message ?? e));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchModels(): Promise<void> {
+    setLoadingModels(true);
+    setModelsError(null);
+    setProviderModels([]);
+    try {
+      const baseUrl =
+        ai.id === "ollama"
+          ? ai.ollamaBaseUrl
+          : ai.id === "lmstudio"
+            ? ai.lmstudioBaseUrl
+            : undefined;
+      const res = await listProviderModels(
+        ai.id as AgentProviderId,
+        baseUrl,
+      );
+      setProviderModels(res.models);
+    } catch (e) {
+      setModelsError(String((e as Error).message ?? e));
+    } finally {
+      setLoadingModels(false);
     }
   }
 
@@ -310,7 +340,7 @@ export function AiSettings(): JSX.Element {
         <input
           id="ai-model"
           type="text"
-          list={ai.id === "ollama" ? "ollama-models" : undefined}
+          list="provider-models"
           className="daisu-input daisu-input-mono"
           value={ai.model}
           onChange={(e) =>
@@ -319,12 +349,44 @@ export function AiSettings(): JSX.Element {
           spellCheck={false}
           autoComplete="off"
         />
-        {ai.id === "ollama" && installedModels.length > 0 && (
-          <datalist id="ollama-models">
-            {installedModels.map((m) => (
-              <option key={m} value={m} />
+        {(providerModels.length > 0 || installedModels.length > 0) && (
+          <datalist id="provider-models">
+            {providerModels.map((m) => (
+              <option
+                key={m.id}
+                value={m.id}
+                label={m.displayName ?? undefined}
+              />
             ))}
+            {ai.id === "ollama" &&
+              providerModels.length === 0 &&
+              installedModels.map((m) => <option key={m} value={m} />)}
           </datalist>
+        )}
+      </div>
+      <div className="daisu-field-row">
+        <button
+          type="button"
+          className="daisu-btn"
+          disabled={
+            loadingModels ||
+            (current?.requiresKey === true && !current.hasKey)
+          }
+          onClick={() => void fetchModels()}
+        >
+          {loadingModels ? t("ai.loadingModels") : t("ai.fetchModels")}
+        </button>
+        {providerModels.length > 0 && (
+          <span className="daisu-test-status is-ok" aria-live="polite">
+            <CheckCircle size={12} weight="fill" />
+            {t("ai.modelsFound", { count: providerModels.length })}
+          </span>
+        )}
+        {modelsError && (
+          <span className="daisu-test-status is-fail" role="alert">
+            <WarningCircle size={12} weight="fill" />
+            {modelsError}
+          </span>
         )}
       </div>
       {ai.id === "ollama" && (

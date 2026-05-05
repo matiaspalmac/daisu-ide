@@ -28,12 +28,15 @@ use daisu_agent::{
     keychain,
     memory::{ConversationSummary, MemoryStore, StoredMessage},
     permission::gate::PERMISSION_REQUEST_EVENT,
-    provider::{anthropic::AnthropicProvider, ollama::OllamaProvider, ProviderId, ToolCapability},
+    provider::{
+        anthropic::AnthropicProvider, gemini::GeminiProvider, lmstudio::LmStudioProvider,
+        ollama::OllamaProvider, openai::OpenAiProvider, ProviderId, ToolCapability,
+    },
     runtime::CancelToken,
     tools::{apply_accepted_hunks, EditHunk, ProposeEdit},
     AgentResult, AllowlistEntry, CompletionRequest, Decision, EventEmitter, LlmProvider,
-    McpServerConfig, McpToolResult, Message, PermissionGate, PermissionRequestEvent, Role,
-    StreamEvent, ToolCall, ToolDescriptor, ToolResult,
+    McpServerConfig, McpToolResult, Message, ModelInfo, PermissionGate, PermissionRequestEvent,
+    Role, StreamEvent, ToolCall, ToolDescriptor, ToolResult,
 };
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -107,7 +110,7 @@ pub async fn agent_provider_list() -> AppResult<Vec<ProviderInfo>> {
     ];
 
     let mut out = Vec::with_capacity(entries.len());
-    for (id, name, caps, implemented) in entries {
+    for (id, name, caps, _legacy_implemented) in entries {
         let requires_key = id.requires_key();
         let has_key = if requires_key {
             tokio::task::spawn_blocking(move || keychain::has_key(id.as_str()))
@@ -124,10 +127,39 @@ pub async fn agent_provider_list() -> AppResult<Vec<ProviderInfo>> {
             has_key,
             supports_tools: caps.function_calls,
             supports_parallel_tools: caps.parallel_calls,
-            implemented,
+            // All five providers ship full implementations as of M3 Phase 1.
+            implemented: true,
         });
     }
     Ok(out)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderModelsRequest {
+    pub provider: String,
+    #[serde(default)]
+    pub base_url: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderModelsResponse {
+    pub models: Vec<ModelInfo>,
+    pub default_model: String,
+}
+
+#[tauri::command]
+pub async fn agent_provider_models(
+    req: ProviderModelsRequest,
+) -> AppResult<ProviderModelsResponse> {
+    let provider = build_provider(&req.provider, req.base_url.as_deref()).await?;
+    let default_model = provider.default_model().to_string();
+    let models = provider.list_models().await.map_err(map_agent)?;
+    Ok(ProviderModelsResponse {
+        models,
+        default_model,
+    })
 }
 
 #[tauri::command]
@@ -209,9 +241,22 @@ async fn build_provider(provider: &str, base_url: Option<&str>) -> AppResult<Box
             let p = AnthropicProvider::new(key).map_err(map_agent)?;
             Ok(Box::new(p))
         }
-        other => Err(AppError::Internal(format!(
-            "provider not yet implemented: {other}"
-        ))),
+        "openai" => {
+            let key = load_key("openai").await?;
+            let p = OpenAiProvider::new(key).map_err(map_agent)?;
+            Ok(Box::new(p))
+        }
+        "gemini" => {
+            let key = load_key("gemini").await?;
+            let p = GeminiProvider::new(key).map_err(map_agent)?;
+            Ok(Box::new(p))
+        }
+        "lmstudio" => {
+            let url = base_url.unwrap_or("http://localhost:1234/v1").to_string();
+            let p = LmStudioProvider::new(url).map_err(map_agent)?;
+            Ok(Box::new(p))
+        }
+        other => Err(AppError::Internal(format!("unknown provider: {other}"))),
     }
 }
 
