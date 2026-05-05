@@ -82,7 +82,19 @@ fn main() {
             commands::lsp::lsp_workspace_is_trusted,
             commands::lsp::lsp_workspace_trust,
             commands::lsp::lsp_workspace_revoke,
-            commands::lsp::lsp_servers_status
+            commands::lsp::lsp_servers_status,
+            commands::lsp::lsp_document_open,
+            commands::lsp::lsp_document_change,
+            commands::lsp::lsp_document_close,
+            commands::lsp::lsp_completion,
+            commands::lsp::lsp_completion_resolve,
+            commands::lsp::lsp_hover,
+            commands::lsp::lsp_signature_help,
+            commands::terminal::terminal_spawn,
+            commands::terminal::terminal_write,
+            commands::terminal::terminal_resize,
+            commands::terminal::terminal_kill,
+            commands::terminal::terminal_list
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
