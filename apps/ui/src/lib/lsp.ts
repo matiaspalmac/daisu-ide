@@ -1,7 +1,20 @@
 import { invoke } from "@tauri-apps/api/core";
+import type {
+  LspGotoDefinitionResponse,
+  LspLocation,
+  LspDocumentSymbolResponse,
+  LspWorkspaceSymbolResponse,
+} from "../lsp/types";
 
 export interface TrustState {
   trusted: boolean;
+}
+
+export interface NavCapabilities {
+  definition: boolean;
+  references: boolean;
+  documentSymbol: boolean;
+  workspaceSymbol: boolean;
 }
 
 export interface ServerStatus {
@@ -10,6 +23,7 @@ export interface ServerStatus {
   resolution: { kind: "found"; path: string } | { kind: "missing" };
   state: "idle" | "spawning" | "ready" | "crashed";
   rssMb: number | null;
+  capabilities: NavCapabilities;
 }
 
 export function isWorkspaceTrusted(workspacePath: string): Promise<TrustState> {
@@ -150,5 +164,46 @@ export function lspSignatureHelp(
 ): Promise<LspSignatureHelp | null> {
   return invoke<LspSignatureHelp | null>("lsp_signature_help", {
     req: { path, line, character, serverId },
+  });
+}
+
+export function lspDefinition(
+  path: string,
+  line: number,
+  character: number,
+  serverId?: string,
+): Promise<LspGotoDefinitionResponse | null> {
+  return invoke<LspGotoDefinitionResponse | null>("lsp_definition", {
+    req: { path, line, character, serverId },
+  });
+}
+
+export function lspReferences(
+  path: string,
+  line: number,
+  character: number,
+  includeDeclaration: boolean,
+  serverId?: string,
+): Promise<LspLocation[]> {
+  return invoke<LspLocation[]>("lsp_references", {
+    req: { path, line, character, serverId, includeDeclaration },
+  });
+}
+
+export function lspDocumentSymbol(
+  path: string,
+  serverId?: string,
+): Promise<LspDocumentSymbolResponse | null> {
+  return invoke<LspDocumentSymbolResponse | null>("lsp_document_symbol", {
+    req: { path, serverId },
+  });
+}
+
+export function lspWorkspaceSymbol(
+  query: string,
+  serverId: string,
+): Promise<LspWorkspaceSymbolResponse | null> {
+  return invoke<LspWorkspaceSymbolResponse | null>("lsp_workspace_symbol", {
+    req: { query, serverId },
   });
 }
