@@ -1,7 +1,14 @@
 //! JSON-RPC 2.0 envelope types and `id` correlation.
 
+use std::collections::HashMap;
+use std::sync::{
+    atomic::{AtomicI64, Ordering},
+    Arc,
+};
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tokio::sync::{oneshot, Mutex};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -51,6 +58,42 @@ pub struct RpcError {
     pub message: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
+}
+
+/// Tracks in-flight requests by id so incoming responses can be
+/// dispatched to the awaiting caller.
+#[derive(Default, Clone)]
+pub struct Correlator {
+    next_id: Arc<AtomicI64>,
+    pending: Arc<Mutex<HashMap<RequestId, oneshot::Sender<Response>>>>,
+}
+
+impl Correlator {
+    /// Reserve a new request id and return the receiver that will be
+    /// notified when the matching response arrives.
+    pub async fn reserve(&self) -> (RequestId, oneshot::Receiver<Response>) {
+        let id = RequestId::Number(self.next_id.fetch_add(1, Ordering::Relaxed));
+        let (tx, rx) = oneshot::channel();
+        self.pending.lock().await.insert(id.clone(), tx);
+        (id, rx)
+    }
+
+    /// Dispatch an incoming response to the awaiting caller. Returns
+    /// `false` if no caller is registered (orphan response).
+    pub async fn dispatch(&self, resp: Response) -> bool {
+        let id = resp.id.clone();
+        if let Some(tx) = self.pending.lock().await.remove(&id) {
+            let _ = tx.send(resp);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Drop a pending entry (used when a request is cancelled).
+    pub async fn cancel(&self, id: &RequestId) {
+        self.pending.lock().await.remove(id);
+    }
 }
 
 #[cfg(test)]
@@ -115,6 +158,55 @@ mod tests {
         match m {
             Message::Request(r) => assert!(r.params.is_none()),
             _ => panic!("expected request"),
+        }
+    }
+
+    #[tokio::test]
+    async fn reserve_returns_unique_ids() {
+        let c = Correlator::default();
+        let (id1, _) = c.reserve().await;
+        let (id2, _) = c.reserve().await;
+        assert_ne!(id1, id2);
+    }
+
+    #[tokio::test]
+    async fn dispatch_delivers_response_to_awaiter() {
+        let c = Correlator::default();
+        let (id, rx) = c.reserve().await;
+        let response = Response {
+            jsonrpc: "2.0".into(),
+            id: id.clone(),
+            result: Some(serde_json::json!({"ok": true})),
+            error: None,
+        };
+        let dispatched = c.dispatch(response).await;
+        assert!(dispatched);
+        let got = rx.await.unwrap();
+        assert_eq!(got.id, id);
+    }
+
+    #[tokio::test]
+    async fn dispatch_orphan_returns_false() {
+        let c = Correlator::default();
+        let response = Response {
+            jsonrpc: "2.0".into(),
+            id: RequestId::Number(999),
+            result: None,
+            error: None,
+        };
+        assert!(!c.dispatch(response).await);
+    }
+
+    #[tokio::test]
+    async fn cancel_removes_pending_entry() {
+        let c = Correlator::default();
+        let (id, mut rx) = c.reserve().await;
+        c.cancel(&id).await;
+        // The receiver's tx half was dropped on cancel, so awaiting now
+        // resolves to Err instead of producing a value.
+        match tokio::time::timeout(std::time::Duration::from_millis(10), &mut rx).await {
+            Ok(Err(_)) => {} // expected: sender dropped
+            other => panic!("expected closed receiver, got {other:?}"),
         }
     }
 }
