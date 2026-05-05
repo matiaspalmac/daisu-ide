@@ -4,6 +4,7 @@ import { useTabs } from "../stores/tabsStore";
 import { useUI } from "../stores/uiStore";
 import { useWorkspace } from "../stores/workspaceStore";
 import { usePalette } from "../stores/paletteStore";
+import { useTerminal } from "../stores/terminalStore";
 import { getActiveEditor } from "./monaco-editor-ref";
 import { runSlashCommand } from "./agent-slash";
 
@@ -85,6 +86,30 @@ export const ACTION_HANDLERS: Record<string, (ctx: ActionContext) => void> = {
   "view.toggleAgents": (ctx) => ctx.ui.toggleAgentsPanel(),
   "view.toggleSearch": (ctx) => ctx.ui.toggleSearchPanel(),
   "view.toggleFocusMode": (ctx) => ctx.ui.toggleFocusMode(),
+  "terminal.toggle": () => {
+    const t = useTerminal.getState();
+    if (t.tabs.length === 0) t.newTab();
+    else t.toggle();
+  },
+  "terminal.new": () => useTerminal.getState().newTab(),
+  "terminal.killActive": () => {
+    const t = useTerminal.getState();
+    if (t.activeId) t.closeTab(t.activeId);
+  },
+  "terminal.next": () => {
+    const t = useTerminal.getState();
+    if (t.tabs.length === 0 || !t.activeId) return;
+    const i = t.tabs.findIndex((x) => x.uiId === t.activeId);
+    const next = t.tabs[(i + 1) % t.tabs.length];
+    if (next) t.setActive(next.uiId);
+  },
+  "terminal.prev": () => {
+    const t = useTerminal.getState();
+    if (t.tabs.length === 0 || !t.activeId) return;
+    const i = t.tabs.findIndex((x) => x.uiId === t.activeId);
+    const prev = t.tabs[(i - 1 + t.tabs.length) % t.tabs.length];
+    if (prev) t.setActive(prev.uiId);
+  },
   "settings.open": (ctx) => ctx.ui.openSettings(),
   "editor.formatDocument": (ctx) => {
     ctx.editor?.trigger("kb", "editor.action.formatDocument", {});
