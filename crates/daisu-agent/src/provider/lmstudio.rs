@@ -550,4 +550,45 @@ mod tests {
         assert_eq!(chunk.choices.len(), 1);
         assert_eq!(chunk.choices[0].delta.content.as_deref(), Some("hello"));
     }
+
+    #[test]
+    fn delta_tool_calls_decode_per_index() {
+        let raw = r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_a","function":{"name":"read_file","arguments":"{\"path\":\""}}]},"finish_reason":null}]}"#;
+        let chunk: ChatChunk = serde_json::from_str(raw).unwrap();
+        let tcs = &chunk.choices[0].delta.tool_calls;
+        assert_eq!(tcs.len(), 1);
+        assert_eq!(tcs[0].index, 0);
+        assert_eq!(tcs[0].id.as_deref(), Some("call_a"));
+        let f = tcs[0].function.as_ref().expect("function");
+        assert_eq!(f.name.as_deref(), Some("read_file"));
+        assert_eq!(f.arguments.as_deref(), Some(r#"{"path":""#));
+    }
+
+    #[test]
+    fn second_chunk_appends_argument_fragment() {
+        // Real OpenAI Chat Completions streaming sends id+name on the
+        // first delta, then arg fragments on subsequent deltas.
+        let raw = r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"x.rs\"}"}}]}}]}"#;
+        let chunk: ChatChunk = serde_json::from_str(raw).unwrap();
+        let f = chunk.choices[0].delta.tool_calls[0]
+            .function
+            .as_ref()
+            .expect("function");
+        assert_eq!(f.name, None);
+        assert_eq!(f.arguments.as_deref(), Some(r#"x.rs"}"#));
+    }
+
+    #[test]
+    fn full_message_with_tool_calls_extracts() {
+        let raw = r#"{"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_a","function":{"name":"read_file","arguments":"{\"path\":\"src/main.rs\"}"}}]},"finish_reason":"tool_calls"}],"model":"qwen2.5-coder","usage":{"prompt_tokens":4,"completion_tokens":3}}"#;
+        let env: ChatEnvelope = serde_json::from_str(raw).unwrap();
+        let msg = &env.choices[0].message;
+        assert_eq!(msg.tool_calls.len(), 1);
+        assert_eq!(msg.tool_calls[0].id, "call_a");
+        assert_eq!(msg.tool_calls[0].function.name, "read_file");
+        assert_eq!(
+            msg.tool_calls[0].function.arguments,
+            r#"{"path":"src/main.rs"}"#
+        );
+    }
 }

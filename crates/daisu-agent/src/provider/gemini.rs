@@ -541,4 +541,24 @@ mod tests {
             .collect();
         assert_eq!(kept, vec!["models/streaming-only", "models/standard"]);
     }
+
+    #[test]
+    fn function_call_part_decodes_with_object_args() {
+        let raw = r#"{"candidates":[{"content":{"parts":[{"functionCall":{"name":"list_dir","args":{"path":"."}}}]}}]}"#;
+        let env: GenerateResponse = serde_json::from_str(raw).unwrap();
+        let calls = extract_function_calls(&env);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "list_dir");
+        assert_eq!(calls[0].args["path"], ".");
+    }
+
+    #[test]
+    fn parts_with_text_and_function_call_extract_separately() {
+        let raw = r#"{"candidates":[{"content":{"parts":[{"text":"let me check"},{"functionCall":{"name":"read_file","args":{"path":"x.rs"}}}]}}]}"#;
+        let env: GenerateResponse = serde_json::from_str(raw).unwrap();
+        assert_eq!(extract_text(&env), "let me check");
+        let calls = extract_function_calls(&env);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "read_file");
+    }
 }

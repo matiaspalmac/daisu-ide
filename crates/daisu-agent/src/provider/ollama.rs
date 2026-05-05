@@ -374,3 +374,53 @@ impl LlmProvider for OllamaProvider {
         Box::pin(stream)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn done_chunk_with_tool_calls_decodes() {
+        let raw = r#"{"model":"qwen3-coder","done":true,"done_reason":"stop","message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"read_file","arguments":{"path":"src/main.rs"}}}]},"prompt_eval_count":12,"eval_count":4}"#;
+        let chunk: ChatResponse = serde_json::from_str(raw).unwrap();
+        let msg = chunk.message.expect("message");
+        assert_eq!(msg.tool_calls.len(), 1);
+        assert_eq!(msg.tool_calls[0].function.name, "read_file");
+        assert_eq!(msg.tool_calls[0].function.arguments["path"], "src/main.rs");
+        assert!(chunk.done);
+    }
+
+    #[test]
+    fn assistant_message_serialises_tool_calls_in_openai_shape() {
+        let m = super::super::Message {
+            role: Role::Assistant,
+            content: "checking".into(),
+            tool_call_id: None,
+            tool_calls: Some(vec![ToolCall {
+                id: "ollama-0".into(),
+                name: "list_dir".into(),
+                arguments: serde_json::json!({"path": "."}),
+            }]),
+        };
+        let v = message_to_json(&m);
+        assert_eq!(v["role"], "assistant");
+        let calls = v["tool_calls"].as_array().expect("tool_calls array");
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0]["function"]["name"], "list_dir");
+        // Ollama args are objects, not string-encoded JSON.
+        assert_eq!(calls[0]["function"]["arguments"]["path"], ".");
+    }
+
+    #[test]
+    fn tool_role_message_carries_tool_name_link() {
+        let m = super::super::Message {
+            role: Role::Tool,
+            content: "(file contents)".into(),
+            tool_call_id: Some("read_file".into()),
+            tool_calls: None,
+        };
+        let v = message_to_json(&m);
+        assert_eq!(v["role"], "tool");
+        assert_eq!(v["tool_name"], "read_file");
+    }
+}

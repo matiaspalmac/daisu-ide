@@ -628,4 +628,73 @@ mod tests {
             _ => panic!("expected Completed"),
         }
     }
+
+    #[test]
+    fn output_item_added_decodes_function_call() {
+        let raw = r#"{"type":"response.output_item.added","output_index":1,"item":{"type":"function_call","id":"fc_a","call_id":"call_a","name":"read_file"}}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        match parsed {
+            SseEvent::OutputItemAdded {
+                output_index,
+                item: OutputItemAddedPayload::FunctionCall { call_id, name, .. },
+            } => {
+                assert_eq!(output_index, 1);
+                assert_eq!(call_id, "call_a");
+                assert_eq!(name, "read_file");
+            }
+            _ => panic!("expected OutputItemAdded::FunctionCall"),
+        }
+    }
+
+    #[test]
+    fn function_args_delta_carries_fragment() {
+        let raw = r#"{"type":"response.function_call_arguments.delta","item_id":"fc_a","output_index":1,"delta":"{\"path\":\"x\"}"}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        match parsed {
+            SseEvent::FunctionArgsDelta {
+                output_index,
+                delta,
+                ..
+            } => {
+                assert_eq!(output_index, 1);
+                assert_eq!(delta, r#"{"path":"x"}"#);
+            }
+            _ => panic!("expected FunctionArgsDelta"),
+        }
+    }
+
+    #[test]
+    fn function_args_done_carries_full_arguments() {
+        let raw = r#"{"type":"response.function_call_arguments.done","item_id":"fc_a","output_index":1,"arguments":"{\"path\":\"src/main.rs\"}"}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        match parsed {
+            SseEvent::FunctionArgsDone {
+                output_index,
+                arguments,
+                ..
+            } => {
+                assert_eq!(output_index, 1);
+                assert_eq!(arguments, r#"{"path":"src/main.rs"}"#);
+            }
+            _ => panic!("expected FunctionArgsDone"),
+        }
+    }
+
+    #[test]
+    fn non_streaming_response_extracts_function_call_with_args() {
+        let raw = r#"{"output":[{"type":"function_call","call_id":"call_x","name":"list_dir","arguments":"{\"path\":\".\"}"}],"model":"gpt-5.5","status":"completed","usage":{"input_tokens":5,"output_tokens":2}}"#;
+        let env: ResponsesEnvelope = serde_json::from_str(raw).unwrap();
+        match &env.output[0] {
+            OutputItem::FunctionCall {
+                call_id,
+                name,
+                arguments,
+            } => {
+                assert_eq!(call_id, "call_x");
+                assert_eq!(name, "list_dir");
+                assert_eq!(arguments, r#"{"path":"."}"#);
+            }
+            _ => panic!("expected FunctionCall"),
+        }
+    }
 }
