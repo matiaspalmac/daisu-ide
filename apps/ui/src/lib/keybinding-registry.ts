@@ -31,7 +31,7 @@ export const ACTIONS: ActionDef[] = [
   // File
   { id: "file.new", category: "File", label: "New untitled tab", defaultBinding: "$mod+n" },
   { id: "file.open", category: "File", label: "Open file…", defaultBinding: "$mod+o" },
-  { id: "file.openFolder", category: "File", label: "Open folder…", defaultBinding: "$mod+Shift+o" },
+  { id: "file.openFolder", category: "File", label: "Open folder…", defaultBinding: "$mod+k $mod+o" },
   { id: "file.save", category: "File", label: "Save", defaultBinding: "$mod+s" },
   { id: "file.saveAs", category: "File", label: "Save as…", defaultBinding: "$mod+Shift+s" },
   { id: "file.saveAll", category: "File", label: "Save all", defaultBinding: "$mod+Alt+s" },
@@ -73,7 +73,9 @@ export const ACTIONS: ActionDef[] = [
   // Palette
   { id: "palette.openFiles", category: "Palette", label: "Quick open file (索)", defaultBinding: "$mod+p" },
   { id: "palette.openCommands", category: "Palette", label: "Show all commands (命)", defaultBinding: "$mod+Shift+p" },
-  { id: "palette.openSymbols", category: "Palette", label: "Search workspace symbols (号)", defaultBinding: "$mod+t" },
+  { id: "palette.openSymbols", category: "Palette", label: "Search workspace symbols (索引)", defaultBinding: "$mod+t" },
+  { id: "palette.openLspSymbols", category: "Palette", label: "LSP workspace symbols (符)", defaultBinding: "" },
+  { id: "palette.openFileSymbols", category: "Palette", label: "Go to symbol in file", defaultBinding: "$mod+Shift+o" },
 
   // Agente — slash commands. Surface them in the regular commands palette
   // too so users can discover them without typing the slash prefix.
