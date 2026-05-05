@@ -12,7 +12,7 @@ use tokio::io::AsyncBufReadExt;
 use tokio_util::io::StreamReader;
 
 use super::{
-    CompletionRequest, CompletionResponse, LlmProvider, ProviderId, Role, StreamEvent,
+    CompletionRequest, CompletionResponse, LlmProvider, ModelInfo, ProviderId, Role, StreamEvent,
     StreamResult, TokenUsage, ToolCapability,
 };
 use crate::error::{AgentError, AgentResult};
@@ -82,6 +82,24 @@ struct ChatRespMessage {
     content: String,
 }
 
+#[derive(Deserialize)]
+struct TagsEnv {
+    models: Vec<TagModel>,
+}
+
+#[derive(Deserialize)]
+struct TagModel {
+    name: String,
+    #[serde(default)]
+    details: Option<TagDetails>,
+}
+
+#[derive(Deserialize)]
+struct TagDetails {
+    #[serde(default)]
+    parameter_size: Option<String>,
+}
+
 fn role_str(role: Role) -> &'static str {
     match role {
         Role::System => "system",
@@ -122,11 +140,52 @@ impl LlmProvider for OllamaProvider {
     }
 
     fn name(&self) -> &str {
-        "Ollama (local)"
+        ProviderId::Ollama.display_name()
     }
 
     fn supported_tools(&self) -> ToolCapability {
-        ToolCapability::default()
+        ProviderId::Ollama.capabilities()
+    }
+
+    fn default_model(&self) -> &str {
+        ProviderId::Ollama.default_model()
+    }
+
+    async fn list_models(&self) -> AgentResult<Vec<ModelInfo>> {
+        let resp = self
+            .client
+            .get(format!("{}/api/tags", self.base_url))
+            .send()
+            .await?;
+        let status = resp.status();
+        let text = resp.text().await?;
+        if !status.is_success() {
+            return Err(AgentError::Provider(format!("tags {status}: {text}")));
+        }
+        let env: TagsEnv = serde_json::from_str(&text)?;
+        Ok(env
+            .models
+            .into_iter()
+            .map(|m| {
+                let display = m
+                    .details
+                    .as_ref()
+                    .and_then(|d| d.parameter_size.clone())
+                    .map(|s| format!("{} ({s})", m.name));
+                ModelInfo {
+                    id: m.name,
+                    display_name: display,
+                    context_window: None,
+                    // Ollama exposes tool calling on capable models
+                    // (qwen3-coder, llama3.1+, mistral-nemo, command-r).
+                    // We can't tell from /api/tags which support tools
+                    // without an extra /api/show probe, so default
+                    // optimistic and let the runtime degrade if a model
+                    // rejects the `tools` field.
+                    supports_tools: true,
+                }
+            })
+            .collect())
     }
 
     async fn complete(&self, req: CompletionRequest) -> AgentResult<CompletionResponse> {
@@ -163,13 +222,11 @@ impl LlmProvider for OllamaProvider {
             let body = build_payload(&req, true);
             let resp = client.post(&url).json(&body).send().await?;
             let status = resp.status();
-            let resp = if status.is_success() {
-                resp
-            } else {
+            if !status.is_success() {
                 let text = resp.text().await.unwrap_or_default();
-                Err::<reqwest::Response, _>(AgentError::Provider(format!("status {status}: {text}")))?;
-                unreachable!()
-            };
+                Err::<(), _>(AgentError::Provider(format!("status {status}: {text}")))?;
+                return;
+            }
 
             let bytes = resp.bytes_stream().map(|r| r.map_err(std::io::Error::other));
             let reader = StreamReader::new(bytes);

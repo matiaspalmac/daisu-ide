@@ -54,6 +54,7 @@ fn main() {
             commands::agent::agent_key_clear,
             commands::agent::agent_key_has,
             commands::agent::agent_provider_test,
+            commands::agent::agent_provider_models,
             commands::agent::agent_create_conversation,
             commands::agent::agent_list_conversations,
             commands::agent::agent_get_messages,

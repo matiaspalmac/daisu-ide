@@ -12,7 +12,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use super::{
-    CompletionRequest, CompletionResponse, LlmProvider, ProviderId, Role, StreamEvent,
+    CompletionRequest, CompletionResponse, LlmProvider, ModelInfo, ProviderId, Role, StreamEvent,
     StreamResult, TokenUsage, ToolCapability,
 };
 use crate::error::{AgentError, AgentResult};
@@ -92,15 +92,30 @@ enum ContentBlock {
     Other,
 }
 
-#[derive(Debug, Deserialize)]
+/// Anthropic surfaces token usage in three different shapes:
+/// - Non-streaming response: both fields present.
+/// - SSE `message_start`: both present (input final, output starts low).
+/// - SSE `message_delta`: only `output_tokens` (the running total).
+///
+/// Marking both `#[serde(default)]` lets us decode all three without
+/// silently failing the `message_delta` parse — a bug that previously
+/// stripped usage off every streamed Claude response.
+#[derive(Debug, Deserialize, Default, Clone, Copy)]
 struct EnvelopeUsage {
+    #[serde(default)]
     input_tokens: u32,
+    #[serde(default)]
     output_tokens: u32,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum SseEvent {
+    /// First event of every stream — carries the initial usage snapshot
+    /// (input_tokens final, output_tokens 0..N).
+    MessageStart {
+        message: MessageStartPayload,
+    },
     ContentBlockDelta {
         delta: SseDelta,
     },
@@ -111,6 +126,12 @@ enum SseEvent {
     MessageStop,
     #[serde(other)]
     Other,
+}
+
+#[derive(Debug, Deserialize)]
+struct MessageStartPayload {
+    #[serde(default)]
+    usage: Option<EnvelopeUsage>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -133,6 +154,18 @@ struct ApiError {
     error: ApiErrorBody,
 }
 
+#[derive(Deserialize)]
+struct ModelListEnv {
+    data: Vec<AnthropicModel>,
+}
+
+#[derive(Deserialize)]
+struct AnthropicModel {
+    id: String,
+    #[serde(default)]
+    display_name: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 struct ApiErrorBody {
     #[allow(dead_code)]
@@ -147,14 +180,44 @@ impl LlmProvider for AnthropicProvider {
     }
 
     fn name(&self) -> &str {
-        "Anthropic Claude"
+        ProviderId::Anthropic.display_name()
     }
 
     fn supported_tools(&self) -> ToolCapability {
-        ToolCapability {
-            function_calls: true,
-            parallel_calls: true,
+        ProviderId::Anthropic.capabilities()
+    }
+
+    fn default_model(&self) -> &str {
+        ProviderId::Anthropic.default_model()
+    }
+
+    async fn list_models(&self) -> AgentResult<Vec<ModelInfo>> {
+        let resp = self
+            .client
+            .get(format!("{API_BASE}/models?limit=1000"))
+            .header("x-api-key", &self.api_key)
+            .header("anthropic-version", API_VERSION)
+            .send()
+            .await?;
+        let status = resp.status();
+        let text = resp.text().await?;
+        if !status.is_success() {
+            return Err(AgentError::Provider(format!("models {status}: {text}")));
         }
+        let env: ModelListEnv = serde_json::from_str(&text)?;
+        Ok(env
+            .data
+            .into_iter()
+            .map(|m| ModelInfo {
+                id: m.id,
+                display_name: m.display_name,
+                // Anthropic's catalog endpoint doesn't expose context
+                // window — leave None rather than hardcoding 200k, which
+                // will lie the moment a wider-context model ships.
+                context_window: None,
+                supports_tools: true,
+            })
+            .collect())
     }
 
     async fn complete(&self, req: CompletionRequest) -> AgentResult<CompletionResponse> {
@@ -216,27 +279,36 @@ impl LlmProvider for AnthropicProvider {
                 .await?;
 
             let status = resp.status();
-            let resp = if status.is_success() {
-                resp
-            } else {
+            if !status.is_success() {
                 let text = resp.text().await.unwrap_or_default();
                 let msg = serde_json::from_str::<ApiError>(&text).map_or_else(
                     |_| format!("status {status}: {text}"),
                     |e| e.error.message,
                 );
-                Err::<reqwest::Response, _>(AgentError::Provider(msg))?;
-                unreachable!()
-            };
+                Err::<(), _>(AgentError::Provider(msg))?;
+                return;
+            }
 
             let mut events = resp.bytes_stream().eventsource();
             let mut finish_reason: Option<String> = None;
-            let mut usage: Option<TokenUsage> = None;
+            // Accumulate usage across event types: message_start brings
+            // input_tokens, message_delta keeps overwriting output_tokens.
+            let mut input_tokens: u32 = 0;
+            let mut output_tokens: u32 = 0;
+            let mut saw_usage = false;
 
             while let Some(event) = events.next().await {
                 let event = event.map_err(|e| AgentError::Provider(format!("sse: {e}")))?;
                 if event.data.is_empty() { continue; }
                 let parsed: Result<SseEvent, _> = serde_json::from_str(&event.data);
                 match parsed {
+                    Ok(SseEvent::MessageStart { message }) => {
+                        if let Some(u) = message.usage {
+                            input_tokens = u.input_tokens;
+                            output_tokens = u.output_tokens;
+                            saw_usage = true;
+                        }
+                    }
                     Ok(SseEvent::ContentBlockDelta { delta: SseDelta::TextDelta { text } }) => {
                         yield StreamEvent::Delta { text };
                     }
@@ -245,10 +317,10 @@ impl LlmProvider for AnthropicProvider {
                             finish_reason = Some(reason);
                         }
                         if let Some(u) = u {
-                            usage = Some(TokenUsage {
-                                input_tokens: u.input_tokens,
-                                output_tokens: u.output_tokens,
-                            });
+                            // message_delta only ships output_tokens; preserve
+                            // the input count we captured at message_start.
+                            output_tokens = u.output_tokens;
+                            saw_usage = true;
                         }
                     }
                     Ok(SseEvent::MessageStop) => break,
@@ -259,9 +331,71 @@ impl LlmProvider for AnthropicProvider {
                 }
             }
 
+            let usage = if saw_usage {
+                Some(TokenUsage { input_tokens, output_tokens })
+            } else {
+                None
+            };
             yield StreamEvent::Done { finish_reason, usage };
         };
 
         Box::pin(stream)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn message_start_decodes_with_full_usage() {
+        let raw =
+            r#"{"type":"message_start","message":{"usage":{"input_tokens":42,"output_tokens":1}}}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        match parsed {
+            SseEvent::MessageStart { message } => {
+                let u = message.usage.expect("usage");
+                assert_eq!(u.input_tokens, 42);
+                assert_eq!(u.output_tokens, 1);
+            }
+            _ => panic!("expected MessageStart"),
+        }
+    }
+
+    #[test]
+    fn message_delta_decodes_with_only_output_tokens() {
+        // Regression: Anthropic only ships output_tokens on
+        // message_delta, but the previous EnvelopeUsage required both
+        // fields and silently failed every parse.
+        let raw = r#"{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":99}}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        match parsed {
+            SseEvent::MessageDelta { delta, usage } => {
+                assert_eq!(delta.stop_reason.as_deref(), Some("end_turn"));
+                let u = usage.expect("usage");
+                assert_eq!(u.input_tokens, 0);
+                assert_eq!(u.output_tokens, 99);
+            }
+            _ => panic!("expected MessageDelta"),
+        }
+    }
+
+    #[test]
+    fn content_block_delta_decodes_text() {
+        let raw = r#"{"type":"content_block_delta","delta":{"type":"text_delta","text":"hello"}}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        match parsed {
+            SseEvent::ContentBlockDelta {
+                delta: SseDelta::TextDelta { text },
+            } => assert_eq!(text, "hello"),
+            _ => panic!("expected text delta"),
+        }
+    }
+
+    #[test]
+    fn unknown_event_kinds_decode_as_other() {
+        let raw = r#"{"type":"ping"}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        assert!(matches!(parsed, SseEvent::Other));
     }
 }

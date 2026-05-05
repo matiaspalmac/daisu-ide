@@ -40,7 +40,10 @@ const SettingsSchema = z.object({
         z.enum(["gemini", "openai", "anthropic", "lmstudio", "ollama"]),
       )
       .default("ollama"),
-    model: z.string().default("llama3.2"),
+    // Bootstrap model id when no explicit selection has been made.
+    // Mirrors ProviderId::Ollama.default_model() on the Rust side; keep
+    // the two in sync (settings-store default + Rust default).
+    model: z.string().default("qwen3-coder"),
     ollamaBaseUrl: z.string().default("http://localhost:11434"),
     lmstudioBaseUrl: z.string().default("http://localhost:1234/v1"),
     temperature: z.number().min(0).max(2).default(0.7),
