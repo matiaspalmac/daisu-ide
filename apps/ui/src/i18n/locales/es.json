@@ -598,6 +598,15 @@
     "searchHeading": "BUSCAR",
     "explorerHeading": "EXPLORADOR"
   },
+  "lsp": {
+    "untrustedChip": "Workspace no confiado",
+    "trustButton": "Confiar en workspace",
+    "trustDialogTitle": "¿Confiar en este workspace?",
+    "trustDialogBody": "Los language servers de este workspace pueden ejecutar código de los archivos del proyecto (build scripts, proc macros, scripts de package.json). Confiá solo en workspaces de fuentes conocidas.",
+    "trustDialogConfirm": "Confiar",
+    "trustDialogCancel": "Cancelar",
+    "noWorkspaceOpen": "Ningún workspace abierto"
+  },
   "editorKeySound": {
     "heading": "Sonidos de tecleo",
     "description": "Clics suaves de teclado mecánico sintetizados al escribir en el editor. Web Audio puro — sin descargar archivos.",

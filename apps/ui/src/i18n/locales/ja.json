@@ -598,6 +598,15 @@
     "searchHeading": "検索",
     "explorerHeading": "エクスプローラ"
   },
+  "lsp": {
+    "untrustedChip": "信頼されていないワークスペース",
+    "trustButton": "ワークスペースを信頼",
+    "trustDialogTitle": "このワークスペースを信頼しますか?",
+    "trustDialogBody": "このワークスペースの言語サーバーはプロジェクトファイルのコード(build スクリプト、proc マクロ、package.json のスクリプト)を実行できます。信頼できるソースからのワークスペースのみ信頼してください。",
+    "trustDialogConfirm": "信頼",
+    "trustDialogCancel": "キャンセル",
+    "noWorkspaceOpen": "ワークスペースが開かれていません"
+  },
   "editorKeySound": {
     "heading": "タイピング音",
     "description": "エディタ入力時に合成されたメカニカルキーボードの柔らかいクリック音。Web Audio のみ — アセット不要。",
