@@ -96,6 +96,32 @@ impl Correlator {
     }
 }
 
+use tokio::sync::broadcast;
+
+/// Bus carrying server-initiated notifications. Dispatcher publishes;
+/// `LspManager` and `Client` subscribe.
+#[derive(Clone)]
+pub struct NotificationBus {
+    tx: broadcast::Sender<Notification>,
+}
+
+impl Default for NotificationBus {
+    fn default() -> Self {
+        let (tx, _) = broadcast::channel(256);
+        Self { tx }
+    }
+}
+
+impl NotificationBus {
+    pub fn subscribe(&self) -> broadcast::Receiver<Notification> {
+        self.tx.subscribe()
+    }
+
+    pub fn publish(&self, n: Notification) {
+        let _ = self.tx.send(n);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -195,6 +221,20 @@ mod tests {
             error: None,
         };
         assert!(!c.dispatch(response).await);
+    }
+
+    #[tokio::test]
+    async fn notification_bus_fanout() {
+        let bus = NotificationBus::default();
+        let mut a = bus.subscribe();
+        let mut b = bus.subscribe();
+        bus.publish(Notification {
+            jsonrpc: "2.0".into(),
+            method: "x".into(),
+            params: None,
+        });
+        assert_eq!(a.recv().await.unwrap().method, "x");
+        assert_eq!(b.recv().await.unwrap().method, "x");
     }
 
     #[tokio::test]
