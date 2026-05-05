@@ -109,8 +109,57 @@ pub enum Role {
 pub struct Message {
     pub role: Role,
     pub content: String,
+    /// Set on `Role::Tool` messages — links a tool result back to the
+    /// `ToolCall::id` it answers. Required by every provider that
+    /// supports function calling (Anthropic `tool_use_id`, OpenAI
+    /// `tool_call_id`, Ollama `tool_name`+id, etc.).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
+    /// Set on `Role::Assistant` messages when the model emitted one or
+    /// more function/tool calls in this turn. The next turn must answer
+    /// each call with a corresponding `Role::Tool` message before the
+    /// conversation can continue.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<ToolCall>>,
+}
+
+/// Provider-agnostic tool definition. Every supported provider can
+/// translate this into its own wire format (Anthropic `input_schema`,
+/// OpenAI Responses flat `parameters`, Gemini `functionDeclarations`,
+/// Ollama OpenAI-shaped `tools`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolDef {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// JSON Schema for the tool's input. Must be an object schema
+    /// (`{"type":"object","properties":{...},"required":[...]}`).
+    pub input_schema: serde_json::Value,
+}
+
+/// One materialised tool call extracted from a model response. `id`
+/// is provider-issued; we round-trip it back as `tool_call_id` on the
+/// answering `Role::Tool` message. `arguments` is always the parsed
+/// object (not a JSON string), regardless of provider wire format.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCall {
+    pub id: String,
+    pub name: String,
+    pub arguments: serde_json::Value,
+}
+
+/// Tool routing hint sent alongside `tools`. Maps to the provider's
+/// `tool_choice` / `toolConfig.functionCallingConfig.mode` field.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolChoice {
+    /// Model decides whether to call a tool (default).
+    #[default]
+    Auto,
+    /// Model must call exactly one tool.
+    Required,
+    /// Model must not call any tool — text only.
+    None,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,6 +172,12 @@ pub struct CompletionRequest {
     pub max_tokens: u32,
     #[serde(default)]
     pub temperature: Option<f32>,
+    /// Tool catalogue the model may call. Empty == no tools attached.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tools: Vec<ToolDef>,
+    /// Routing hint for the tool catalogue. Defaults to `Auto`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_choice: Option<ToolChoice>,
 }
 
 const fn default_max_tokens() -> u32 {
@@ -139,6 +194,11 @@ pub struct CompletionResponse {
     pub model: String,
     pub finish_reason: Option<String>,
     pub usage: Option<TokenUsage>,
+    /// Tool calls the model emitted in this turn. The runtime loop
+    /// dispatches each one and feeds the results back as `Role::Tool`
+    /// messages on the next request.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tool_calls: Vec<ToolCall>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -153,10 +213,27 @@ pub struct TokenUsage {
 pub enum StreamEvent {
     /// Token / chunk of assistant text.
     Delta { text: String },
-    /// Stream finished cleanly.
+    /// A new tool call has started in this stream. `id` and `name` are
+    /// final; `arguments` start streaming via subsequent
+    /// `ToolUseArgsDelta` events.
+    ToolUseStart { id: String, name: String },
+    /// Incremental fragment of the JSON-encoded `arguments` for an
+    /// in-flight tool call. Append fragments verbatim and parse at
+    /// `ToolUseDone`. Not all providers stream args incrementally
+    /// (Gemini and Ollama emit the full object in one shot — they
+    /// still go through Start → ArgsDelta(full json) → Done).
+    ToolUseArgsDelta { id: String, fragment: String },
+    /// A tool call has finished accumulating. Caller should parse the
+    /// concatenated `fragment`s into JSON and dispatch the call.
+    ToolUseDone { id: String },
+    /// Stream finished cleanly. `tool_calls` contains every fully
+    /// materialised call from this turn (parsed args, ready to dispatch)
+    /// — the runtime loop uses these to drive the agentic step.
     Done {
         finish_reason: Option<String>,
         usage: Option<TokenUsage>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        tool_calls: Vec<ToolCall>,
     },
     /// Stream errored mid-flight (the provider is still responsible for
     /// surfacing the error via the stream's `Err` channel; this event is

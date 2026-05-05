@@ -7,8 +7,13 @@ import {
   Stop,
   PaperPlaneRight,
   WarningCircle,
+  Wrench,
+  CaretRight,
+  CaretDown,
+  CheckCircle,
+  XCircle,
 } from "@phosphor-icons/react";
-import { useAgent } from "../../stores/agentStore";
+import { useAgent, type ChatMessage, type ToolBlock } from "../../stores/agentStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 
 export function ChatPanel(): JSX.Element {
@@ -117,21 +122,7 @@ export function ChatPanel(): JSX.Element {
           </p>
         )}
         {messages.map((m) => (
-          <article
-            key={m.id}
-            className={`daisu-agent-msg is-${m.role}${
-              m.pending ? " is-pending" : ""
-            }`}
-            aria-live={m.pending ? "polite" : undefined}
-          >
-            <header className="daisu-agent-msg-role">{t(`chat.roles.${m.role}`, { defaultValue: m.role })}</header>
-            <div className="daisu-agent-msg-body">{m.content || "…"}</div>
-            {m.warning && (
-              <p className="daisu-agent-msg-warn">
-                <WarningCircle size={11} weight="fill" /> {m.warning}
-              </p>
-            )}
-          </article>
+          <MessageView key={m.id} message={m} t={t} />
         ))}
         {error && (
           <div className="daisu-agent-error" role="alert">
@@ -187,3 +178,94 @@ export function ChatPanel(): JSX.Element {
   );
 }
 
+interface MessageViewProps {
+  message: ChatMessage;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  t: any;
+}
+
+function MessageView({ message: m, t }: MessageViewProps): JSX.Element {
+  return (
+    <article
+      className={`daisu-agent-msg is-${m.role}${m.pending ? " is-pending" : ""}`}
+      aria-live={m.pending ? "polite" : undefined}
+    >
+      <header className="daisu-agent-msg-role">
+        {t(`chat.roles.${m.role}`, { defaultValue: m.role })}
+      </header>
+      {m.content && <div className="daisu-agent-msg-body">{m.content}</div>}
+      {!m.content && !m.toolCalls?.length && (
+        <div className="daisu-agent-msg-body">…</div>
+      )}
+      {m.toolCalls?.map((c) => (
+        <ToolBlockView key={c.id} block={c} t={t} />
+      ))}
+      {m.warning && (
+        <p className="daisu-agent-msg-warn">
+          <WarningCircle size={11} weight="fill" /> {m.warning}
+        </p>
+      )}
+    </article>
+  );
+}
+
+interface ToolBlockViewProps {
+  block: ToolBlock;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  t: any;
+}
+
+function ToolBlockView({ block, t }: ToolBlockViewProps): JSX.Element {
+  const [expanded, setExpanded] = useState(false);
+  const status = block.status;
+  const ok = block.result?.ok ?? null;
+  const Icon = expanded ? CaretDown : CaretRight;
+  return (
+    <div
+      className={`daisu-agent-toolcall is-${status}${
+        ok === false ? " is-failed" : ""
+      }`}
+    >
+      <button
+        type="button"
+        className="daisu-agent-toolcall-head"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        <Icon size={11} />
+        <Wrench size={12} />
+        <span className="daisu-agent-toolcall-name">{block.name}</span>
+        {status === "running" && (
+          <span className="daisu-agent-toolcall-state">
+            {t("chat.toolRunning", { defaultValue: "calling…" })}
+          </span>
+        )}
+        {status === "done" && (
+          <span className="daisu-agent-toolcall-state">
+            {t("chat.toolPending", { defaultValue: "awaiting result" })}
+          </span>
+        )}
+        {status === "result" && ok && (
+          <CheckCircle size={11} weight="fill" className="text-success" />
+        )}
+        {status === "result" && ok === false && (
+          <XCircle size={11} weight="fill" className="text-warn" />
+        )}
+      </button>
+      {expanded && (
+        <div className="daisu-agent-toolcall-body">
+          <pre className="daisu-agent-toolcall-args">
+            {block.argsJson || "{}"}
+          </pre>
+          {block.result && (
+            <pre className="daisu-agent-toolcall-result">
+              {typeof block.result.output === "string"
+                ? block.result.output
+                : JSON.stringify(block.result.output, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

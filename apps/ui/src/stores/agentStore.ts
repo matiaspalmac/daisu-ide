@@ -15,12 +15,29 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useSettings } from "./settingsStore";
 import i18n from "../i18n";
 
+export interface ToolBlock {
+  /** Provider-issued id used to correlate args + result. */
+  id: string;
+  name: string;
+  /** JSON args (parsed when complete, partial during streaming). */
+  argsJson: string;
+  status: "running" | "done" | "result";
+  result?: {
+    ok: boolean;
+    output: unknown;
+  };
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system" | "tool";
   content: string;
   pending?: boolean;
   warning?: string;
+  /** Tool calls the assistant emitted in this turn. UI renders these
+   *  inline with the assistant's text. Tool results are rendered as
+   *  separate messages with role="tool". */
+  toolCalls?: ToolBlock[];
 }
 
 interface AgentState {
@@ -214,6 +231,65 @@ export const useAgent = create<AgentState>((set, get) => ({
           msgs[idx] = { ...msgs[idx], warning: payload.message };
           set({ messages: msgs });
         }
+      } else if (payload.type === "toolUseStart") {
+        const msgs = state.messages.slice();
+        const idx = msgs.findIndex((m) => m.pending);
+        if (idx >= 0 && msgs[idx]) {
+          const existing = msgs[idx].toolCalls ?? [];
+          const next: ToolBlock = {
+            id: payload.id,
+            name: payload.name,
+            argsJson: "",
+            status: "running",
+          };
+          msgs[idx] = {
+            ...msgs[idx],
+            toolCalls: [...existing, next],
+          };
+          set({ messages: msgs });
+        }
+      } else if (payload.type === "toolUseArgsDelta") {
+        const msgs = state.messages.slice();
+        const idx = msgs.findIndex((m) => m.pending);
+        if (idx >= 0 && msgs[idx]?.toolCalls) {
+          const calls = msgs[idx].toolCalls!.map((c) =>
+            c.id === payload.id
+              ? { ...c, argsJson: c.argsJson + payload.fragment }
+              : c,
+          );
+          msgs[idx] = { ...msgs[idx], toolCalls: calls };
+          set({ messages: msgs });
+        }
+      } else if (payload.type === "toolUseDone") {
+        const msgs = state.messages.slice();
+        const idx = msgs.findIndex((m) => m.pending);
+        if (idx >= 0 && msgs[idx]?.toolCalls) {
+          const calls = msgs[idx].toolCalls!.map((c) =>
+            c.id === payload.id ? { ...c, status: "done" as const } : c,
+          );
+          msgs[idx] = { ...msgs[idx], toolCalls: calls };
+          set({ messages: msgs });
+        }
+      } else if (payload.type === "toolResult") {
+        // Tag the matching tool call with its result. Lookup walks back
+        // because by the time the result arrives, the assistant turn may
+        // have stopped pending (next iteration of the agent loop
+        // started). Search every message's toolCalls.
+        const msgs = state.messages.map((m) => {
+          if (!m.toolCalls) return m;
+          let changed = false;
+          const next = m.toolCalls.map((c) => {
+            if (c.id !== payload.id) return c;
+            changed = true;
+            return {
+              ...c,
+              status: "result" as const,
+              result: { ok: payload.ok, output: payload.output },
+            };
+          });
+          return changed ? { ...m, toolCalls: next } : m;
+        });
+        set({ messages: msgs });
       } else if (payload.type === "done") {
         const msgs = state.messages.map((m) =>
           m.pending

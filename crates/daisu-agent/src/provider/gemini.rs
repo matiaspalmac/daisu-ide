@@ -13,7 +13,7 @@ use serde_json::json;
 
 use super::{
     CompletionRequest, CompletionResponse, LlmProvider, ModelInfo, ProviderId, Role, StreamEvent,
-    StreamResult, TokenUsage, ToolCapability,
+    StreamResult, TokenUsage, ToolCall, ToolCapability, ToolChoice,
 };
 use crate::error::{AgentError, AgentResult};
 
@@ -37,22 +37,60 @@ impl GeminiProvider {
 
     fn build_body(req: &CompletionRequest) -> serde_json::Value {
         // Gemini roles: user / model. Tool turns map back to "user".
-        let contents: Vec<_> = req
+        let mut contents: Vec<serde_json::Value> = Vec::with_capacity(req.messages.len());
+        for m in req
             .messages
             .iter()
             .filter(|m| !matches!(m.role, Role::System))
-            .map(|m| {
-                let role = match m.role {
-                    Role::User | Role::Tool => "user",
-                    Role::Assistant => "model",
-                    Role::System => unreachable!(),
-                };
-                json!({
-                    "role": role,
-                    "parts": [{ "text": m.content }],
-                })
-            })
-            .collect();
+        {
+            match m.role {
+                Role::Tool => {
+                    // Tool result = user content with functionResponse part.
+                    // Gemini links by function name (no opaque id), so we
+                    // reuse tool_call_id which we set to the function name
+                    // when persisting.
+                    let name = m.tool_call_id.clone().unwrap_or_default();
+                    let response: serde_json::Value = serde_json::from_str(&m.content)
+                        .unwrap_or_else(|_| json!({ "result": m.content }));
+                    contents.push(json!({
+                        "role": "user",
+                        "parts": [{
+                            "functionResponse": {
+                                "name": name,
+                                "response": response,
+                            }
+                        }],
+                    }));
+                }
+                Role::Assistant => {
+                    let mut parts: Vec<serde_json::Value> = Vec::new();
+                    if !m.content.is_empty() {
+                        parts.push(json!({ "text": m.content }));
+                    }
+                    if let Some(calls) = m.tool_calls.as_ref() {
+                        for c in calls {
+                            parts.push(json!({
+                                "functionCall": {
+                                    "name": c.name,
+                                    "args": c.arguments,
+                                }
+                            }));
+                        }
+                    }
+                    if parts.is_empty() {
+                        parts.push(json!({ "text": "" }));
+                    }
+                    contents.push(json!({ "role": "model", "parts": parts }));
+                }
+                Role::User => {
+                    contents.push(json!({
+                        "role": "user",
+                        "parts": [{ "text": m.content }],
+                    }));
+                }
+                Role::System => unreachable!(),
+            }
+        }
 
         let system = req.system.clone().or_else(|| {
             req.messages
@@ -72,6 +110,33 @@ impl GeminiProvider {
         });
         if let Some(sys) = system {
             body["systemInstruction"] = json!({ "parts": [{ "text": sys }] });
+        }
+        if !req.tools.is_empty() {
+            let declarations: Vec<serde_json::Value> = req
+                .tools
+                .iter()
+                .map(|t| {
+                    let mut v = json!({
+                        "name": t.name,
+                        "parameters": t.input_schema,
+                    });
+                    if let Some(d) = t.description.as_deref() {
+                        v["description"] = json!(d);
+                    }
+                    v
+                })
+                .collect();
+            body["tools"] = json!([{ "functionDeclarations": declarations }]);
+            if let Some(choice) = req.tool_choice {
+                let mode = match choice {
+                    ToolChoice::Auto => "AUTO",
+                    ToolChoice::Required => "ANY",
+                    ToolChoice::None => "NONE",
+                };
+                body["toolConfig"] = json!({
+                    "functionCallingConfig": { "mode": mode }
+                });
+            }
         }
         body
     }
@@ -119,6 +184,15 @@ struct CandidateContent {
 struct Part {
     #[serde(default)]
     text: Option<String>,
+    #[serde(default, rename = "functionCall")]
+    function_call: Option<GeminiFunctionCall>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct GeminiFunctionCall {
+    name: String,
+    #[serde(default)]
+    args: serde_json::Value,
 }
 
 #[derive(Debug, Deserialize)]
@@ -162,6 +236,15 @@ fn extract_text(resp: &GenerateResponse) -> String {
         .filter_map(|c| c.content.as_ref())
         .flat_map(|c| c.parts.iter())
         .filter_map(|p| p.text.clone())
+        .collect()
+}
+
+fn extract_function_calls(resp: &GenerateResponse) -> Vec<GeminiFunctionCall> {
+    resp.candidates
+        .iter()
+        .filter_map(|c| c.content.as_ref())
+        .flat_map(|c| c.parts.iter())
+        .filter_map(|p| p.function_call.clone())
         .collect()
 }
 
@@ -264,6 +347,20 @@ impl LlmProvider for GeminiProvider {
             }
         }
         let content = extract_text(&env);
+        let calls = extract_function_calls(&env);
+        let tool_calls: Vec<ToolCall> = calls
+            .into_iter()
+            .enumerate()
+            .map(|(i, c)| ToolCall {
+                // Gemini doesn't issue ids — synthesize one from name+i.
+                // Persistence layer keys on `tool_call_id` to round-trip
+                // results back, and Gemini matches by function name on
+                // its end so the synthetic id is purely internal.
+                id: format!("gemini-{i}-{}", c.name),
+                name: c.name,
+                arguments: c.args,
+            })
+            .collect();
         let finish_reason = env
             .candidates
             .iter()
@@ -282,6 +379,7 @@ impl LlmProvider for GeminiProvider {
             model: env.model_version.unwrap_or(req.model),
             finish_reason,
             usage,
+            tool_calls,
         })
     }
 
@@ -316,6 +414,7 @@ impl LlmProvider for GeminiProvider {
             let mut events = resp.bytes_stream().eventsource();
             let mut finish_reason: Option<String> = None;
             let mut usage: Option<TokenUsage> = None;
+            let mut tool_calls: Vec<ToolCall> = Vec::new();
 
             while let Some(event) = events.next().await {
                 let event = event.map_err(|e| AgentError::Provider(format!("sse: {e}")))?;
@@ -326,9 +425,29 @@ impl LlmProvider for GeminiProvider {
                         if !text.is_empty() {
                             yield StreamEvent::Delta { text };
                         }
-                        // Surface safety/recitation blocks. When Gemini
-                        // refuses a prompt, candidates is empty and the
-                        // stream would otherwise look like a silent no-op.
+                        // Function calls in Gemini arrive complete (not
+                        // streamed token by token) — emit Start/Args/Done
+                        // synthetically per call so downstream sees the
+                        // same shape as Anthropic/OpenAI.
+                        for c in extract_function_calls(&chunk) {
+                            let id = format!("gemini-{}-{}", tool_calls.len(), c.name);
+                            let args_json = serde_json::to_string(&c.args)
+                                .unwrap_or_else(|_| "{}".into());
+                            yield StreamEvent::ToolUseStart {
+                                id: id.clone(),
+                                name: c.name.clone(),
+                            };
+                            yield StreamEvent::ToolUseArgsDelta {
+                                id: id.clone(),
+                                fragment: args_json,
+                            };
+                            yield StreamEvent::ToolUseDone { id: id.clone() };
+                            tool_calls.push(ToolCall {
+                                id,
+                                name: c.name,
+                                arguments: c.args,
+                            });
+                        }
                         if let Some(fb) = chunk.prompt_feedback.as_ref() {
                             if let Some(reason) = fb.block_reason.clone() {
                                 let detail = fb
@@ -362,7 +481,7 @@ impl LlmProvider for GeminiProvider {
                 }
             }
 
-            yield StreamEvent::Done { finish_reason, usage };
+            yield StreamEvent::Done { finish_reason, usage, tool_calls };
         };
 
         Box::pin(stream)

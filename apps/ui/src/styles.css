@@ -2163,6 +2163,64 @@ body.daisu-focus-mode header[class*="titlebar-h"]:hover { opacity: 1; }
   font-size: 10px;
   color: var(--warn);
 }
+/* Tool-use blocks rendered inline with assistant turns. Collapsible
+ * head shows status + name; expanding reveals JSON args + result. */
+.daisu-agent-toolcall {
+  margin-top: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 11px;
+}
+.daisu-agent-toolcall.is-failed {
+  border-color: var(--warn);
+  background: rgba(184, 115, 106, 0.05);
+}
+.daisu-agent-toolcall-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  background: transparent;
+  border: 0;
+  color: var(--fg-primary);
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+.daisu-agent-toolcall-head:hover {
+  background: var(--warn-soft);
+}
+.daisu-agent-toolcall-name {
+  font-family: var(--font-mono, monospace);
+  color: var(--warn);
+}
+.daisu-agent-toolcall-state {
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: 10px;
+}
+.daisu-agent-toolcall-body {
+  padding: 6px 8px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.daisu-agent-toolcall-args,
+.daisu-agent-toolcall-result {
+  margin: 0;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
+}
 .daisu-agent-error {
   display: inline-flex;
   align-items: center;

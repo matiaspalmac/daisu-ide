@@ -191,6 +191,7 @@ impl Tool for StubTool {
                 name: self.name,
                 description: "",
                 tier: self.tier,
+                input_schema: r#"{"type":"object"}"#,
             })
     }
 
