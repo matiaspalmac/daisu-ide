@@ -47,9 +47,14 @@ impl GeminiProvider {
                 Role::Tool => {
                     // Tool result = user content with functionResponse part.
                     // Gemini links by function name (no opaque id), so we
-                    // reuse tool_call_id which we set to the function name
-                    // when persisting.
-                    let name = m.tool_call_id.clone().unwrap_or_default();
+                    // pull from `tool_name` rather than `tool_call_id`
+                    // (which carries the provider-specific id used by
+                    // OpenAI/Anthropic/LM Studio).
+                    let name = m
+                        .tool_name
+                        .clone()
+                        .or_else(|| m.tool_call_id.clone())
+                        .unwrap_or_default();
                     let response: serde_json::Value = serde_json::from_str(&m.content)
                         .unwrap_or_else(|_| json!({ "result": m.content }));
                     contents.push(json!({
@@ -550,6 +555,32 @@ mod tests {
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].name, "list_dir");
         assert_eq!(calls[0].args["path"], ".");
+    }
+
+    #[test]
+    fn tool_role_uses_tool_name_not_tool_call_id_for_function_response() {
+        // Regression: previously tool_call_id was overloaded as the
+        // function name. Now Gemini reads tool_name; tool_call_id (the
+        // opaque id used by other providers) is ignored on this path.
+        let m = super::super::Message {
+            role: Role::Tool,
+            content: r#"{"path":"x.rs","ok":true}"#.into(),
+            tool_call_id: Some("ignored-opaque-id".into()),
+            tool_name: Some("read_file".into()),
+            tool_calls: None,
+        };
+        let req = CompletionRequest {
+            model: "gemini-2.5-pro".into(),
+            messages: vec![m],
+            system: None,
+            max_tokens: 1024,
+            temperature: None,
+            tools: vec![],
+            tool_choice: None,
+        };
+        let body = GeminiProvider::build_body(&req);
+        let parts = body["contents"][0]["parts"].as_array().unwrap();
+        assert_eq!(parts[0]["functionResponse"]["name"], "read_file");
     }
 
     #[test]

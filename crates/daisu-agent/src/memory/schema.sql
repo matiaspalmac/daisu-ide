@@ -20,7 +20,13 @@ CREATE TABLE IF NOT EXISTS messages (
     conversation_id TEXT NOT NULL REFERENCES conversations (id) ON DELETE CASCADE,
     role TEXT NOT NULL,
     content TEXT NOT NULL,
+    -- Opaque call id (Anthropic / OpenAI / LM Studio link results
+    -- by id). Null on non-tool messages.
     tool_call_id TEXT,
+    -- Function name (Gemini / Ollama link results by name). Carried
+    -- alongside tool_call_id rather than overloading it so providers
+    -- pick the right field unambiguously.
+    tool_name TEXT,
     -- JSON-encoded Vec<ToolCall> for assistant turns that emitted
     -- tool calls. Null/empty for plain text turns. Round-tripped via
     -- the LLM provider trait's `tool_calls` field on `Message`.

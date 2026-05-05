@@ -466,7 +466,10 @@ impl LlmProvider for OpenAiProvider {
             }
             let mut pending: HashMap<u32, PendingFn> = HashMap::new();
             let mut emit_order: Vec<u32> = Vec::new();
-            let mut tool_calls: Vec<ToolCall> = Vec::new();
+            // Completed calls keyed by output_index — preserves the
+            // server's emission order even when ArgsDone events arrive
+            // interleaved across multiple parallel tool calls.
+            let mut completed: HashMap<u32, ToolCall> = HashMap::new();
 
             while let Some(event) = events.next().await {
                 let event = event.map_err(|e| AgentError::Provider(format!("sse: {e}")))?;
@@ -507,7 +510,7 @@ impl LlmProvider for OpenAiProvider {
                                 serde_json::from_str(&p.args_json).unwrap_or_else(|_| json!({}))
                             };
                             let id = p.call_id.clone();
-                            tool_calls.push(ToolCall {
+                            completed.insert(output_index, ToolCall {
                                 id: id.clone(),
                                 name: p.name,
                                 arguments: parsed,
@@ -542,17 +545,13 @@ impl LlmProvider for OpenAiProvider {
                 }
             }
 
-            // Re-order tool_calls to match the order the server emitted
-            // them. (HashMap iteration is unordered.)
-            let mut by_index: HashMap<u32, ToolCall> = HashMap::new();
-            for c in tool_calls.drain(..) {
-                // we can't recover output_index from ToolCall, so just keep
-                // insertion order — vec was populated in stream order.
-                let i = by_index.len() as u32;
-                by_index.insert(i, c);
-            }
-            let ordered_calls: Vec<ToolCall> = (0..by_index.len() as u32)
-                .filter_map(|i| by_index.remove(&i))
+            // Drain in server emission order. `emit_order` was populated
+            // from output_item.added events, so this preserves the
+            // order the model returned regardless of which call's
+            // arguments finished streaming first.
+            let ordered_calls: Vec<ToolCall> = emit_order
+                .into_iter()
+                .filter_map(|idx| completed.remove(&idx))
                 .collect();
 
             yield StreamEvent::Done {

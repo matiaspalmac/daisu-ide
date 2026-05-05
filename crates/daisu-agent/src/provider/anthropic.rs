@@ -596,6 +596,7 @@ mod tests {
             role: Role::Assistant,
             content: "let me check".into(),
             tool_call_id: None,
+            tool_name: None,
             tool_calls: Some(vec![ToolCall {
                 id: "toolu_1".into(),
                 name: "read_file".into(),
@@ -617,6 +618,7 @@ mod tests {
             role: Role::Tool,
             content: "file contents".into(),
             tool_call_id: Some("toolu_1".into()),
+            tool_name: None,
             tool_calls: None,
         };
         let v = AnthropicProvider::message_to_blocks(&m);

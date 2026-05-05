@@ -46,19 +46,19 @@ impl MemoryStore {
     /// NOT EXISTS` won't add columns to a table that already exists, so
     /// post-launch column additions need explicit `ALTER TABLE`.
     fn migrate(conn: &Connection) -> AgentResult<()> {
+        let existing: std::collections::HashSet<String> = {
+            let mut stmt = conn.prepare("PRAGMA table_info(messages)")?;
+            let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
         // tool_calls_json — added when the agentic tool loop landed.
-        let mut has_tool_calls_json = false;
-        let mut stmt = conn.prepare("PRAGMA table_info(messages)")?;
-        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
-        for r in rows {
-            if r? == "tool_calls_json" {
-                has_tool_calls_json = true;
-                break;
-            }
-        }
-        drop(stmt);
-        if !has_tool_calls_json {
+        if !existing.contains("tool_calls_json") {
             conn.execute_batch("ALTER TABLE messages ADD COLUMN tool_calls_json TEXT")?;
+        }
+        // tool_name — added when tool result correlation was split off
+        // from tool_call_id (Gemini/Ollama link by function name).
+        if !existing.contains("tool_name") {
+            conn.execute_batch("ALTER TABLE messages ADD COLUMN tool_name TEXT")?;
         }
         Ok(())
     }
@@ -111,14 +111,15 @@ impl MemoryStore {
             .lock()
             .map_err(|_| crate::error::AgentError::Internal("memory mutex poisoned".into()))?;
         guard.execute(
-            "INSERT INTO messages (id, conversation_id, role, content, tool_call_id, tool_calls_json, created_at, input_tokens, output_tokens) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO messages (id, conversation_id, role, content, tool_call_id, tool_name, tool_calls_json, created_at, input_tokens, output_tokens) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             params![
                 id,
                 conversation_id,
                 role,
                 msg.content,
                 msg.tool_call_id,
+                msg.tool_name,
                 tool_calls_json,
                 now,
                 usage.map(|(i, _)| i),
@@ -164,7 +165,7 @@ impl MemoryStore {
             .lock()
             .map_err(|_| crate::error::AgentError::Internal("memory mutex poisoned".into()))?;
         let mut stmt = guard.prepare(
-            "SELECT id, role, content, tool_call_id, tool_calls_json, created_at \
+            "SELECT id, role, content, tool_call_id, tool_name, tool_calls_json, created_at \
              FROM messages WHERE conversation_id = ?1 ORDER BY created_at, id",
         )?;
         let rows = stmt
@@ -174,8 +175,9 @@ impl MemoryStore {
                     role: row.get(1)?,
                     content: row.get(2)?,
                     tool_call_id: row.get(3)?,
-                    tool_calls_json: row.get(4)?,
-                    created_at: row.get(5)?,
+                    tool_name: row.get(4)?,
+                    tool_calls_json: row.get(5)?,
+                    created_at: row.get(6)?,
                 })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -244,6 +246,9 @@ pub struct StoredMessage {
     pub role: String,
     pub content: String,
     pub tool_call_id: Option<String>,
+    /// Function name for tool result messages. Null for non-tool turns.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
     /// JSON-encoded `Vec<ProviderToolCall>` when the assistant emitted
     /// tool calls in this turn. Round-trips back through
     /// `Message::tool_calls` so the next provider call can reference

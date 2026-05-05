@@ -150,12 +150,13 @@ fn message_to_json(m: &super::Message) -> Value {
             }
         }
     }
-    // Tool results carry tool_name when the upstream message tracked a
-    // tool_call_id back to its function name. Ollama uses the function
-    // name as the link rather than an opaque id.
+    // Ollama links tool results back to the assistant's tool_calls by
+    // function name (its `tool_name` field), not by an opaque id. Use
+    // the message's `tool_name` field; fall back to the id only if the
+    // older code path persisted just an id.
     if matches!(m.role, Role::Tool) {
-        if let Some(id) = m.tool_call_id.as_deref() {
-            v["tool_name"] = Value::String(id.to_string());
+        if let Some(name) = m.tool_name.as_deref().or(m.tool_call_id.as_deref()) {
+            v["tool_name"] = Value::String(name.to_string());
         }
     }
     v
@@ -169,10 +170,7 @@ fn build_payload(req: &CompletionRequest, stream: bool) -> ChatRequest {
             "content": sys,
         }));
     }
-    let _ = stream; // shut up unused var; we still pass below
     for m in &req.messages {
-        // Old loop body uses m to build ChatMessage; we replace with JSON.
-        let _ = m;
         messages.push(message_to_json(m));
     }
     let tools: Vec<Value> = req
@@ -396,6 +394,7 @@ mod tests {
             role: Role::Assistant,
             content: "checking".into(),
             tool_call_id: None,
+            tool_name: None,
             tool_calls: Some(vec![ToolCall {
                 id: "ollama-0".into(),
                 name: "list_dir".into(),
@@ -417,6 +416,7 @@ mod tests {
             role: Role::Tool,
             content: "(file contents)".into(),
             tool_call_id: Some("read_file".into()),
+            tool_name: None,
             tool_calls: None,
         };
         let v = message_to_json(&m);

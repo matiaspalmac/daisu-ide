@@ -56,14 +56,30 @@ fn map_agent(e: daisu_agent::AgentError) -> AppError {
 
 /// Build the `ToolDef` list the LLM sees from the static tool registry.
 /// Parses each tool's `input_schema` JSON literal once per request.
+///
+/// Currently sources from `daisu_agent::tools::registry()` directly —
+/// the runtime `ToolRegistry` is taken as a parameter so the signature
+/// is stable when the registry becomes configurable (per-workspace
+/// tool sets, MCP-injected tools), but for now both paths produce the
+/// same set. A schema parse failure is logged via `eprintln!` rather
+/// than silently degrading; the literal is a compile-time string so
+/// any failure is a programmer error worth surfacing in dev builds.
 fn tool_defs_from_registry(_registry: &ToolRegistry) -> Vec<ToolDef> {
     daisu_agent::tools::registry()
         .into_iter()
-        .map(|d| ToolDef {
-            name: d.name.to_string(),
-            description: Some(d.description.to_string()),
-            input_schema: serde_json::from_str(d.input_schema)
-                .unwrap_or_else(|_| serde_json::json!({"type":"object"})),
+        .map(|d| {
+            let input_schema = serde_json::from_str(d.input_schema).unwrap_or_else(|err| {
+                eprintln!(
+                    "agent: invalid input_schema for tool {} — {err}; falling back to empty object",
+                    d.name
+                );
+                serde_json::json!({"type":"object"})
+            });
+            ToolDef {
+                name: d.name.to_string(),
+                description: Some(d.description.to_string()),
+                input_schema,
+            }
         })
         .collect()
 }
@@ -87,6 +103,7 @@ fn stored_to_message(m: StoredMessage) -> Message {
         role,
         content: m.content,
         tool_call_id: m.tool_call_id,
+        tool_name: m.tool_name,
         tool_calls,
     }
 }
@@ -243,6 +260,7 @@ pub async fn agent_provider_test(req: ProviderTestRequest) -> AppResult<Provider
             role: Role::User,
             content: "Say the single word 'ok'.".into(),
             tool_call_id: None,
+            tool_name: None,
             tool_calls: None,
         }],
         system: None,
@@ -797,6 +815,7 @@ pub async fn agent_send_message(
         role: Role::User,
         content: req.user_text.clone(),
         tool_call_id: None,
+        tool_name: None,
         tool_calls: None,
     };
     {
@@ -957,6 +976,7 @@ pub async fn agent_send_message(
                         role: Role::Assistant,
                         content: accumulated_text,
                         tool_call_id: None,
+                        tool_name: None,
                         tool_calls: if emitted_tool_calls.is_empty() {
                             None
                         } else {
@@ -982,6 +1002,7 @@ pub async fn agent_send_message(
                     role: Role::Assistant,
                     content: accumulated_text,
                     tool_call_id: None,
+                    tool_name: None,
                     tool_calls: None,
                 };
                 let store_c = store.clone();
@@ -1004,6 +1025,7 @@ pub async fn agent_send_message(
                 role: Role::Assistant,
                 content: accumulated_text,
                 tool_call_id: None,
+                tool_name: None,
                 tool_calls: Some(emitted_tool_calls.clone()),
             };
             {
@@ -1061,7 +1083,12 @@ pub async fn agent_send_message(
                 let tool_msg = Message {
                     role: Role::Tool,
                     content: result_text,
+                    // Carry both: opaque id (Anthropic/OpenAI/LM Studio
+                    // link by this) AND function name (Gemini/Ollama
+                    // link by this). Each provider picks the field its
+                    // wire format expects.
                     tool_call_id: Some(call.id.clone()),
+                    tool_name: Some(call.name.clone()),
                     tool_calls: None,
                 };
                 let store_c = store.clone();

@@ -109,12 +109,19 @@ pub enum Role {
 pub struct Message {
     pub role: Role,
     pub content: String,
-    /// Set on `Role::Tool` messages — links a tool result back to the
-    /// `ToolCall::id` it answers. Required by every provider that
-    /// supports function calling (Anthropic `tool_use_id`, OpenAI
-    /// `tool_call_id`, Ollama `tool_name`+id, etc.).
+    /// Set on `Role::Tool` messages — opaque id provided by the model
+    /// when it issued the call. Anthropic, OpenAI Responses, and LM
+    /// Studio all link tool results back via this id (`tool_use_id`,
+    /// `call_id`, `tool_call_id` respectively).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
+    /// Set on `Role::Tool` messages — the function name that was
+    /// called. Gemini and Ollama link results by name rather than by
+    /// an opaque id, so providers that need it pull from this field.
+    /// Carrying both side-by-side keeps providers from having to
+    /// overload `tool_call_id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
     /// Set on `Role::Assistant` messages when the model emitted one or
     /// more function/tool calls in this turn. The next turn must answer
     /// each call with a corresponding `Role::Tool` message before the
