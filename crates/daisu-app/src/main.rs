@@ -78,7 +78,11 @@ fn main() {
             commands::agent::agent_propose_edit,
             commands::agent::agent_apply_edit,
             commands::agent::agent_reject_edit,
-            commands::agent::agent_list_pending_edits
+            commands::agent::agent_list_pending_edits,
+            commands::lsp::lsp_workspace_is_trusted,
+            commands::lsp::lsp_workspace_trust,
+            commands::lsp::lsp_workspace_revoke,
+            commands::lsp::lsp_servers_status
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {

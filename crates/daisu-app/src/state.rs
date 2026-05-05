@@ -33,6 +33,7 @@ pub struct AppState {
     agent_memory: parking_lot::Mutex<HashMap<PathBuf, Arc<MemoryStore>>>,
     agent_runs: parking_lot::Mutex<HashMap<String, AgentCancelToken>>,
     pending_edits: parking_lot::Mutex<HashMap<Uuid, ProposeEdit>>,
+    pub lsp_manager: Arc<daisu_lsp::LspManager>,
 }
 
 impl Default for AppState {
@@ -49,6 +50,7 @@ impl Default for AppState {
             agent_memory: parking_lot::Mutex::new(HashMap::new()),
             agent_runs: parking_lot::Mutex::new(HashMap::new()),
             pending_edits: parking_lot::Mutex::new(HashMap::new()),
+            lsp_manager: Arc::new(daisu_lsp::LspManager::new()),
         }
     }
 }
