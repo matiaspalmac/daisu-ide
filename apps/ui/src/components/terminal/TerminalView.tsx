@@ -37,6 +37,8 @@ export function TerminalView({ cwd, onReady, onExit }: Props): JSX.Element {
       allowTransparency: false,
       scrollback: 5000,
       macOptionIsMeta: true,
+      // Required for Unicode11Addon (sets `term.unicode.activeVersion`).
+      allowProposedApi: true,
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
