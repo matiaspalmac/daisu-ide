@@ -57,6 +57,30 @@ pub enum LspError {
 
 pub type LspResult<T> = Result<T, LspError>;
 
+/// Boolean flags advertising which LSP navigation features the server
+/// declared during the initialize handshake. Mirrored to the frontend so
+/// Monaco providers register only when the server can actually answer.
+#[derive(Debug, Clone, Default, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NavCapabilities {
+    pub definition: bool,
+    pub references: bool,
+    pub document_symbol: bool,
+    pub workspace_symbol: bool,
+}
+
+impl NavCapabilities {
+    #[must_use]
+    pub fn from_caps(caps: &lsp_types::ServerCapabilities) -> Self {
+        Self {
+            definition: caps.definition_provider.is_some(),
+            references: caps.references_provider.is_some(),
+            document_symbol: caps.document_symbol_provider.is_some(),
+            workspace_symbol: caps.workspace_symbol_provider.is_some(),
+        }
+    }
+}
+
 slotmap::new_key_type! {
     /// Stable id assigned to a `(workspace, server_id)` pair. Used by
     /// the multiplexor to route messages and by the UI to reference a
@@ -79,10 +103,32 @@ use crate::discovery::{resolve, Resolution};
 use crate::handshake::file_uri;
 use crate::lifecycle::Lifecycle;
 
-#[derive(Default)]
+/// Event broadcast on the manager's `ready_tx` channel whenever a server
+/// completes its initialize handshake. Forwarded to the frontend as the
+/// Tauri event `lsp://server-ready` (see `daisu_app::commands::lsp`).
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerReadyEvent {
+    pub server_id: String,
+    pub languages: Vec<String>,
+    pub capabilities: NavCapabilities,
+}
+
 pub struct LspManager {
     inner: Arc<RwLock<ManagerInner>>,
     pub diagnostics: Arc<DiagnosticsCache>,
+    ready_tx: tokio::sync::broadcast::Sender<ServerReadyEvent>,
+}
+
+impl Default for LspManager {
+    fn default() -> Self {
+        let (ready_tx, _) = tokio::sync::broadcast::channel(64);
+        Self {
+            inner: Arc::default(),
+            diagnostics: Arc::default(),
+            ready_tx,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -106,6 +152,14 @@ impl LspManager {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Subscribe to the broadcast channel that fires whenever a server
+    /// completes the initialize handshake (lazy-spawn). Each subscriber
+    /// receives every event from the moment of subscription.
+    #[must_use]
+    pub fn subscribe_ready(&self) -> tokio::sync::broadcast::Receiver<ServerReadyEvent> {
+        self.ready_tx.subscribe()
     }
 
     pub async fn open_workspace(
@@ -249,13 +303,24 @@ impl LspManager {
         )
         .await?;
         let outgoing = client.outgoing.clone();
+        let capabilities = NavCapabilities::from_caps(&client.capabilities());
         let arc = Arc::new(client);
         let lifecycle = Arc::new(Lifecycle::new(outgoing));
-        let mut inner = self.inner.write().await;
-        if let Some(slot) = inner.servers.get_mut(id) {
-            slot.client = Some(arc);
-            slot.lifecycle = Some(lifecycle);
+        {
+            let mut inner = self.inner.write().await;
+            if let Some(slot) = inner.servers.get_mut(id) {
+                slot.client = Some(arc);
+                slot.lifecycle = Some(lifecycle);
+            }
         }
+        // Best-effort broadcast — receivers may have all dropped during
+        // a teardown. Frontend re-pulls statuses on the next poll either
+        // way, so a missed event is recoverable.
+        let _ = self.ready_tx.send(ServerReadyEvent {
+            server_id: config.id.clone(),
+            languages: config.languages.clone(),
+            capabilities,
+        });
         Ok(())
     }
 
@@ -264,20 +329,28 @@ impl LspManager {
         inner
             .servers
             .iter()
-            .map(|(id, slot)| ServerStatus {
-                id,
-                server_id: slot.config.id.clone(),
-                languages: slot.config.languages.clone(),
-                resolution: match &slot.resolution {
-                    Resolution::Found(p) => ResolutionPublic::Found(p.clone()),
-                    Resolution::Missing => ResolutionPublic::Missing,
-                },
-                state: if slot.client.is_some() {
-                    ServerState::Ready
-                } else {
-                    ServerState::Idle
-                },
-                rss_mb: None,
+            .map(|(id, slot)| {
+                let capabilities = slot
+                    .client
+                    .as_ref()
+                    .map(|c| NavCapabilities::from_caps(&c.capabilities()))
+                    .unwrap_or_default();
+                ServerStatus {
+                    id,
+                    server_id: slot.config.id.clone(),
+                    languages: slot.config.languages.clone(),
+                    resolution: match &slot.resolution {
+                        Resolution::Found(p) => ResolutionPublic::Found(p.clone()),
+                        Resolution::Missing => ResolutionPublic::Missing,
+                    },
+                    state: if slot.client.is_some() {
+                        ServerState::Ready
+                    } else {
+                        ServerState::Idle
+                    },
+                    rss_mb: None,
+                    capabilities,
+                }
             })
             .collect()
     }
@@ -302,6 +375,7 @@ pub struct ServerStatus {
     pub resolution: ResolutionPublic,
     pub state: ServerState,
     pub rss_mb: Option<u64>,
+    pub capabilities: NavCapabilities,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -318,4 +392,54 @@ pub enum ServerState {
     Spawning,
     Ready,
     Crashed,
+}
+
+#[cfg(test)]
+mod nav_capabilities_tests {
+    use super::*;
+    use lsp_types::{OneOf, ReferencesOptions, ServerCapabilities, WorkDoneProgressOptions};
+
+    #[test]
+    fn nav_capabilities_extracted_from_full_caps() {
+        let caps = ServerCapabilities {
+            definition_provider: Some(OneOf::Left(true)),
+            references_provider: Some(OneOf::Left(true)),
+            document_symbol_provider: Some(OneOf::Left(true)),
+            workspace_symbol_provider: Some(OneOf::Left(true)),
+            ..Default::default()
+        };
+        let nav = NavCapabilities::from_caps(&caps);
+        assert!(nav.definition);
+        assert!(nav.references);
+        assert!(nav.document_symbol);
+        assert!(nav.workspace_symbol);
+    }
+
+    #[test]
+    fn nav_capabilities_default_when_provider_missing() {
+        let caps = ServerCapabilities::default();
+        let nav = NavCapabilities::from_caps(&caps);
+        assert!(!nav.definition);
+        assert!(!nav.references);
+        assert!(!nav.document_symbol);
+        assert!(!nav.workspace_symbol);
+    }
+
+    #[test]
+    fn nav_capabilities_extracted_when_provider_uses_options() {
+        let caps = ServerCapabilities {
+            references_provider: Some(OneOf::Right(ReferencesOptions {
+                work_done_progress_options: WorkDoneProgressOptions::default(),
+            })),
+            ..Default::default()
+        };
+        let nav = NavCapabilities::from_caps(&caps);
+        assert!(nav.references);
+    }
+
+    #[tokio::test]
+    async fn subscribe_ready_returns_receiver() {
+        let mgr = LspManager::default();
+        let _rx = mgr.subscribe_ready();
+    }
 }
