@@ -3,8 +3,10 @@
 use std::sync::Arc;
 
 use lsp_types::{
-    CompletionItem, CompletionParams, CompletionResponse, Hover, HoverParams, SignatureHelp,
-    SignatureHelpParams,
+    CompletionItem, CompletionParams, CompletionResponse, DocumentSymbolParams,
+    DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
+    Location, ReferenceParams, SignatureHelp, SignatureHelpParams, WorkspaceSymbolParams,
+    WorkspaceSymbolResponse,
 };
 use serde_json::Value;
 use tokio::sync::mpsc;
@@ -138,4 +140,85 @@ pub async fn signature_help(
         serde_json::to_value(params)?,
     )
     .await
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct DefinitionResult(pub Option<GotoDefinitionResponse>);
+
+impl<'de> serde::Deserialize<'de> for DefinitionResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(Self(Option::<GotoDefinitionResponse>::deserialize(d)?))
+    }
+}
+
+pub async fn definition(
+    client: Arc<Client>,
+    params: GotoDefinitionParams,
+) -> Result<(DefinitionResult, RequestId), LspError> {
+    send_request(
+        &client,
+        "textDocument/definition",
+        serde_json::to_value(params)?,
+    )
+    .await
+}
+
+#[derive(Default, Debug, Clone)]
+struct ReferencesResult(Vec<Location>);
+
+impl<'de> serde::Deserialize<'de> for ReferencesResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let opt = Option::<Vec<Location>>::deserialize(d)?;
+        Ok(Self(opt.unwrap_or_default()))
+    }
+}
+
+pub async fn references(
+    client: Arc<Client>,
+    params: ReferenceParams,
+) -> Result<(Vec<Location>, RequestId), LspError> {
+    let (raw, id): (ReferencesResult, _) = send_request(
+        &client,
+        "textDocument/references",
+        serde_json::to_value(params)?,
+    )
+    .await?;
+    Ok((raw.0, id))
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct DocumentSymbolResult(pub Option<DocumentSymbolResponse>);
+
+impl<'de> serde::Deserialize<'de> for DocumentSymbolResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(Self(Option::<DocumentSymbolResponse>::deserialize(d)?))
+    }
+}
+
+pub async fn document_symbol(
+    client: Arc<Client>,
+    params: DocumentSymbolParams,
+) -> Result<(DocumentSymbolResult, RequestId), LspError> {
+    send_request(
+        &client,
+        "textDocument/documentSymbol",
+        serde_json::to_value(params)?,
+    )
+    .await
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct WorkspaceSymbolResult(pub Option<WorkspaceSymbolResponse>);
+
+impl<'de> serde::Deserialize<'de> for WorkspaceSymbolResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(Self(Option::<WorkspaceSymbolResponse>::deserialize(d)?))
+    }
+}
+
+pub async fn workspace_symbol(
+    client: Arc<Client>,
+    params: WorkspaceSymbolParams,
+) -> Result<(WorkspaceSymbolResult, RequestId), LspError> {
+    send_request(&client, "workspace/symbol", serde_json::to_value(params)?).await
 }
