@@ -4,6 +4,9 @@
 //! Cargo sets `CARGO_BIN_EXE_fake_lsp` to the absolute path of the built
 //! binary when running integration tests, so this module resolves it
 //! deterministically without invoking `cargo run`.
+//!
+//! Configuration is delivered via a per-spawn temp JSON file so parallel
+//! tests don't collide.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -21,6 +24,7 @@ pub fn fake_lsp_path() -> PathBuf {
 pub struct MockOpts {
     pub responses: Value,
     pub init_capabilities: Option<Value>,
+    pub log: bool,
 }
 
 impl MockOpts {
@@ -28,6 +32,7 @@ impl MockOpts {
         Self {
             responses: json!({}),
             init_capabilities: None,
+            log: false,
         }
     }
 
@@ -41,6 +46,11 @@ impl MockOpts {
         self.init_capabilities = Some(caps);
         self
     }
+
+    pub fn with_log(mut self, log: bool) -> Self {
+        self.log = log;
+        self
+    }
 }
 
 /// Spawn a `Client` connected to a fresh `fake_lsp` process configured
@@ -50,24 +60,30 @@ pub async fn spawn_mock_client(opts: MockOpts) -> Client {
     let bin = fake_lsp_path();
     let bin_str = bin.to_string_lossy().to_string();
 
-    // We need to set env vars *before* the child spawns. `Transport::spawn`
-    // does not currently expose env-var injection, so we set them on the
-    // current process; tokio::process::Command inherits by default. Each
-    // test owns its env via `std::env::set_var` — tests must NOT run in
-    // parallel against shared keys. The integration test binary uses
-    // `#[tokio::test(flavor = "current_thread")]` to keep mutations
-    // serialized within a test, but tests must serialize externally via
-    // a global mutex or `cargo test -- --test-threads=1` for safety.
-    std::env::set_var("FAKE_LSP_RESPONSES", opts.responses.to_string());
+    let mut config = serde_json::Map::new();
+    config.insert("responses".into(), opts.responses);
     if let Some(caps) = opts.init_capabilities {
-        std::env::set_var("FAKE_LSP_INIT_CAPABILITIES", caps.to_string());
-    } else {
-        std::env::remove_var("FAKE_LSP_INIT_CAPABILITIES");
+        config.insert("capabilities".into(), caps);
     }
+    if opts.log {
+        config.insert("log".into(), json!(true));
+    }
+
+    // Per-spawn temp file avoids env-var races between parallel tests.
+    let tmp = tempfile::NamedTempFile::new().expect("temp config");
+    serde_json::to_writer(tmp.as_file(), &Value::Object(config)).expect("write config");
+    let (_file, path) = tmp.keep().expect("persist temp config");
+    let config_arg = path.to_string_lossy().to_string();
 
     let workspace = tempfile::tempdir().expect("tempdir");
     let diags = Arc::new(DiagnosticsCache::default());
-    Client::spawn("fake-lsp".into(), &bin_str, &[], workspace.path(), diags)
-        .await
-        .expect("Client::spawn fake_lsp")
+    Client::spawn(
+        "fake-lsp".into(),
+        &bin_str,
+        &["--config".into(), config_arg],
+        workspace.path(),
+        diags,
+    )
+    .await
+    .expect("Client::spawn fake_lsp")
 }

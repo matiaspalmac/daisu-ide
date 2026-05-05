@@ -1,16 +1,21 @@
-//! Test-only LSP server stub. Reads canned responses from env vars and
-//! replies to incoming JSON-RPC requests with the matching JSON, framed
-//! using LSP Content-Length headers.
+//! Test-only LSP server stub. Reads canned responses from a JSON config
+//! file (path supplied via `--config <path>`) and replies to incoming
+//! JSON-RPC requests with the matching JSON, framed with LSP
+//! Content-Length headers.
 //!
-//! Env vars consumed:
-//!   `FAKE_LSP_INIT_CAPABILITIES` — JSON object spliced into `initialize`
-//!     response under `capabilities`. Defaults to all four nav providers
-//!     advertised so navigation tests don't need to set it explicitly.
-//!   `FAKE_LSP_RESPONSES` — JSON object mapping `<method>` to either
-//!     a JSON value (used as `result`) or an object
-//!     `{ "result": <value> }` / `{ "error": { "code": N, "message": "" } }`.
-//!   `FAKE_LSP_LOG` — if set to "1", server writes each incoming method
-//!     line-buffered to stderr (helpful when debugging tests).
+//! Config file shape (all keys optional):
+//! ```json
+//! {
+//!   "capabilities": { "definitionProvider": true, ... },
+//!   "responses": {
+//!     "textDocument/definition": { ... canned result ... }
+//!   },
+//!   "log": false
+//! }
+//! ```
+//!
+//! Tests pass a unique temp file per spawn so parallel test threads do
+//! not collide (env-var-based config previously suffered races).
 //!
 //! The binary is built automatically by Cargo because it lives at
 //! `src/bin/fake_lsp.rs`. Integration tests resolve the executable via
@@ -23,14 +28,30 @@ use tokio::io::{AsyncWriteExt, BufReader};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
-    let log_enabled = std::env::var("FAKE_LSP_LOG").ok().as_deref() == Some("1");
-    let init_caps: Value = std::env::var("FAKE_LSP_INIT_CAPABILITIES")
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
+    let mut args = std::env::args().skip(1);
+    let mut config_path: Option<String> = None;
+    while let Some(a) = args.next() {
+        if a == "--config" {
+            config_path = args.next();
+        }
+    }
+
+    let config: Value = match config_path {
+        Some(p) => match std::fs::read_to_string(&p) {
+            Ok(s) => serde_json::from_str(&s).unwrap_or_else(|_| json!({})),
+            Err(_) => json!({}),
+        },
+        None => json!({}),
+    };
+
+    let log_enabled = config.get("log").and_then(Value::as_bool).unwrap_or(false);
+    let init_caps: Value = config
+        .get("capabilities")
+        .cloned()
         .unwrap_or_else(default_capabilities);
-    let canned: Value = std::env::var("FAKE_LSP_RESPONSES")
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
+    let canned: Value = config
+        .get("responses")
+        .cloned()
         .unwrap_or_else(|| json!({}));
 
     let stdin = tokio::io::stdin();
