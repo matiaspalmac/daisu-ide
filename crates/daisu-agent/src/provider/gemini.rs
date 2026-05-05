@@ -85,6 +85,20 @@ struct GenerateResponse {
     usage: Option<UsageMetadata>,
     #[serde(default, rename = "modelVersion")]
     model_version: Option<String>,
+    /// Populated when safety / recitation filters block the prompt
+    /// before any candidate is produced. Without surfacing this the
+    /// stream looks empty to the user — they get a turn with no text
+    /// and no error.
+    #[serde(default, rename = "promptFeedback")]
+    prompt_feedback: Option<PromptFeedback>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PromptFeedback {
+    #[serde(default, rename = "blockReason")]
+    block_reason: Option<String>,
+    #[serde(default, rename = "blockReasonMessage")]
+    block_reason_message: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -158,18 +172,15 @@ impl LlmProvider for GeminiProvider {
     }
 
     fn name(&self) -> &str {
-        "Google Gemini"
+        ProviderId::Gemini.display_name()
     }
 
     fn supported_tools(&self) -> ToolCapability {
-        ToolCapability {
-            function_calls: true,
-            parallel_calls: true,
-        }
+        ProviderId::Gemini.capabilities()
     }
 
     fn default_model(&self) -> &str {
-        "gemini-2.5-pro"
+        ProviderId::Gemini.default_model()
     }
 
     async fn list_models(&self) -> AgentResult<Vec<ModelInfo>> {
@@ -192,9 +203,15 @@ impl LlmProvider for GeminiProvider {
             .models
             .into_iter()
             .filter(|m| {
+                // Accept either the unary or streaming method. The chat
+                // path uses streaming, but some experimental models only
+                // ship streamGenerateContent — filtering on
+                // generateContent alone would hide them. Accepting
+                // either keeps the catalog inclusive while still
+                // filtering out embedding-only / tuning-only models.
                 m.supported_generation_methods
                     .iter()
-                    .any(|s| s == "generateContent")
+                    .any(|s| s == "generateContent" || s == "streamGenerateContent")
             })
             .map(|m| ModelInfo {
                 // Strip the "models/" prefix so the id can be passed back as `model`.
@@ -232,8 +249,30 @@ impl LlmProvider for GeminiProvider {
         }
 
         let env: GenerateResponse = serde_json::from_str(&text)?;
+        // If safety filters blocked the prompt, candidates is empty and
+        // we'd otherwise return an empty success — promote the block to
+        // an error so callers see the reason instead of silence.
+        if env.candidates.is_empty() {
+            if let Some(fb) = env.prompt_feedback.as_ref() {
+                if let Some(reason) = fb.block_reason.as_deref() {
+                    let detail = fb
+                        .block_reason_message
+                        .as_deref()
+                        .map_or_else(|| reason.to_string(), |m| format!("{reason}: {m}"));
+                    return Err(AgentError::Provider(format!("blocked by Gemini: {detail}")));
+                }
+            }
+        }
         let content = extract_text(&env);
-        let finish_reason = env.candidates.iter().find_map(|c| c.finish_reason.clone());
+        let finish_reason = env
+            .candidates
+            .iter()
+            .find_map(|c| c.finish_reason.clone())
+            .or_else(|| {
+                env.prompt_feedback
+                    .as_ref()
+                    .and_then(|fb| fb.block_reason.clone())
+            });
         let usage = env.usage.map(|u| TokenUsage {
             input_tokens: u.prompt_token_count,
             output_tokens: u.candidates_token_count,
@@ -264,17 +303,15 @@ impl LlmProvider for GeminiProvider {
                 .await?;
 
             let status = resp.status();
-            let resp = if status.is_success() {
-                resp
-            } else {
+            if !status.is_success() {
                 let text = resp.text().await.unwrap_or_default();
                 let msg = serde_json::from_str::<ApiError>(&text).map_or_else(
                     |_| format!("status {status}: {text}"),
                     |e| e.error.message,
                 );
-                Err::<reqwest::Response, _>(AgentError::Provider(msg))?;
-                unreachable!()
-            };
+                Err::<(), _>(AgentError::Provider(msg))?;
+                return;
+            }
 
             let mut events = resp.bytes_stream().eventsource();
             let mut finish_reason: Option<String> = None;
@@ -288,6 +325,22 @@ impl LlmProvider for GeminiProvider {
                         let text = extract_text(&chunk);
                         if !text.is_empty() {
                             yield StreamEvent::Delta { text };
+                        }
+                        // Surface safety/recitation blocks. When Gemini
+                        // refuses a prompt, candidates is empty and the
+                        // stream would otherwise look like a silent no-op.
+                        if let Some(fb) = chunk.prompt_feedback.as_ref() {
+                            if let Some(reason) = fb.block_reason.clone() {
+                                let detail = fb
+                                    .block_reason_message
+                                    .clone()
+                                    .map(|m| format!("{reason}: {m}"))
+                                    .unwrap_or(reason.clone());
+                                yield StreamEvent::Warning {
+                                    message: format!("blocked by Gemini: {detail}"),
+                                };
+                                finish_reason = Some(reason);
+                            }
                         }
                         if let Some(reason) = chunk
                             .candidates
@@ -313,5 +366,60 @@ impl LlmProvider for GeminiProvider {
         };
 
         Box::pin(stream)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn safety_blocked_response_carries_block_reason() {
+        // When safety filters refuse, candidates is empty and the
+        // explanation lives in promptFeedback. Without surfacing it the
+        // user gets a silent empty turn — regression test for I3.
+        let raw = r#"{"candidates":[],"promptFeedback":{"blockReason":"SAFETY","blockReasonMessage":"violates policy"}}"#;
+        let env: GenerateResponse = serde_json::from_str(raw).unwrap();
+        let fb = env.prompt_feedback.expect("prompt_feedback");
+        assert_eq!(fb.block_reason.as_deref(), Some("SAFETY"));
+        assert_eq!(fb.block_reason_message.as_deref(), Some("violates policy"));
+        assert!(env.candidates.is_empty());
+    }
+
+    #[test]
+    fn streaming_chunk_extracts_text_parts() {
+        let raw = r#"{"candidates":[{"content":{"parts":[{"text":"hi"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":1}}"#;
+        let env: GenerateResponse = serde_json::from_str(raw).unwrap();
+        assert_eq!(extract_text(&env), "hi");
+        assert_eq!(env.candidates[0].finish_reason.as_deref(), Some("STOP"));
+        let u = env.usage.expect("usage");
+        assert_eq!(u.prompt_token_count, 3);
+        assert_eq!(u.candidates_token_count, 1);
+    }
+
+    #[test]
+    fn list_filter_accepts_streaming_only_models() {
+        // Regression: filter only checked generateContent, so a model
+        // that only ships streamGenerateContent would disappear from
+        // the catalog even though the chat path uses streaming.
+        let env: ModelListEnv = serde_json::from_str(
+            r#"{"models":[
+                {"name":"models/streaming-only","supportedGenerationMethods":["streamGenerateContent"]},
+                {"name":"models/standard","supportedGenerationMethods":["generateContent","streamGenerateContent"]},
+                {"name":"models/embed-only","supportedGenerationMethods":["embedContent"]}
+            ]}"#,
+        )
+        .unwrap();
+        let kept: Vec<&str> = env
+            .models
+            .iter()
+            .filter(|m| {
+                m.supported_generation_methods
+                    .iter()
+                    .any(|s| s == "generateContent" || s == "streamGenerateContent")
+            })
+            .map(|m| m.name.as_str())
+            .collect();
+        assert_eq!(kept, vec!["models/streaming-only", "models/standard"]);
     }
 }

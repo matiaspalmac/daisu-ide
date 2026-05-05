@@ -45,6 +45,55 @@ impl ProviderId {
     pub fn requires_key(self) -> bool {
         matches!(self, Self::Anthropic | Self::OpenAi | Self::Gemini)
     }
+
+    /// Human-friendly provider name shown in settings UIs. Single
+    /// source of truth shared with `LlmProvider::name` impls.
+    #[must_use]
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::Anthropic => "Anthropic Claude",
+            Self::OpenAi => "OpenAI",
+            Self::Gemini => "Google Gemini",
+            Self::Ollama => "Ollama (local)",
+            Self::LmStudio => "LM Studio (local)",
+        }
+    }
+
+    /// Tool capabilities a provider's API surface advertises. Mirrored
+    /// by each `LlmProvider::supported_tools` impl so the trait answer
+    /// and the metadata answer never drift.
+    #[must_use]
+    pub fn capabilities(self) -> ToolCapability {
+        match self {
+            // Cloud providers: full function-calling with parallel calls.
+            Self::Anthropic | Self::OpenAi | Self::Gemini => ToolCapability {
+                function_calls: true,
+                parallel_calls: true,
+            },
+            // Local providers: tool calling depends on the loaded model.
+            // Optimistic default; the runtime degrades gracefully when a
+            // specific model rejects the `tools` field.
+            Self::Ollama | Self::LmStudio => ToolCapability {
+                function_calls: true,
+                parallel_calls: false,
+            },
+        }
+    }
+
+    /// Suggested default model for new conversations. UI pre-selects
+    /// this; users can pick anything from `list_models`. Empty string
+    /// means "no sensible default — fall back to first listed model"
+    /// (only LM Studio, since the catalog depends on what's loaded).
+    #[must_use]
+    pub fn default_model(self) -> &'static str {
+        match self {
+            Self::Anthropic => "claude-sonnet-4-6",
+            Self::OpenAi => "gpt-5.5",
+            Self::Gemini => "gemini-2.5-pro",
+            Self::Ollama => "qwen3-coder",
+            Self::LmStudio => "",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
@@ -77,7 +126,11 @@ pub struct CompletionRequest {
 }
 
 const fn default_max_tokens() -> u32 {
-    4096
+    // Reasoning-class models (gpt-5.x, claude-opus-4-7) burn budget on
+    // chain-of-thought before producing visible output. 4k frequently
+    // truncates them mid-thought; 8k is the lowest safe default that
+    // still keeps non-reasoning calls cheap.
+    8192
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

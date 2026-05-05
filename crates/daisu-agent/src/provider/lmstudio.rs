@@ -138,6 +138,23 @@ struct LmsModel {
     id: String,
 }
 
+/// Drops embedding / tts / whisper / etc. ids from the catalog. Local
+/// LM Studio installs commonly load both a chat model and an embedding
+/// model, both of which appear in `/v1/models`.
+fn is_non_chat_model(id: &str) -> bool {
+    const DENY: &[&str] = &[
+        "embedding",
+        "embed",
+        "tts",
+        "whisper",
+        "moderation",
+        "rerank",
+        "clip",
+    ];
+    let lower = id.to_ascii_lowercase();
+    DENY.iter().any(|needle| lower.contains(needle))
+}
+
 #[async_trait]
 impl LlmProvider for LmStudioProvider {
     fn id(&self) -> ProviderId {
@@ -145,24 +162,18 @@ impl LlmProvider for LmStudioProvider {
     }
 
     fn name(&self) -> &str {
-        "LM Studio (local)"
+        ProviderId::LmStudio.display_name()
     }
 
     fn supported_tools(&self) -> ToolCapability {
-        // LM Studio supports tool calls for capable models, but parallel
-        // calls and streaming-args reliability vary by model — flag as
-        // sequential-only until per-model probing lands.
-        ToolCapability {
-            function_calls: true,
-            parallel_calls: false,
-        }
+        ProviderId::LmStudio.capabilities()
     }
 
     fn default_model(&self) -> &str {
-        // No fixed default — UI should fall back to the first id in
-        // `list_models`. We pick a sensible placeholder so the trait
-        // doesn't return empty.
-        "loaded-model"
+        // LM Studio has no static default — the catalog depends on what
+        // the user has loaded. The empty string signals "fall back to
+        // the first listed model" to callers like agent_provider_test.
+        ProviderId::LmStudio.default_model()
     }
 
     async fn list_models(&self) -> AgentResult<Vec<ModelInfo>> {
@@ -180,6 +191,11 @@ impl LlmProvider for LmStudioProvider {
         Ok(env
             .data
             .into_iter()
+            // Skip non-chat models (LM Studio exposes loaded embedding
+            // models alongside chat models on /v1/models). Reuses the
+            // OpenAI deny-list since LM Studio mirrors the same wire
+            // schema and naming conventions.
+            .filter(|m| !is_non_chat_model(&m.id))
             .map(|m| ModelInfo {
                 id: m.id,
                 display_name: None,
@@ -236,17 +252,15 @@ impl LlmProvider for LmStudioProvider {
                 .send()
                 .await?;
             let status = resp.status();
-            let resp = if status.is_success() {
-                resp
-            } else {
+            if !status.is_success() {
                 let text = resp.text().await.unwrap_or_default();
                 let msg = serde_json::from_str::<ApiError>(&text).map_or_else(
                     |_| format!("status {status}: {text}"),
                     |e| e.error.message,
                 );
-                Err::<reqwest::Response, _>(AgentError::Provider(msg))?;
-                unreachable!()
-            };
+                Err::<(), _>(AgentError::Provider(msg))?;
+                return;
+            }
 
             let mut events = resp.bytes_stream().eventsource();
             let mut finish_reason: Option<String> = None;
@@ -284,5 +298,35 @@ impl LlmProvider for LmStudioProvider {
         };
 
         Box::pin(stream)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deny_filter_drops_embedding_models() {
+        assert!(is_non_chat_model("nomic-embed-text-v1.5"));
+        assert!(is_non_chat_model("text-embedding-nomic"));
+        assert!(is_non_chat_model("whisper-large-v3"));
+        assert!(is_non_chat_model("clip-vit-base-patch32"));
+        assert!(is_non_chat_model("bge-reranker-base"));
+    }
+
+    #[test]
+    fn deny_filter_keeps_chat_models() {
+        assert!(!is_non_chat_model("qwen2.5-coder-7b-instruct"));
+        assert!(!is_non_chat_model("llama-3.2-3b-instruct"));
+        assert!(!is_non_chat_model("mistral-nemo-instruct-2407"));
+    }
+
+    #[test]
+    fn chat_chunk_decodes_delta_content() {
+        let raw =
+            r#"{"choices":[{"delta":{"content":"hello"},"finish_reason":null}],"usage":null}"#;
+        let chunk: ChatChunk = serde_json::from_str(raw).unwrap();
+        assert_eq!(chunk.choices.len(), 1);
+        assert_eq!(chunk.choices[0].delta.content.as_deref(), Some("hello"));
     }
 }

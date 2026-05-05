@@ -31,14 +31,7 @@ import {
   clearAllowlist,
   type AllowlistEntry,
 } from "../../../lib/agent-tools";
-
-const PROVIDER_DEFAULT_MODELS: Record<AgentProviderId, string> = {
-  ollama: "qwen3-coder",
-  anthropic: "claude-sonnet-4-6",
-  openai: "gpt-5.5",
-  gemini: "gemini-2.5-pro",
-  lmstudio: "loaded-model",
-};
+import { translateError } from "../../../lib/error-translate";
 
 interface TestResult {
   ok: boolean;
@@ -161,36 +154,60 @@ export function AiSettings(): JSX.Element {
   }
 
   async function fetchModels(): Promise<void> {
+    // Pin the provider+url at call time. If the user toggles provider
+    // or edits a base URL while the request is in flight, the late
+    // result no longer matches `ai.*` and we discard it instead of
+    // overwriting whatever the user moved on to.
+    const requestedProvider = ai.id;
+    const requestedBaseUrl =
+      ai.id === "ollama"
+        ? ai.ollamaBaseUrl
+        : ai.id === "lmstudio"
+          ? ai.lmstudioBaseUrl
+          : undefined;
     setLoadingModels(true);
     setModelsError(null);
     setProviderModels([]);
     try {
-      const baseUrl =
-        ai.id === "ollama"
-          ? ai.ollamaBaseUrl
-          : ai.id === "lmstudio"
-            ? ai.lmstudioBaseUrl
-            : undefined;
       const res = await listProviderModels(
-        ai.id as AgentProviderId,
-        baseUrl,
+        requestedProvider as AgentProviderId,
+        requestedBaseUrl,
       );
+      const stillRelevant =
+        ai.id === requestedProvider &&
+        (requestedProvider !== "ollama" ||
+          ai.ollamaBaseUrl === requestedBaseUrl) &&
+        (requestedProvider !== "lmstudio" ||
+          ai.lmstudioBaseUrl === requestedBaseUrl);
+      if (!stillRelevant) return;
       setProviderModels(res.models);
     } catch (e) {
-      setModelsError(String((e as Error).message ?? e));
+      if (ai.id !== requestedProvider) return;
+      setModelsError(translateError(e));
     } finally {
       setLoadingModels(false);
     }
   }
 
+  // Local-provider URL changes invalidate the previously fetched
+  // catalog — that list belongs to the old endpoint.
+  useEffect(() => {
+    setProviderModels([]);
+    setModelsError(null);
+  }, [ai.ollamaBaseUrl, ai.lmstudioBaseUrl]);
+
   const current = providers.find((p) => p.id === ai.id);
 
   async function handleSelect(id: AgentProviderId): Promise<void> {
     setTestResult(null);
+    // Use the backend's authoritative defaultModel so this stays in
+    // sync with whatever the Rust trait says. Empty string means
+    // "no static default" (LM Studio); user picks from the live list.
+    const fallback = providers.find((p) => p.id === id)?.defaultModel ?? "";
     await setSetting("aiProvider", {
       id,
       mode: id === "ollama" || id === "lmstudio" ? "local" : "cloud",
-      model: PROVIDER_DEFAULT_MODELS[id],
+      model: fallback,
     });
   }
 
@@ -203,7 +220,7 @@ export function AiSettings(): JSX.Element {
       setKeyDraft("");
       await refresh();
     } catch (e) {
-      setKeyError(String((e as Error).message ?? e));
+      setKeyError(translateError(e));
     } finally {
       setSavingKey(false);
     }
@@ -215,7 +232,7 @@ export function AiSettings(): JSX.Element {
       await clearProviderKey(ai.id as AgentProviderId);
       await refresh();
     } catch (e) {
-      setKeyError(String((e as Error).message ?? e));
+      setKeyError(translateError(e));
     }
   }
 
@@ -242,7 +259,7 @@ export function AiSettings(): JSX.Element {
     } catch (e) {
       setTestResult({
         ok: false,
-        message: String((e as Error).message ?? e),
+        message: translateError(e),
       });
     } finally {
       setTesting(false);

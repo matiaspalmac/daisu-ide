@@ -15,6 +15,8 @@ export interface AgentProviderInfo {
   supportsTools: boolean;
   supportsParallelTools: boolean;
   implemented: boolean;
+  /** Suggested model id; empty string means "use first listed model". */
+  defaultModel: string;
 }
 
 export interface ProviderTestRequest {
@@ -35,21 +37,23 @@ export function listProviders(): Promise<AgentProviderInfo[]> {
     Array<{
       id: string;
       name: string;
-      requires_key: boolean;
-      has_key: boolean;
-      supports_tools: boolean;
-      supports_parallel_tools: boolean;
+      requiresKey: boolean;
+      hasKey: boolean;
+      supportsTools: boolean;
+      supportsParallelTools: boolean;
       implemented: boolean;
+      defaultModel: string;
     }>
   >("agent_provider_list").then((rows) =>
     rows.map((r) => ({
       id: r.id as AgentProviderId,
       name: r.name,
-      requiresKey: r.requires_key,
-      hasKey: r.has_key,
-      supportsTools: r.supports_tools,
-      supportsParallelTools: r.supports_parallel_tools,
+      requiresKey: r.requiresKey,
+      hasKey: r.hasKey,
+      supportsTools: r.supportsTools,
+      supportsParallelTools: r.supportsParallelTools,
       implemented: r.implemented,
+      defaultModel: r.defaultModel,
     })),
   );
 }

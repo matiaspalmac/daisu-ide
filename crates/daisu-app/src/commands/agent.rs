@@ -55,6 +55,7 @@ fn map_agent(e: daisu_agent::AgentError) -> AppError {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProviderInfo {
     pub id: String,
     pub name: String,
@@ -63,54 +64,28 @@ pub struct ProviderInfo {
     pub supports_tools: bool,
     pub supports_parallel_tools: bool,
     pub implemented: bool,
+    /// Suggested model id for new conversations. UI pre-selects this in
+    /// the dropdown; users can pick anything from the live catalog.
+    /// Empty string means "no static default" (LM Studio — depends on
+    /// what's loaded).
+    pub default_model: String,
 }
 
 #[tauri::command]
 pub async fn agent_provider_list() -> AppResult<Vec<ProviderInfo>> {
-    let entries = [
-        (
-            ProviderId::Ollama,
-            "Ollama (local)",
-            ToolCapability::default(),
-            true,
-        ),
-        (
-            ProviderId::Anthropic,
-            "Anthropic Claude",
-            ToolCapability {
-                function_calls: true,
-                parallel_calls: true,
-            },
-            true,
-        ),
-        (
-            ProviderId::OpenAi,
-            "OpenAI",
-            ToolCapability {
-                function_calls: true,
-                parallel_calls: true,
-            },
-            false,
-        ),
-        (
-            ProviderId::Gemini,
-            "Google Gemini",
-            ToolCapability {
-                function_calls: true,
-                parallel_calls: false,
-            },
-            false,
-        ),
-        (
-            ProviderId::LmStudio,
-            "LM Studio (local)",
-            ToolCapability::default(),
-            false,
-        ),
+    // Single source of truth: capabilities, display names, and default
+    // models all flow from `ProviderId` into both the trait impls and
+    // this metadata response. No drift possible.
+    let ids = [
+        ProviderId::Ollama,
+        ProviderId::Anthropic,
+        ProviderId::OpenAi,
+        ProviderId::Gemini,
+        ProviderId::LmStudio,
     ];
 
-    let mut out = Vec::with_capacity(entries.len());
-    for (id, name, caps, _legacy_implemented) in entries {
+    let mut out = Vec::with_capacity(ids.len());
+    for id in ids {
         let requires_key = id.requires_key();
         let has_key = if requires_key {
             tokio::task::spawn_blocking(move || keychain::has_key(id.as_str()))
@@ -120,15 +95,17 @@ pub async fn agent_provider_list() -> AppResult<Vec<ProviderInfo>> {
         } else {
             true
         };
+        let caps: ToolCapability = id.capabilities();
         out.push(ProviderInfo {
             id: id.as_str().into(),
-            name: name.into(),
+            name: id.display_name().into(),
             requires_key,
             has_key,
             supports_tools: caps.function_calls,
             supports_parallel_tools: caps.parallel_calls,
             // All five providers ship full implementations as of M3 Phase 1.
             implemented: true,
+            default_model: id.default_model().to_string(),
         });
     }
     Ok(out)
@@ -208,8 +185,23 @@ pub async fn agent_provider_test(req: ProviderTestRequest) -> AppResult<Provider
     let started = std::time::Instant::now();
     let provider = build_provider(&req.provider, req.base_url.as_deref()).await?;
 
+    // LM Studio (and any provider with no static default) needs a real
+    // model id to talk to — pulling the first one off `list_models`
+    // lets the user hit "Test connection" without manually selecting a
+    // model first.
+    let model = if req.model.is_empty() {
+        let models = provider.list_models().await.map_err(map_agent)?;
+        models
+            .into_iter()
+            .next()
+            .map(|m| m.id)
+            .ok_or_else(|| AppError::Internal("no models available on this endpoint".into()))?
+    } else {
+        req.model.clone()
+    };
+
     let completion_req = CompletionRequest {
-        model: req.model.clone(),
+        model: model.clone(),
         messages: vec![Message {
             role: Role::User,
             content: "Say the single word 'ok'.".into(),
@@ -746,7 +738,7 @@ pub async fn agent_send_message(
             .map_err(map_agent)?;
     }
 
-    let provider = build_provider_with_fallback(&convo.provider, req.base_url.as_deref()).await?;
+    let provider = build_provider(&convo.provider, req.base_url.as_deref()).await?;
     let history = {
         let store_c = store.clone();
         let cid = req.conversation_id.clone();
@@ -922,13 +914,6 @@ pub struct CancelRequest {
 #[tauri::command]
 pub async fn agent_cancel(state: State<'_, AppState>, req: CancelRequest) -> AppResult<bool> {
     Ok(state.cancel_agent_run(&req.run_id))
-}
-
-async fn build_provider_with_fallback(
-    provider: &str,
-    base_url: Option<&str>,
-) -> AppResult<Box<dyn LlmProvider>> {
-    build_provider(provider, base_url).await
 }
 
 // ---------------------------------------------------------------------------

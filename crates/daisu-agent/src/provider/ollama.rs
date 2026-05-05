@@ -140,15 +140,15 @@ impl LlmProvider for OllamaProvider {
     }
 
     fn name(&self) -> &str {
-        "Ollama (local)"
+        ProviderId::Ollama.display_name()
     }
 
     fn supported_tools(&self) -> ToolCapability {
-        ToolCapability::default()
+        ProviderId::Ollama.capabilities()
     }
 
     fn default_model(&self) -> &str {
-        "qwen3-coder"
+        ProviderId::Ollama.default_model()
     }
 
     async fn list_models(&self) -> AgentResult<Vec<ModelInfo>> {
@@ -176,7 +176,13 @@ impl LlmProvider for OllamaProvider {
                     id: m.name,
                     display_name: display,
                     context_window: None,
-                    supports_tools: false,
+                    // Ollama exposes tool calling on capable models
+                    // (qwen3-coder, llama3.1+, mistral-nemo, command-r).
+                    // We can't tell from /api/tags which support tools
+                    // without an extra /api/show probe, so default
+                    // optimistic and let the runtime degrade if a model
+                    // rejects the `tools` field.
+                    supports_tools: true,
                 }
             })
             .collect())
@@ -216,13 +222,11 @@ impl LlmProvider for OllamaProvider {
             let body = build_payload(&req, true);
             let resp = client.post(&url).json(&body).send().await?;
             let status = resp.status();
-            let resp = if status.is_success() {
-                resp
-            } else {
+            if !status.is_success() {
                 let text = resp.text().await.unwrap_or_default();
-                Err::<reqwest::Response, _>(AgentError::Provider(format!("status {status}: {text}")))?;
-                unreachable!()
-            };
+                Err::<(), _>(AgentError::Provider(format!("status {status}: {text}")))?;
+                return;
+            }
 
             let bytes = resp.bytes_stream().map(|r| r.map_err(std::io::Error::other));
             let reader = StreamReader::new(bytes);

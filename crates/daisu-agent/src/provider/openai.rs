@@ -181,6 +181,28 @@ struct OaiModel {
     id: String,
 }
 
+/// Returns true if a model id matches one of the well-known non-chat
+/// capabilities OpenAI exposes through `/v1/models`. Used as a deny
+/// filter so newly-released chat / reasoning models pass through
+/// without code changes.
+fn is_non_chat_model(id: &str) -> bool {
+    const DENY: &[&str] = &[
+        "embedding",
+        "tts",
+        "whisper",
+        "dall-e",
+        "image",
+        "moderation",
+        "realtime",
+        "audio",
+        "transcribe",
+        "babbage",
+        "davinci",
+    ];
+    let lower = id.to_ascii_lowercase();
+    DENY.iter().any(|needle| lower.contains(needle))
+}
+
 #[async_trait]
 impl LlmProvider for OpenAiProvider {
     fn id(&self) -> ProviderId {
@@ -188,18 +210,15 @@ impl LlmProvider for OpenAiProvider {
     }
 
     fn name(&self) -> &str {
-        "OpenAI"
+        ProviderId::OpenAi.display_name()
     }
 
     fn supported_tools(&self) -> ToolCapability {
-        ToolCapability {
-            function_calls: true,
-            parallel_calls: true,
-        }
+        ProviderId::OpenAi.capabilities()
     }
 
     fn default_model(&self) -> &str {
-        "gpt-5.5"
+        ProviderId::OpenAi.default_model()
     }
 
     async fn list_models(&self) -> AgentResult<Vec<ModelInfo>> {
@@ -221,15 +240,13 @@ impl LlmProvider for OpenAiProvider {
         Ok(env
             .data
             .into_iter()
-            // Filter to chat-capable model ids; embeddings/tts/whisper noise out.
-            .filter(|m| {
-                let id = &m.id;
-                id.starts_with("gpt-")
-                    || id.starts_with("o1")
-                    || id.starts_with("o3")
-                    || id.starts_with("o4")
-                    || id.starts_with("chatgpt-")
-            })
+            // Reject by capability instead of by allow-listing prefixes.
+            // The allow-list ages with every release: when OpenAI ships
+            // a new model family (codex, sora, future "o5"), an
+            // allow-list silently hides it from the catalog. The
+            // deny-list only filters non-chat capabilities, which are
+            // a stable, finite set.
+            .filter(|m| !is_non_chat_model(&m.id))
             .map(|m| ModelInfo {
                 id: m.id,
                 display_name: None,
@@ -301,17 +318,15 @@ impl LlmProvider for OpenAiProvider {
                 .await?;
 
             let status = resp.status();
-            let resp = if status.is_success() {
-                resp
-            } else {
+            if !status.is_success() {
                 let text = resp.text().await.unwrap_or_default();
                 let msg = serde_json::from_str::<ApiError>(&text).map_or_else(
                     |_| format!("status {status}: {text}"),
                     |e| e.error.message,
                 );
-                Err::<reqwest::Response, _>(AgentError::Provider(msg))?;
-                unreachable!()
-            };
+                Err::<(), _>(AgentError::Provider(msg))?;
+                return;
+            }
 
             let mut events = resp.bytes_stream().eventsource();
             let mut finish_reason: Option<String> = None;
@@ -333,16 +348,22 @@ impl LlmProvider for OpenAiProvider {
                         break;
                     }
                     Ok(SseEvent::Failed { response }) => {
+                        // The API is inconsistent: sometimes the failure
+                        // ships as `response.error.message`, sometimes
+                        // the error is `null` and the explanation lives
+                        // elsewhere. Falling back to the raw event data
+                        // preserves the diagnostic instead of dropping
+                        // a bare "openai: response failed" on the user.
                         let msg = response.error.map_or_else(
-                            || "openai: response failed".to_string(),
+                            || format!("openai response failed: {}", event.data),
                             |e| e.message,
                         );
-                        Err(AgentError::Provider(msg))?;
-                        unreachable!()
+                        Err::<(), _>(AgentError::Provider(msg))?;
+                        return;
                     }
                     Ok(SseEvent::Error { message }) => {
-                        Err(AgentError::Provider(message))?;
-                        unreachable!()
+                        Err::<(), _>(AgentError::Provider(message))?;
+                        return;
                     }
                     Ok(SseEvent::Other) => {}
                     Err(e) => {
@@ -355,5 +376,69 @@ impl LlmProvider for OpenAiProvider {
         };
 
         Box::pin(stream)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deny_filter_drops_non_chat_models() {
+        assert!(is_non_chat_model("text-embedding-3-small"));
+        assert!(is_non_chat_model("whisper-1"));
+        assert!(is_non_chat_model("tts-1-hd"));
+        assert!(is_non_chat_model("dall-e-3"));
+        assert!(is_non_chat_model("text-moderation-latest"));
+        assert!(is_non_chat_model("gpt-4o-realtime-preview-2024-12-17"));
+        assert!(is_non_chat_model("gpt-4o-audio-preview"));
+    }
+
+    #[test]
+    fn deny_filter_keeps_chat_and_reasoning_models() {
+        assert!(!is_non_chat_model("gpt-5.5"));
+        assert!(!is_non_chat_model("gpt-5.3-codex"));
+        assert!(!is_non_chat_model("o3"));
+        assert!(!is_non_chat_model("o3-pro"));
+        assert!(!is_non_chat_model("chatgpt-4o-latest"));
+        // Hypothetical future model with no familiar prefix should pass
+        // through — that's the whole point of switching to a deny list.
+        assert!(!is_non_chat_model("foo-bar-baz-2027"));
+    }
+
+    #[test]
+    fn failed_event_with_null_error_falls_back_to_raw_data() {
+        // Regression: previously yielded "openai: response failed" with
+        // no diagnostic when response.error was null.
+        let raw = r#"{"type":"response.failed","response":{"error":null}}"#;
+        let parsed: SseEvent = serde_json::from_str(raw).unwrap();
+        match parsed {
+            SseEvent::Failed { response } => {
+                assert!(response.error.is_none());
+            }
+            _ => panic!("expected Failed variant"),
+        }
+    }
+
+    #[test]
+    fn typed_sse_events_round_trip() {
+        let delta: SseEvent =
+            serde_json::from_str(r#"{"type":"response.output_text.delta","delta":"hello"}"#)
+                .unwrap();
+        assert!(matches!(delta, SseEvent::OutputTextDelta { ref delta } if delta == "hello"));
+
+        let completed: SseEvent = serde_json::from_str(
+            r#"{"type":"response.completed","response":{"status":"completed","usage":{"input_tokens":10,"output_tokens":20}}}"#,
+        )
+        .unwrap();
+        match completed {
+            SseEvent::Completed { response } => {
+                assert_eq!(response.status.as_deref(), Some("completed"));
+                let u = response.usage.expect("usage");
+                assert_eq!(u.input_tokens, 10);
+                assert_eq!(u.output_tokens, 20);
+            }
+            _ => panic!("expected Completed"),
+        }
     }
 }
