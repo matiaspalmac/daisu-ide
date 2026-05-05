@@ -530,6 +530,59 @@ pub async fn save_file(path: String, contents: String) -> AppResult<()> {
     write_file_at(&PathBuf::from(path), &contents).await
 }
 
+/// Save `contents` to `path` re-encoded into the named encoding. Pairs
+/// with `read_file_with_encoding` so a file opened as `Shift_JIS`, GBK,
+/// or UTF-16 round-trips back into its original wire encoding instead
+/// of being silently rewritten as UTF-8.
+///
+/// Mirrors `save_file` and `convert_eol_inner` in two ways:
+///   - Does **not** auto-create missing parent directories. A typo in
+///     `path` should fail loudly, not silently materialise directories.
+///   - Writes via tempfile + atomic rename so a crash mid-write can't
+///     leave a half-written file at the target path.
+///
+/// # Errors
+/// - [`AppError::Internal`] for unknown encoding labels or characters
+///   not representable in the target encoding.
+/// - [`AppError::IoError`] (auto-converted from `std::io::Error` via
+///   `From`) for filesystem failures during the temp-write or rename.
+pub async fn save_file_with_encoding_inner(
+    path: &Path,
+    contents: &str,
+    encoding: &str,
+) -> AppResult<()> {
+    let enc = encoding_rs::Encoding::for_label(encoding.as_bytes())
+        .ok_or_else(|| AppError::Internal(format!("unknown encoding: {encoding}")))?;
+    let (cow, _, had_errors) = enc.encode(contents);
+    if had_errors {
+        return Err(AppError::Internal(format!(
+            "encode {encoding}: contains characters not representable in target encoding"
+        )));
+    }
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = path
+        .file_name()
+        .map_or_else(|| "file".to_string(), |s| s.to_string_lossy().into_owned());
+    let tmp = parent.join(format!(".{file_name}.enc.tmp"));
+    tokio::fs::write(&tmp, &*cow).await?;
+    tokio::fs::rename(&tmp, path).await?;
+    Ok(())
+}
+
+/// Tauri command form of [`save_file_with_encoding_inner`].
+///
+/// # Errors
+/// Propagates errors from [`save_file_with_encoding_inner`].
+#[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
+pub async fn save_file_with_encoding(
+    path: String,
+    contents: String,
+    encoding: String,
+) -> AppResult<()> {
+    save_file_with_encoding_inner(Path::new(&path), &contents, &encoding).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
