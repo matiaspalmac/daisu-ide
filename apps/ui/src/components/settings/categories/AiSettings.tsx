@@ -32,6 +32,13 @@ import {
   type AllowlistEntry,
 } from "../../../lib/agent-tools";
 import { translateError } from "../../../lib/error-translate";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../ui/select";
 
 interface TestResult {
   ok: boolean;
@@ -71,11 +78,20 @@ export function AiSettings(): JSX.Element {
     void probeOllama(ai.ollamaBaseUrl).then((p) => {
       if (cancelled) return;
       setInstalledModels(p.models);
+      // If the configured model isn't installed locally, repoint to the
+      // best available one. Without this the test-connection POST hits
+      // /api/chat with a model Ollama returns 404 for.
+      if (p.reachable && p.models.length > 0 && !p.models.includes(ai.model)) {
+        const best = pickBestModel(p.models, ai.model);
+        if (best && best !== ai.model) {
+          void setSetting("aiProvider", { model: best });
+        }
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [ai.id, ai.ollamaBaseUrl]);
+  }, [ai.id, ai.ollamaBaseUrl, ai.model, setSetting]);
 
   async function handleDetect(): Promise<void> {
     setDetecting(true);
@@ -196,6 +212,18 @@ export function AiSettings(): JSX.Element {
     setModelsError(null);
   }, [ai.ollamaBaseUrl, ai.lmstudioBaseUrl]);
 
+  // Auto-populate the catalog dropdown so users don't have to hit
+  // "Fetch models" before they can pick one. Skip cloud providers when
+  // no key is configured (the request would fail with a 401).
+  useEffect(() => {
+    if (loading) return;
+    const info = providers.find((p) => p.id === ai.id);
+    if (!info?.implemented) return;
+    if (info.requiresKey && !info.hasKey) return;
+    void fetchModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ai.id, ai.ollamaBaseUrl, ai.lmstudioBaseUrl, loading, providers]);
+
   const current = providers.find((p) => p.id === ai.id);
 
   async function handleSelect(id: AgentProviderId): Promise<void> {
@@ -203,7 +231,17 @@ export function AiSettings(): JSX.Element {
     // Use the backend's authoritative defaultModel so this stays in
     // sync with whatever the Rust trait says. Empty string means
     // "no static default" (LM Studio); user picks from the live list.
-    const fallback = providers.find((p) => p.id === id)?.defaultModel ?? "";
+    let fallback = providers.find((p) => p.id === id)?.defaultModel ?? "";
+    // For Ollama, the static default (`qwen3-coder`) is rarely what the
+    // user actually has installed. Probe and pick the best installed
+    // model upfront so test-connection works on first try.
+    if (id === "ollama") {
+      const probe = await probeOllama(ai.ollamaBaseUrl);
+      if (probe.reachable && probe.models.length > 0) {
+        fallback = pickBestModel(probe.models, fallback);
+        setInstalledModels(probe.models);
+      }
+    }
     await setSetting("aiProvider", {
       id,
       mode: id === "ollama" || id === "lmstudio" ? "local" : "cloud",
@@ -354,10 +392,50 @@ export function AiSettings(): JSX.Element {
             <Trans i18nKey="ai.modelHint" components={{ code: <code /> }} />
           </p>
         </div>
+        {(() => {
+          // Merge live catalog (cloud) and installed tags (Ollama) into a
+          // single deduped option set. Native datalist filters by current
+          // input value in WebView2, so we use a real Radix Select for a
+          // guaranteed-clickable dropdown and keep the text input for
+          // custom model ids.
+          const choices = new Map<string, string>();
+          for (const m of providerModels) {
+            choices.set(m.id, m.displayName ?? m.id);
+          }
+          if (ai.id === "ollama") {
+            for (const m of installedModels) {
+              if (!choices.has(m)) choices.set(m, m);
+            }
+          }
+          const items = Array.from(choices.entries());
+          if (items.length === 0) return null;
+          // Radix Select rejects empty-string values; omit `value` when
+          // ai.model is blank so the trigger renders the placeholder.
+          const selectProps =
+            ai.model.length > 0 ? { value: ai.model } : {};
+          return (
+            <Select
+              {...selectProps}
+              onValueChange={(v) =>
+                void setSetting("aiProvider", { model: v })
+              }
+            >
+              <SelectTrigger aria-label={t("ai.selectModel")}>
+                <SelectValue placeholder={t("ai.modelChoosePlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {items.map(([id, label]) => (
+                  <SelectItem key={id} value={id}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        })()}
         <input
           id="ai-model"
           type="text"
-          list="provider-models"
           className="daisu-input daisu-input-mono"
           value={ai.model}
           onChange={(e) =>
@@ -366,20 +444,6 @@ export function AiSettings(): JSX.Element {
           spellCheck={false}
           autoComplete="off"
         />
-        {(providerModels.length > 0 || installedModels.length > 0) && (
-          <datalist id="provider-models">
-            {providerModels.map((m) => (
-              <option
-                key={m.id}
-                value={m.id}
-                label={m.displayName ?? undefined}
-              />
-            ))}
-            {ai.id === "ollama" &&
-              providerModels.length === 0 &&
-              installedModels.map((m) => <option key={m} value={m} />)}
-          </datalist>
-        )}
       </div>
       <div className="daisu-field-row">
         <button

@@ -282,6 +282,8 @@
     "modelLabel": "モデル識別子",
     "modelHint": "例: <code>qwen3-coder</code>、<code>claude-sonnet-4-6</code>、<code>gpt-5.5</code>。<em>モデルを取得</em>でライブカタログを読み込めます。",
     "fetchModels": "モデルを取得",
+    "selectModel": "モデルを選択",
+    "modelChoosePlaceholder": "インストール済みモデルを選択…",
     "loadingModels": "モデルを読み込み中…",
     "modelsFound": "{{count}} 件のモデルが利用可能",
     "detect": "検出",

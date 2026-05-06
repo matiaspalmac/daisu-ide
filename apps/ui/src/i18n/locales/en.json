@@ -282,6 +282,8 @@
     "modelLabel": "Model identifier",
     "modelHint": "E.g.: <code>qwen3-coder</code>, <code>claude-sonnet-4-6</code>, <code>gpt-5.5</code>. Use <em>Fetch models</em> to load the live catalog.",
     "fetchModels": "Fetch models",
+    "selectModel": "Select model",
+    "modelChoosePlaceholder": "Choose installed model…",
     "loadingModels": "Loading models…",
     "modelsFound": "{{count}} models available",
     "detect": "Detect",

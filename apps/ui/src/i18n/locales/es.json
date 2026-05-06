@@ -282,6 +282,8 @@
     "modelLabel": "Identificador del modelo",
     "modelHint": "Ej: <code>qwen3-coder</code>, <code>claude-sonnet-4-6</code>, <code>gpt-5.5</code>. Usá <em>Cargar modelos</em> para traer el catálogo vivo.",
     "fetchModels": "Cargar modelos",
+    "selectModel": "Seleccionar modelo",
+    "modelChoosePlaceholder": "Elegí un modelo instalado…",
     "loadingModels": "Cargando modelos…",
     "modelsFound": "{{count}} modelos disponibles",
     "detect": "Detectar",
