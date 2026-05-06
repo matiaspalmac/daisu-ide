@@ -195,6 +195,18 @@ export function Editor(): JSX.Element {
 
   useEffect(() => {
     syncActiveTab();
+    // Monaco's automaticLayout doesn't always recover when the editor
+    // host transitions from hidden (Home tab active) back to visible —
+    // the canvas can stay black until something else nudges layout.
+    // Force a relayout in the next frame whenever the active tab
+    // changes back to a real file so the viewport repaints cleanly.
+    if (activeTabId) {
+      const raf = requestAnimationFrame(() => {
+        editorRef.current?.layout();
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTabId]);
 
@@ -232,9 +244,17 @@ export function Editor(): JSX.Element {
         roundedSelection: false,
         renderWhitespace: "selection",
         scrollbar: {
-          verticalScrollbarSize: 10,
-          horizontalScrollbarSize: 10,
+          // VS Code-style permanent scrollbars. Monaco's default is to
+          // fade out when the user clicks elsewhere, which left users
+          // with no overflow indicator.
+          vertical: "visible",
+          horizontal: "visible",
+          verticalScrollbarSize: 12,
+          horizontalScrollbarSize: 12,
+          verticalSliderSize: 12,
+          horizontalSliderSize: 12,
           useShadows: false,
+          alwaysConsumeMouseWheel: false,
         },
         overviewRulerBorder: false,
         stickyScroll: { enabled: true },
