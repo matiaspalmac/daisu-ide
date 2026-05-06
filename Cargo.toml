@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/daisu-app", "crates/daisu-agent", "crates/daisu-lsp", "crates/daisu-term"]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 rust-version = "1.84"
 authors = ["Matias Palma <matiaspalma2594@gmail.com>"]
@@ -18,6 +18,8 @@ tauri-plugin-fs = "2.0"
 tauri-plugin-os = "2.0"
 tauri-plugin-store = "2.0"
 tauri-plugin-window-state = "2.0"
+tauri-plugin-updater = "2.0"
+tauri-plugin-process = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"

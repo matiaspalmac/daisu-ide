@@ -657,5 +657,12 @@
       "typewriter": "タイプライター",
       "mechanical": "メカニカル"
     }
+  },
+  "update": {
+    "available": "Daisu {{version}} が利用可能です",
+    "installButton": "インストールして再起動",
+    "downloading": "アップデートをダウンロード中…",
+    "installedRelaunching": "アップデート完了 — 再起動します…",
+    "failed": "アップデートに失敗しました: {{error}}"
   }
 }

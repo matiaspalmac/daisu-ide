@@ -23,6 +23,7 @@ const BottomPanel = lazy(() =>
 );
 import { useSearchListeners } from "./hooks/useSearchListeners";
 import { useDiscordRpc } from "./hooks/useDiscordRpc";
+import { useAutoUpdate } from "./hooks/useAutoUpdate";
 import { ToastViewport } from "./components/ui/Toast";
 import { CloseConfirmModal } from "./components/tabs/CloseConfirmModal";
 import { SettingsModal } from "./components/settings/SettingsModal";
@@ -60,6 +61,7 @@ export function App(): JSX.Element {
   useEditorCursorWiring();
   useSearchListeners();
   useDiscordRpc();
+  useAutoUpdate();
   const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
   const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
   const focusMode = useUI((s) => s.focusMode);

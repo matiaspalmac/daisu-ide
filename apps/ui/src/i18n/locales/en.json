@@ -657,5 +657,12 @@
       "typewriter": "Typewriter",
       "mechanical": "Mechanical"
     }
+  },
+  "update": {
+    "available": "Daisu {{version}} is available",
+    "installButton": "Install + restart",
+    "downloading": "Downloading update…",
+    "installedRelaunching": "Update installed — relaunching…",
+    "failed": "Update failed: {{error}}"
   }
 }

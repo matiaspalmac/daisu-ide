@@ -657,5 +657,12 @@
       "typewriter": "Máquina de escribir",
       "mechanical": "Mecánico"
     }
+  },
+  "update": {
+    "available": "Daisu {{version}} disponible",
+    "installButton": "Instalar + reiniciar",
+    "downloading": "Descargando actualización…",
+    "installedRelaunching": "Actualización instalada — reiniciando…",
+    "failed": "Falló la actualización: {{error}}"
   }
 }

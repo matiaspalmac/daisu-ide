@@ -4,6 +4,39 @@ All notable changes to Daisu IDE are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-05-06
+
+**Auto-updater.** Daisu now ships with `tauri-plugin-updater` wired to
+the GitHub releases manifest. Existing installs check on boot and
+hourly thereafter; new versions arrive as a toast with an in-place
+install + relaunch button. No more "go download the new build" emails
+to testers.
+
+### Added
+
+- `tauri-plugin-updater` + `tauri-plugin-process` plugins, ed25519
+  signature verification via minisign keypair (public key in
+  `tauri.conf.json`)
+- `useAutoUpdate` hook with 5 s post-boot delay + hourly recheck,
+  StrictMode-safe via module-level guard
+- Toast UX with action button — download progress, success, and error
+  states surfaced through the existing toast system
+- i18n EN/ES/JA `update.*` strings
+- `RELEASING.md` documenting the signed-build + `latest.json` flow
+
+### Changed
+
+- `tauri.conf.json` `plugins.updater` block points at
+  `releases/latest/download/latest.json` and runs the NSIS installer in
+  `passive` mode for silent updates
+
+### Notes
+
+- v0.4.0-m4 testers must download v0.4.1 manually one time — the
+  updater is shipped IN this version and cannot retroactively patch
+  itself into the prior install. From v0.4.1 onward updates are
+  automatic.
+
 ## [0.4.0-m4] — 2026-05-06
 
 **M3 + M4 milestones close.** Agent foundations, LSP runtime, embedded terminal.
@@ -127,7 +160,8 @@ All notable changes to Daisu IDE are documented here. Format follows [Keep a Cha
 - GitHub Actions quality workflow
 - Initial CLAUDE.md / superpowers planning workflow
 
-[Unreleased]: https://github.com/matiaspalmac/daisu-ide/compare/v0.4.0-m4...HEAD
+[Unreleased]: https://github.com/matiaspalmac/daisu-ide/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/matiaspalmac/daisu-ide/releases/tag/v0.4.1
 [0.4.0-m4]: https://github.com/matiaspalmac/daisu-ide/releases/tag/v0.4.0-m4
 [0.0.6-m1-phase5]: https://github.com/matiaspalmac/daisu-ide/releases/tag/v0.0.6-m1-phase5
 [0.0.5-m1-phase4]: https://github.com/matiaspalmac/daisu-ide/releases/tag/v0.0.5-m1-phase4
