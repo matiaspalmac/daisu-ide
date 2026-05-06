@@ -1614,9 +1614,13 @@ when the request is ambiguous.",
             iteration += 1;
 
             // Compact history before the provider call. Cheap, pure, and
-            // shrinks tool-heavy conversations 30-60% on average.
+            // shrinks tool-heavy conversations 30-60% on average. Then
+            // slide the window if total tokens exceed the model's
+            // context target — tool_use/tool_result pairing preserved.
             let mut compacted = messages.clone();
             dedupe_file_reads(&mut compacted);
+            let ctx = daisu_agent::memory::window::context_window_for(&model);
+            daisu_agent::memory::window::slide(&mut compacted, ctx);
 
             let completion = CompletionRequest {
                 model: model.clone(),
@@ -1832,8 +1836,12 @@ when the request is ambiguous.",
             // next iteration's prompt includes it without re-reading SQLite.
             messages.push(assistant_msg);
 
-            // Dispatch each tool call.
+            // Dispatch each tool call. Within one assistant turn, identical
+            // (name, args) pairs are deduped so two parallel read_file
+            // calls on the same path only hit disk once.
             let mut all_succeeded = true;
+            let mut turn_cache: std::collections::HashMap<String, ToolResult> =
+                std::collections::HashMap::new();
             for call in emitted_tool_calls {
                 if cancel.is_cancelled() {
                     cancelled = true;
@@ -1843,9 +1851,20 @@ when the request is ambiguous.",
                     name: call.name.clone(),
                     arguments: call.arguments.clone(),
                 };
-                let result = tool_registry
-                    .dispatch(dispatch_call, &gate, &workspace, &scope_default)
-                    .await;
+                let cache_key = format!(
+                    "{}::{}",
+                    call.name,
+                    serde_json::to_string(&call.arguments).unwrap_or_default()
+                );
+                let result = if let Some(cached) = turn_cache.get(&cache_key) {
+                    cached.clone()
+                } else {
+                    let r = tool_registry
+                        .dispatch(dispatch_call, &gate, &workspace, &scope_default)
+                        .await;
+                    turn_cache.insert(cache_key, r.clone());
+                    r
+                };
                 let (ok, output) = match &result {
                     ToolResult::Ok { value } => (true, value.clone()),
                     ToolResult::Denied { reason } => {
