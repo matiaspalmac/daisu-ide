@@ -199,6 +199,40 @@ fn normalize_tool_name(raw: &str) -> String {
     out.trim_matches('_').to_string()
 }
 
+/// Load per-workspace project rules following the AGENTS.md / CLAUDE.md
+/// convergence point. Reads the first of these that exists, in this
+/// order:
+/// 1. `.daisu/AGENTS.md` (Daisu-native preferred)
+/// 2. `AGENTS.md` (cross-tool standard adopted by Codex / Cursor / Zed
+///    / Aider / 20+ others)
+/// 3. `CLAUDE.md` (Anthropic Claude Code convention)
+/// 4. `.cursorrules` (legacy single-file Cursor)
+/// Returns the trimmed file contents or None when none of these exist.
+/// Capped at 32 KiB to keep the prompt tail manageable.
+fn load_workspace_rules(workspace: &std::path::Path) -> Option<String> {
+    const MAX_BYTES: u64 = 32 * 1024;
+    const CANDIDATES: &[&str] = &[".daisu/AGENTS.md", "AGENTS.md", "CLAUDE.md", ".cursorrules"];
+    for rel in CANDIDATES {
+        let p = workspace.join(rel);
+        let Ok(meta) = std::fs::metadata(&p) else {
+            continue;
+        };
+        if !meta.is_file() {
+            continue;
+        }
+        if meta.len() > MAX_BYTES {
+            continue;
+        }
+        if let Ok(s) = std::fs::read_to_string(&p) {
+            let trimmed = s.trim().to_string();
+            if !trimmed.is_empty() {
+                return Some(trimmed);
+            }
+        }
+    }
+    None
+}
+
 /// Cline-style history compaction: when the same `read_file(path)` or
 /// `list_dir(path)` appears multiple times in a conversation, replace
 /// every Tool result *except the latest* with a small placeholder so
@@ -1561,6 +1595,17 @@ end-to-end. Still keep one tool per turn and ask for clarification \
 when the request is ambiguous.",
             ),
             ChatMode::Auto => {}
+        }
+    }
+    // Per-workspace project rules. Honour the AGENTS.md / CLAUDE.md
+    // emerging convention by reading whichever of these is present at
+    // the workspace root and appending to the system prompt. Workspace
+    // rules go AFTER defaults — small models attend most strongly to
+    // the prompt tail so user content gets the priority real estate.
+    if let Some(ref mut sp) = system_prompt {
+        if let Some(rules) = load_workspace_rules(&workspace) {
+            sp.push_str("\n\n# Project rules (from workspace)\n");
+            sp.push_str(&rules);
         }
     }
     let temperature = req.temperature;
