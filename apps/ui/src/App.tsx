@@ -36,6 +36,8 @@ import { useUI } from "./stores/uiStore";
 import { useSettings } from "./stores/settingsStore";
 import { useWorkspace } from "./stores/workspaceStore";
 import { useTabs, persistDirtyUntitledScratch } from "./stores/tabsStore";
+import { startDiagnosticsListener } from "./stores/diagnosticsStore";
+import { startWorkspaceOpenedListener } from "./lsp/monacoBridge";
 import { useKeybindings } from "./hooks/useKeybindings";
 import { useTheme } from "./hooks/useTheme";
 import { useGitWatcher } from "./hooks/useGitWatcher";
@@ -85,6 +87,24 @@ export function App(): JSX.Element {
   useEffect(() => {
     loadSettings().catch(() => undefined);
   }, [loadSettings]);
+
+  // LSP diagnostics arrive on the `agent://lsp-diagnostics` Tauri event;
+  // Tauri does not buffer events delivered before a listener is attached.
+  // Previously the subscriber lived inside <BottomPanel>, which is
+  // lazy-loaded and only mounts when the user opens the panel — so any
+  // diagnostics published by rust-analyzer during the cold-start window
+  // were dropped, leaving Problems panel empty even though Monaco markers
+  // showed errors. Hoisting the listener to App boot ensures the store
+  // captures every event from the very first publish.
+  useEffect(() => {
+    startDiagnosticsListener();
+    // Workspace-opened listener must be live BEFORE the trust dialog or a
+    // workspace re-open from a restored session can fire the event,
+    // otherwise tracked models that opened against an untrusted backend
+    // never get retracked and the user has to manually close + reopen
+    // each restored tab to trigger LSP analysis.
+    void startWorkspaceOpenedListener();
+  }, []);
 
   const language = useSettings((s) => s.settings.general.language);
   const languageInitialized = useSettings((s) => s.settings.general.languageInitialized);

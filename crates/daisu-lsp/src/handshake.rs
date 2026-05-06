@@ -1,6 +1,8 @@
 //! Initialize / initialized / shutdown handshake.
 
 use std::path::Path;
+use std::sync::Arc;
+use std::time::Duration;
 
 use std::str::FromStr;
 
@@ -8,11 +10,17 @@ use lsp_types::{
     ClientCapabilities, GeneralClientCapabilities, InitializeParams, InitializeResult,
     PositionEncodingKind, TextDocumentClientCapabilities, Uri, WorkspaceFolder,
 };
+use parking_lot::Mutex;
 use serde_json::{json, Value};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 
 use crate::jsonrpc::{Correlator, Notification, Request, Response};
 use crate::LspError;
+
+/// Hard cap for a server to answer `initialize`. rust-analyzer cold-starts
+/// in 5–10 s on a large repo; 20 s leaves room for slow disks without
+/// trapping the user behind a permanent spinner if the server is broken.
+const INITIALIZE_TIMEOUT_SECS: u64 = 20;
 
 /// Build a `file://` Uri for an absolute path. Returns an error if the
 /// path is not absolute or cannot be converted to a `file:` URL.
@@ -52,15 +60,47 @@ pub fn build_initialize_params(workspace: &Path) -> Result<InitializeParams, Lsp
     Ok(p)
 }
 
+fn format_tail(tail: &Arc<Mutex<Vec<String>>>) -> String {
+    let lines = tail.lock();
+    if lines.is_empty() {
+        String::new()
+    } else {
+        format!(" — stderr: {}", lines.join(" | "))
+    }
+}
+
+/// Resolve as soon as `eof_rx` reports `true`. Treats a dropped sender
+/// (transport torn down) as EOF, since the server cannot speak LSP
+/// without an active reader either way.
+async fn wait_for_eof(eof_rx: &mut watch::Receiver<bool>) {
+    while !*eof_rx.borrow() {
+        if eof_rx.changed().await.is_err() {
+            return;
+        }
+    }
+}
+
 pub async fn perform_initialize(
     correlator: &Correlator,
     outgoing: &mpsc::UnboundedSender<Vec<u8>>,
     workspace: &Path,
+    mut stdout_eof: watch::Receiver<bool>,
+    stderr_tail: Arc<Mutex<Vec<String>>>,
 ) -> Result<InitializeResult, LspError> {
-    let (id, rx) = correlator.reserve().await;
+    // Fast-fail when the child already died before we even get to await
+    // the response (rustup proxy stub exits in milliseconds; the reader
+    // task can flip `stdout_eof` before this code runs).
+    if *stdout_eof.borrow() {
+        return Err(LspError::Rpc(format!(
+            "server exited before initialize could be sent{}",
+            format_tail(&stderr_tail)
+        )));
+    }
+
+    let (id, mut rx) = correlator.reserve().await;
     let req = Request {
         jsonrpc: "2.0".into(),
-        id,
+        id: id.clone(),
         method: "initialize".into(),
         params: Some(serde_json::to_value(build_initialize_params(workspace)?)?),
     };
@@ -69,9 +109,32 @@ pub async fn perform_initialize(
         .send(bytes)
         .map_err(|e| LspError::Rpc(format!("send initialize: {e}")))?;
 
-    let resp: Response = rx
-        .await
-        .map_err(|e| LspError::Rpc(format!("await initialize: {e}")))?;
+    // Race the handshake response against (a) the server dying and
+    // (b) a hard timeout. Without (a) we hang forever when the server
+    // exits before answering — observed in production when the user's
+    // `rust-analyzer` was a rustup proxy stub that errors and exits in
+    // <50 ms. Without (b) we'd hang on a server that accepts the message
+    // but never responds (broken/buggy server, deadlock inside).
+    let resp: Response = tokio::select! {
+        () = wait_for_eof(&mut stdout_eof) => {
+            correlator.cancel(&id).await;
+            return Err(LspError::Rpc(format!(
+                "server exited before initialize completed{}",
+                format_tail(&stderr_tail)
+            )));
+        }
+        () = tokio::time::sleep(Duration::from_secs(INITIALIZE_TIMEOUT_SECS)) => {
+            correlator.cancel(&id).await;
+            return Err(LspError::Rpc(format!(
+                "initialize timed out after {INITIALIZE_TIMEOUT_SECS}s{}",
+                format_tail(&stderr_tail)
+            )));
+        }
+        result = &mut rx => {
+            result.map_err(|e| LspError::Rpc(format!("await initialize: {e}")))?
+        }
+    };
+
     if let Some(err) = resp.error {
         return Err(LspError::Rpc(format!(
             "initialize error {}: {}",
@@ -145,5 +208,74 @@ mod tests {
     fn initialize_params_path_must_be_absolute() {
         let res = build_initialize_params(&PathBuf::from("relative/path"));
         assert!(res.is_err());
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn perform_initialize_returns_when_eof_signalled_first() {
+        let tmp = tempfile::tempdir().unwrap();
+        let correlator = Correlator::default();
+        let (out_tx, _out_rx) = mpsc::unbounded_channel::<Vec<u8>>();
+        let (eof_tx, eof_rx) = watch::channel(false);
+        let stderr_tail = Arc::new(Mutex::new(vec!["fatal: missing toolchain".into()]));
+        // Simulate the child dying before the handshake response arrives.
+        let _drop_guard = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+            let _ = eof_tx.send(true);
+        });
+        let err = perform_initialize(&correlator, &out_tx, tmp.path(), eof_rx, stderr_tail)
+            .await
+            .unwrap_err();
+        match err {
+            LspError::Rpc(msg) => {
+                assert!(
+                    msg.contains("server exited before initialize completed"),
+                    "{msg}"
+                );
+                assert!(msg.contains("fatal: missing toolchain"), "{msg}");
+            }
+            other => panic!("expected Rpc, got {other:?}"),
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn perform_initialize_times_out_when_no_response() {
+        let tmp = tempfile::tempdir().unwrap();
+        let correlator = Correlator::default();
+        let (out_tx, mut out_rx) = mpsc::unbounded_channel::<Vec<u8>>();
+        let (_eof_tx, eof_rx) = watch::channel(false);
+        let stderr_tail = Arc::new(Mutex::new(Vec::new()));
+        // Drain outgoing in the background so `send` doesn't block, but
+        // never produce a response — the timeout branch must fire.
+        tokio::spawn(async move { while out_rx.recv().await.is_some() {} });
+        let err = perform_initialize(&correlator, &out_tx, tmp.path(), eof_rx, stderr_tail)
+            .await
+            .unwrap_err();
+        match err {
+            LspError::Rpc(msg) => assert!(msg.contains("initialize timed out after"), "{msg}"),
+            other => panic!("expected Rpc, got {other:?}"),
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn perform_initialize_fast_fails_when_eof_already_set() {
+        let tmp = tempfile::tempdir().unwrap();
+        let correlator = Correlator::default();
+        let (out_tx, _out_rx) = mpsc::unbounded_channel::<Vec<u8>>();
+        let (eof_tx, eof_rx) = watch::channel(false);
+        eof_tx.send(true).unwrap();
+        let stderr_tail = Arc::new(Mutex::new(vec!["Unknown binary".into()]));
+        let err = perform_initialize(&correlator, &out_tx, tmp.path(), eof_rx, stderr_tail)
+            .await
+            .unwrap_err();
+        match err {
+            LspError::Rpc(msg) => {
+                assert!(
+                    msg.contains("server exited before initialize could be sent"),
+                    "{msg}"
+                );
+                assert!(msg.contains("Unknown binary"), "{msg}");
+            }
+            other => panic!("expected Rpc, got {other:?}"),
+        }
     }
 }

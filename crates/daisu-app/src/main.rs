@@ -139,6 +139,18 @@ fn wire_before_close(window: &WebviewWindow, handle: tauri::AppHandle) {
     window.on_window_event(move |event| {
         if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
             let _ = handle.emit(BEFORE_CLOSE_EVENT, ());
+            // Tear down Discord RPC synchronously before the WebView
+            // unloads. React's component-unmount cleanup runs too late on
+            // window close — the process may exit before the async IPC
+            // disconnect finishes, leaving Discord with a stale presence
+            // until it notices the named-pipe drop on its next poll.
+            commands::discord::shutdown_blocking();
+            // Kill every PTY child so daisu.exe doesn't orphan with
+            // pipe-blocked reader threads keeping the tokio runtime alive.
+            let state = handle.state::<crate::AppState>();
+            for id in state.term_manager.list() {
+                let _ = state.term_manager.kill(&id);
+            }
         }
     });
 }

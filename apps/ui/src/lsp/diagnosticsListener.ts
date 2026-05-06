@@ -1,6 +1,7 @@
 import type * as monaco from "monaco-editor";
 import { listen } from "@tauri-apps/api/event";
 import type { LspDiagnostic, LspDiagnosticEvent } from "../lib/lsp";
+import { modelOfPath } from "./monacoBridge";
 
 const DIAGNOSTICS_EVENT = "agent://lsp-diagnostics";
 
@@ -31,8 +32,15 @@ export function attachDiagnosticsListener(
   let cancel: (() => void) | null = null;
   void listen<LspDiagnosticEvent>(DIAGNOSTICS_EVENT, (ev) => {
     const { uri, serverId, diagnostics } = ev.payload;
+    // LSP servers publish diagnostics keyed by `file:///` URIs but Monaco
+    // models are created with synthetic `daisu://tab/<id>` URIs, so a
+    // direct `getModel(parsedUri)` lookup never resolves. Convert the
+    // file URI to a canonical filesystem path and resolve via the
+    // monacoBridge reverse-index (or fall back to scanning models for a
+    // matching `fsPath` if the file was opened via `ensureModel`).
     const monacoUri = editor.Uri.parse(uri);
-    const model = editor.editor.getModel(monacoUri);
+    const fsPath = (monacoUri as { fsPath?: string }).fsPath ?? monacoUri.path;
+    const model = modelOfPath(editor, fsPath);
     if (!model) return;
     const markers = diagnostics.map((d) => lspToMarker(d, serverId));
     editor.editor.setModelMarkers(model, `lsp:${serverId}`, markers);

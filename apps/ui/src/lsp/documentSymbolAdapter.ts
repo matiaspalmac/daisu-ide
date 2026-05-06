@@ -1,5 +1,6 @@
 import type * as monaco from "monaco-editor";
 import { lspDocumentSymbol } from "../lib/lsp";
+import { pathOfModel } from "./monacoBridge";
 import { lspRangeToMonaco } from "./positions";
 import type {
   LspDocumentSymbol,
@@ -13,8 +14,8 @@ export function makeDocumentSymbolProvider(
   return {
     displayName: "Daisu LSP",
     async provideDocumentSymbols(model, token) {
-      if (model.uri.scheme !== "file") return [];
-      const path = (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
+      const path = pathOfModel(model);
+      if (!path) return [];
       const res = await lspDocumentSymbol(path, serverId).catch(() => null);
       if (!res || token.isCancellationRequested) return [];
       return normalizeDocSymbolResponse(res);

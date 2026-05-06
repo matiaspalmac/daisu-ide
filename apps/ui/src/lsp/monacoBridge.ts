@@ -41,6 +41,57 @@ const pendingFlush = new Map<string, () => Promise<void>>();
 
 let detachDiagnostics: (() => void) | null = null;
 let serverReadyDetach: (() => void) | null = null;
+let workspaceOpenedDetach: (() => void) | null = null;
+// Map model → real workspace file path. The Monaco URI is synthetic
+// (`daisu://tab/<id>`) so the LSP cannot derive a usable file path from
+// `model.uri.fsPath` directly — we must pass it explicitly from the
+// caller (which knows the originating `OpenTab.path`).
+const trackedModels = new Map<monaco.editor.ITextModel, string>();
+// Reverse index keyed by canonical file path. Used by inbound flows
+// (diagnostics → markers, file-uri-keyed responses → model lookup) that
+// know the real path but not the synthetic Monaco URI. Path keys are
+// normalised to forward slashes + lower-cased drive letter on Windows so
+// `file:///C:/foo` and `c:\foo` resolve to the same model.
+const pathToModel = new Map<string, monaco.editor.ITextModel>();
+
+function normalisePath(p: string): string {
+  let normalised = p.replace(/\\/g, "/");
+  // Windows: lower-case the drive letter so `C:/foo` and `c:/foo` collide.
+  if (/^[A-Za-z]:\//.test(normalised)) {
+    normalised = normalised[0]!.toLowerCase() + normalised.slice(1);
+  }
+  return normalised;
+}
+
+/** Real workspace path for a Monaco model, or null when the model is
+ *  untracked (e.g. an untitled scratch buffer that bypassed the LSP
+ *  bridge). LSP request adapters call this instead of reading
+ *  `model.uri.fsPath`, which on a `daisu://tab/<id>` URI returns the
+ *  synthetic slug and breaks the backend `language_for` / `file_uri`
+ *  resolution. */
+export function pathOfModel(model: monaco.editor.ITextModel): string | null {
+  return trackedModels.get(model) ?? null;
+}
+
+/** Resolve a Monaco model from a canonical file path. Used by the
+ *  diagnostics listener to attach markers to the correct model when the
+ *  LSP delivers `file:///` URIs that do not match the synthetic Monaco
+ *  URI scheme. */
+export function modelOfPath(
+  monacoNs: typeof import("monaco-editor"),
+  filePath: string,
+): monaco.editor.ITextModel | null {
+  const direct = pathToModel.get(normalisePath(filePath));
+  if (direct && !direct.isDisposed()) return direct;
+  // Fallback: scan all Monaco models for a matching `fsPath`. Picks up
+  // models created via `file://` URIs (peek widgets in `ensureModel`)
+  // that bypassed `trackModelOpen` and therefore are not in the map.
+  for (const m of monacoNs.editor.getModels()) {
+    const fsPath = (m.uri as { fsPath?: string }).fsPath;
+    if (fsPath && normalisePath(fsPath) === normalisePath(filePath)) return m;
+  }
+  return null;
+}
 
 export async function attach(
   monacoNs: typeof import("monaco-editor"),
@@ -54,6 +105,25 @@ export async function attach(
       void syncProviders(monacoNs);
     });
   }
+  // Workspace-opened listener is attached ONCE at App boot via
+  // `startWorkspaceOpenedListener` below; we no longer attach it here so
+  // that it is live before the trust dialog runs (otherwise the event
+  // races against `attach()` and tabs restored from the previous session
+  // never get retracked, manifesting as "have to close and reopen the
+  // file for LSP to start").
+}
+
+/** Attach the workspace-opened listener at App boot. Idempotent.
+ *  Splits this from `attach()` so the listener exists before any
+ *  trust-chip / restore-tabs flow can fire the event — otherwise the
+ *  fire-and-forget event is dropped with no buffering. */
+export async function startWorkspaceOpenedListener(): Promise<void> {
+  if (workspaceOpenedDetach) return;
+  workspaceOpenedDetach = await listen("lsp://workspace-opened", () => {
+    for (const [model, path] of trackedModels.entries()) {
+      if (!model.isDisposed()) void retrackModel(model, path);
+    }
+  });
 }
 
 async function syncProviders(
@@ -250,39 +320,69 @@ async function syncProviders(
 let commandsRegistered = false;
 
 function pathOf(model: monaco.editor.ITextModel): string {
-  return (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
+  // Internal helper used by the rename adapter. Falls back to the
+  // synthetic URI only when the model is untracked (e.g. peek widget),
+  // which is benign here since the rename adapter rejects unknown paths
+  // server-side.
+  return pathOfModel(model) ?? ((model.uri as { fsPath?: string }).fsPath ?? model.uri.path);
 }
 
 export async function trackModelOpen(
   model: monaco.editor.ITextModel,
+  filePath: string | null,
 ): Promise<void> {
-  const path = (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
+  // Untitled scratch tabs have no on-disk path — there is nothing for the
+  // LSP to analyse, so skip the entire bridge. Returning early also
+  // prevents `language_for("")` thrash on the backend.
+  if (!filePath) return;
+  trackedModels.set(model, filePath);
+  pathToModel.set(normalisePath(filePath), model);
   try {
-    await documentOpen(path, model.getValue());
+    await documentOpen(filePath, model.getValue());
   } catch {
     // Backend unavailable (no workspace trusted, dev rebuild) — bridge is
-    // best-effort. Subsequent change/close calls are similarly guarded so
-    // transient IPC failures don't spam the console.
-    return;
+    // best-effort. We still wire debounce/flush below so the next
+    // `lsp://workspace-opened` event can re-attempt didOpen via
+    // `retrackModel`. Without that wiring a model that opened before
+    // trust would never get LSP behaviour even after granting trust.
   }
+  if (pendingFlush.has(filePath)) return;
   const debounced = debounce((text: string) => {
-    void documentChange(path, text).catch(() => undefined);
+    void documentChange(filePath, text).catch(() => undefined);
   }, 200);
   const flushNow = () =>
-    documentChange(path, model.getValue()).catch(() => undefined);
-  pendingFlush.set(path, flushNow);
+    documentChange(filePath, model.getValue()).catch(() => undefined);
+  pendingFlush.set(filePath, flushNow);
   model.onDidChangeContent(() => debounced(model.getValue()));
   model.onWillDispose(() => {
-    pendingFlush.delete(path);
-    void documentClose(path).catch(() => undefined);
+    trackedModels.delete(model);
+    pathToModel.delete(normalisePath(filePath));
+    pendingFlush.delete(filePath);
+    void documentClose(filePath).catch(() => undefined);
   });
 }
 
-export async function flushPendingChange(uri: monaco.Uri | string): Promise<void> {
+/** Re-issue `documentOpen` for an already-tracked model. Called when
+ *  the workspace transitions from untrusted → trusted, since the model's
+ *  first open attempt failed with `no workspace open`. */
+async function retrackModel(
+  model: monaco.editor.ITextModel,
+  filePath: string,
+): Promise<void> {
+  await documentOpen(filePath, model.getValue()).catch(() => undefined);
+}
+
+/** Flush any pending debounced `didChange` for the given target. Accepts
+ *  either an explicit file path string (when the caller already resolved
+ *  it via `pathOfModel`) or a Monaco model (the bridge resolves the path
+ *  via the trackedModels map — `model.uri` is synthetic and cannot be
+ *  used directly as a key). */
+export async function flushPendingChange(
+  target: monaco.editor.ITextModel | string,
+): Promise<void> {
   const path =
-    typeof uri === "string"
-      ? uri
-      : ((uri as { fsPath?: string }).fsPath ?? uri.path);
+    typeof target === "string" ? target : (pathOfModel(target) ?? null);
+  if (!path) return;
   const fn = pendingFlush.get(path);
   if (fn) await fn();
 }

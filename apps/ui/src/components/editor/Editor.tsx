@@ -124,13 +124,23 @@ export function Editor(): JSX.Element {
       const kind = keyKindFromCode(e.code);
       if (kind) keySoundEngine.play(kind, true);
     });
-    // M4.1: wire LSP bridge + per-model didOpen/didChange/didClose.
+    // M4.1: wire LSP bridge + per-model didOpen/didChange/didClose. The
+    // active tab's `path` is the canonical filesystem location — Monaco's
+    // synthetic `daisu://tab/<id>` URI is opaque to the LSP, so we resolve
+    // the real path from the tabs store at the moment of model swap and
+    // pass it explicitly to the bridge.
     void attachLsp(monaco);
+    const resolveActivePath = (): string | null => {
+      const state = useTabs.getState();
+      const id = state.activeTabId;
+      if (!id) return null;
+      return state.tabs.find((t) => t.id === id)?.path ?? null;
+    };
     const initialModel = editor.getModel();
-    if (initialModel) void trackLspModel(initialModel);
+    if (initialModel) void trackLspModel(initialModel, resolveActivePath());
     editor.onDidChangeModel(() => {
       const newModel = editor.getModel();
-      if (newModel) void trackLspModel(newModel);
+      if (newModel) void trackLspModel(newModel, resolveActivePath());
     });
   };
 

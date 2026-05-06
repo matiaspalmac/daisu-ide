@@ -5,6 +5,7 @@ import {
   type LspCompletionItem,
   type LspCompletionResponse,
 } from "../lib/lsp";
+import { pathOfModel } from "./monacoBridge";
 
 const KIND_MAP: Record<number, number> = {
   1: 17,
@@ -31,7 +32,8 @@ export function makeCompletionProvider(
   return {
     triggerCharacters: [".", ":", ">", "/", "@", "#"],
     async provideCompletionItems(model, position) {
-      const path = (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
+      const path = pathOfModel(model);
+      if (!path) return { suggestions: [] };
       const res: LspCompletionResponse = await lspCompletion(
         path,
         position.lineNumber - 1,

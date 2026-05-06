@@ -2,7 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../lib/lsp", () => ({ lspReferences: vi.fn() }));
 vi.mock("../ensureModel", () => ({ ensureModel: vi.fn().mockResolvedValue(undefined) }));
-vi.mock("../monacoBridge", () => ({ flushPendingChange: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("../monacoBridge", () => ({
+  flushPendingChange: vi.fn().mockResolvedValue(undefined),
+  // Tests build fake models without `trackModelOpen`, so the real
+  // `pathOfModel` would return null. Mirror the historical behaviour
+  // (read fsPath off the URI) so existing fixtures stay green.
+  pathOfModel: vi.fn((m: { uri: { fsPath?: string; path: string } }) =>
+    m.uri.fsPath ?? m.uri.path,
+  ),
+  modelOfPath: vi.fn(() => null),
+}));
 
 import { lspReferences } from "../../lib/lsp";
 import { makeReferenceProvider } from "../referencesAdapter";

@@ -249,6 +249,12 @@ pub struct ServerSlot {
     pub client: Option<Arc<Client>>,
     pub lifecycle: Option<Arc<Lifecycle>>,
     pub refcount: usize,
+    /// Last spawn or handshake failure for this slot. Populated by
+    /// `ensure_client` when `Client::spawn` returns Err and surfaced via
+    /// `ServerStatus.last_error`. Without this the UI sees the slot stuck
+    /// in `Idle` with no actionable signal — same symptom as a server
+    /// that simply hasn't been needed yet.
+    pub last_error: Option<String>,
 }
 
 impl LspManager {
@@ -265,13 +271,32 @@ impl LspManager {
         self.ready_tx.subscribe()
     }
 
+    /// Open (or re-open) a workspace. Returns `true` when the workspace
+    /// transitioned from "not open" or "different workspace" to opened —
+    /// callers use this to gate one-shot side effects (emitting
+    /// `lsp://workspace-opened`, redirecting tracked Monaco models). For
+    /// repeated calls with the same path this is a no-op and returns
+    /// `false`, preserving running clients across StrictMode double-mounts
+    /// and chip remounts.
     pub async fn open_workspace(
         &self,
         workspace: PathBuf,
         config_path: &std::path::Path,
-    ) -> LspResult<()> {
+    ) -> LspResult<bool> {
+        // Fast path under read lock — avoids unnecessary config IO when
+        // the workspace is already open.
+        {
+            let inner = self.inner.read().await;
+            if inner.workspace.as_deref() == Some(workspace.as_path()) {
+                return Ok(false);
+            }
+        }
         let config = LspConfig::load(config_path)?;
         let mut inner = self.inner.write().await;
+        // Re-check under the write lock — another task could have raced.
+        if inner.workspace.as_deref() == Some(workspace.as_path()) {
+            return Ok(false);
+        }
         inner.workspace = Some(workspace);
         inner.servers.clear();
         inner.by_server_id.clear();
@@ -284,11 +309,12 @@ impl LspManager {
                 client: None,
                 lifecycle: None,
                 refcount: 0,
+                last_error: None,
             });
             inner.by_server_id.insert(server.id.clone(), id);
         }
         inner.config = config;
-        Ok(())
+        Ok(true)
     }
 
     pub async fn open_document(&self, path: &std::path::Path, text: String) -> LspResult<()> {
@@ -395,16 +421,45 @@ impl LspManager {
         };
         let bin_path = match resolution {
             Resolution::Found(p) => p,
-            Resolution::Missing => return Ok(()),
+            Resolution::Missing => {
+                // Discovery already failed — record so the UI surfaces
+                // "binary not found" instead of the slot lingering in
+                // Idle indefinitely. Reported as `last_error` because
+                // `Resolution::Missing` is also a status field, but the
+                // human-readable hint helps less-technical users.
+                let mut inner = self.inner.write().await;
+                if let Some(slot) = inner.servers.get_mut(id) {
+                    slot.last_error =
+                        Some(format!("command not found on PATH: {}", config.command));
+                }
+                return Ok(());
+            }
         };
-        let client = Client::spawn(
+        let client = match Client::spawn(
             config.id.clone(),
             bin_path.to_string_lossy().as_ref(),
             &config.args,
             workspace,
             self.diagnostics.clone(),
         )
-        .await?;
+        .await
+        {
+            Ok(c) => c,
+            Err(e) => {
+                // Persist the failure so subsequent `statuses()` calls
+                // promote the slot from Idle to Crashed and the UI can
+                // render the underlying error (handshake timeout, server
+                // exited, EOF before initialize, etc.).
+                let err_str = e.to_string();
+                {
+                    let mut inner = self.inner.write().await;
+                    if let Some(slot) = inner.servers.get_mut(id) {
+                        slot.last_error = Some(err_str);
+                    }
+                }
+                return Err(e);
+            }
+        };
         let outgoing = client.outgoing.clone();
         let capabilities = NavCapabilities::from_caps(&client.capabilities());
         let mutation = MutationCapabilities::from_caps(&client.capabilities());
@@ -450,23 +505,27 @@ impl LspManager {
                     .as_ref()
                     .map(|c| AdvancedCapabilities::from_caps(c))
                     .unwrap_or_default();
+                let state = if slot.client.is_some() {
+                    ServerState::Ready
+                } else if slot.last_error.is_some() {
+                    ServerState::Crashed
+                } else {
+                    ServerState::Idle
+                };
                 ServerStatus {
                     id,
                     server_id: slot.config.id.clone(),
                     languages: slot.config.languages.clone(),
                     resolution: match &slot.resolution {
-                        Resolution::Found(p) => ResolutionPublic::Found(p.clone()),
+                        Resolution::Found(p) => ResolutionPublic::Found { path: p.clone() },
                         Resolution::Missing => ResolutionPublic::Missing,
                     },
-                    state: if slot.client.is_some() {
-                        ServerState::Ready
-                    } else {
-                        ServerState::Idle
-                    },
+                    state,
                     rss_mb: None,
                     capabilities,
                     mutation,
                     advanced,
+                    last_error: slot.last_error.clone(),
                 }
             })
             .collect()
@@ -495,12 +554,24 @@ pub struct ServerStatus {
     pub capabilities: NavCapabilities,
     pub mutation: MutationCapabilities,
     pub advanced: AdvancedCapabilities,
+    /// Human-readable failure context when `state` is `Crashed`. The
+    /// frontend renders this in a status-bar banner so users can act on
+    /// the actual cause (e.g., "Unknown binary 'rust-analyzer'") rather
+    /// than wondering why hovers do nothing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ResolutionPublic {
-    Found(PathBuf),
+    // Struct variant (not tuple) — `#[serde(tag = ...)]` only supports
+    // internally-tagged enums when each variant is a struct. The previous
+    // `Found(PathBuf)` form compiled but failed at runtime with
+    // "cannot serialize tagged newtype variant ResolutionPublic::Found
+    // containing a string", silently breaking `lsp_servers_status` and
+    // every Monaco LSP provider downstream of it.
+    Found { path: PathBuf },
     Missing,
 }
 
@@ -652,6 +723,29 @@ mod nav_capabilities_tests {
         assert!(advanced.inlay_hint_resolve);
         assert!(advanced.code_action);
         assert!(advanced.code_action_resolve);
+    }
+
+    #[test]
+    fn resolution_public_serializes_found_with_kind_and_path() {
+        // Regression: `#[serde(tag = "kind")]` cannot serialize tuple
+        // newtype variants holding a primitive. Frontend type expects
+        // `{ kind: "found", path: string }` — anything else collapses
+        // `lsp_servers_status` into a JSON error and silently disables
+        // every Monaco LSP provider.
+        let r = ResolutionPublic::Found {
+            path: std::path::PathBuf::from("/usr/bin/rust-analyzer"),
+        };
+        let v = serde_json::to_value(&r).expect("ResolutionPublic must serialize");
+        assert_eq!(v["kind"], "found");
+        assert_eq!(v["path"], "/usr/bin/rust-analyzer");
+    }
+
+    #[test]
+    fn resolution_public_serializes_missing_with_kind_only() {
+        let r = ResolutionPublic::Missing;
+        let v = serde_json::to_value(&r).expect("ResolutionPublic must serialize");
+        assert_eq!(v["kind"], "missing");
+        assert!(v.get("path").is_none());
     }
 
     #[test]

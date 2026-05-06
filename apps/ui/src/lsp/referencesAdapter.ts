@@ -1,7 +1,7 @@
 import type * as monaco from "monaco-editor";
 import { lspReferences } from "../lib/lsp";
 import { ensureModel } from "./ensureModel";
-import { flushPendingChange } from "./monacoBridge";
+import { flushPendingChange, pathOfModel } from "./monacoBridge";
 import { lspRangeToMonaco } from "./positions";
 
 const REFS_CAP = 200;
@@ -12,9 +12,9 @@ export function makeReferenceProvider(
 ): monaco.languages.ReferenceProvider {
   return {
     async provideReferences(model, position, context, token) {
-      if (model.uri.scheme !== "file") return null;
-      await flushPendingChange(model.uri).catch(() => undefined);
-      const path = (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
+      const path = pathOfModel(model);
+      if (!path) return null;
+      await flushPendingChange(path).catch(() => undefined);
       const refs = await lspReferences(
         path,
         position.lineNumber - 1,
