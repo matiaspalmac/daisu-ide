@@ -29,6 +29,12 @@ vi.mock("../formatAdapter", () => ({
   provideDocumentFormattingEdits: vi.fn(),
   provideRangeFormattingEdits: vi.fn(),
 }));
+vi.mock("../inlayHintAdapter", () => ({ makeInlayHintsProvider: vi.fn(() => ({})) }));
+vi.mock("../semanticTokensAdapter", () => ({ makeSemanticTokensProvider: vi.fn(() => ({})) }));
+vi.mock("../codeActionAdapter", () => ({
+  makeCodeActionProvider: vi.fn(() => ({})),
+  runCodeAction: vi.fn(),
+}));
 
 import { listServerStatus } from "../../lib/lsp";
 import { listen } from "@tauri-apps/api/event";
@@ -47,9 +53,15 @@ function makeMonacoMock() {
     registerRenameProvider: vi.fn(() => disposable),
     registerDocumentFormattingEditProvider: vi.fn(() => disposable),
     registerDocumentRangeFormattingEditProvider: vi.fn(() => disposable),
+    registerInlayHintsProvider: vi.fn(() => disposable),
+    registerDocumentSemanticTokensProvider: vi.fn(() => disposable),
+    registerCodeActionProvider: vi.fn(() => disposable),
   };
   return {
-    mock: { languages: langs, editor: { getModel: vi.fn() } } as never,
+    mock: {
+      languages: langs,
+      editor: { getModel: vi.fn(), registerCommand: vi.fn() },
+    } as never,
     langs,
     dispose,
   };
@@ -60,6 +72,15 @@ const NO_MUTATION = {
   prepareRename: false,
   documentFormatting: false,
   rangeFormatting: false,
+};
+
+const NO_ADVANCED = {
+  inlayHint: false,
+  inlayHintResolve: false,
+  semanticTokensFull: false,
+  codeAction: false,
+  codeActionResolve: false,
+  executeCommand: false,
 };
 
 describe("monacoBridge", () => {
@@ -76,6 +97,7 @@ describe("monacoBridge", () => {
       rssMb: null,
       capabilities: { definition: true, references: false, documentSymbol: true, workspaceSymbol: true },
       mutation: NO_MUTATION,
+      advanced: NO_ADVANCED,
     }]);
     const { mock, langs } = makeMonacoMock();
     await attach(mock);
@@ -99,12 +121,31 @@ describe("monacoBridge", () => {
       rssMb: null,
       capabilities: { definition: false, references: false, documentSymbol: false, workspaceSymbol: false },
       mutation: { rename: true, prepareRename: true, documentFormatting: true, rangeFormatting: true },
+      advanced: NO_ADVANCED,
     }]);
     const { mock, langs } = makeMonacoMock();
     await attach(mock);
     expect(langs.registerRenameProvider).toHaveBeenCalledTimes(1);
     expect(langs.registerDocumentFormattingEditProvider).toHaveBeenCalledTimes(1);
     expect(langs.registerDocumentRangeFormattingEditProvider).toHaveBeenCalledTimes(1);
+  });
+
+  it("registers advanced providers when caps advertise them", async () => {
+    (listServerStatus as ReturnType<typeof vi.fn>).mockResolvedValueOnce([{
+      serverId: "rust-analyzer",
+      languages: ["rust"],
+      resolution: { kind: "found", path: "/usr/bin/rust-analyzer" },
+      state: "ready",
+      rssMb: null,
+      capabilities: { definition: false, references: false, documentSymbol: false, workspaceSymbol: false },
+      mutation: NO_MUTATION,
+      advanced: { inlayHint: true, inlayHintResolve: true, semanticTokensFull: true, codeAction: true, codeActionResolve: true, executeCommand: true },
+    }]);
+    const { mock, langs } = makeMonacoMock();
+    await attach(mock);
+    expect(langs.registerInlayHintsProvider).toHaveBeenCalledTimes(1);
+    expect(langs.registerDocumentSemanticTokensProvider).toHaveBeenCalledTimes(1);
+    expect(langs.registerCodeActionProvider).toHaveBeenCalledTimes(1);
   });
 
   it("skips servers in non-ready state", async () => {
@@ -116,6 +157,7 @@ describe("monacoBridge", () => {
       rssMb: null,
       capabilities: { definition: true, references: true, documentSymbol: true, workspaceSymbol: true },
       mutation: NO_MUTATION,
+      advanced: NO_ADVANCED,
     }]);
     const { mock, langs } = makeMonacoMock();
     await attach(mock);

@@ -115,6 +115,73 @@ impl MutationCapabilities {
     }
 }
 
+/// Boolean flags advertising which LSP "advanced" (path-C extras) features
+/// the server declared during the initialize handshake. Same allow-list
+/// rationale as `NavCapabilities` / `MutationCapabilities`: 1:1 mirror of
+/// LSP provider flags.
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Default, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvancedCapabilities {
+    pub inlay_hint: bool,
+    pub inlay_hint_resolve: bool,
+    pub semantic_tokens_full: bool,
+    pub code_action: bool,
+    pub code_action_resolve: bool,
+    pub execute_command: bool,
+}
+
+impl AdvancedCapabilities {
+    #[must_use]
+    pub fn from_caps(caps: &lsp_types::ServerCapabilities) -> Self {
+        let (inlay_hint, inlay_hint_resolve) = match &caps.inlay_hint_provider {
+            None => (false, false),
+            Some(lsp_types::OneOf::Left(b)) => (*b, false),
+            Some(lsp_types::OneOf::Right(server_caps)) => {
+                let resolve = match server_caps {
+                    lsp_types::InlayHintServerCapabilities::Options(opts) => {
+                        opts.resolve_provider.unwrap_or(false)
+                    }
+                    lsp_types::InlayHintServerCapabilities::RegistrationOptions(opts) => {
+                        opts.inlay_hint_options.resolve_provider.unwrap_or(false)
+                    }
+                };
+                (true, resolve)
+            }
+        };
+        let semantic_tokens_full = caps.semantic_tokens_provider.as_ref().is_some_and(|p| {
+            let full = match p {
+                lsp_types::SemanticTokensServerCapabilities::SemanticTokensOptions(o) => &o.full,
+                lsp_types::SemanticTokensServerCapabilities::SemanticTokensRegistrationOptions(
+                    o,
+                ) => &o.semantic_tokens_options.full,
+            };
+            matches!(
+                full,
+                Some(
+                    lsp_types::SemanticTokensFullOptions::Bool(true)
+                        | lsp_types::SemanticTokensFullOptions::Delta { .. }
+                )
+            )
+        });
+        let (code_action, code_action_resolve) = match &caps.code_action_provider {
+            None => (false, false),
+            Some(lsp_types::CodeActionProviderCapability::Simple(b)) => (*b, false),
+            Some(lsp_types::CodeActionProviderCapability::Options(opts)) => {
+                (true, opts.resolve_provider.unwrap_or(false))
+            }
+        };
+        Self {
+            inlay_hint,
+            inlay_hint_resolve,
+            semantic_tokens_full,
+            code_action,
+            code_action_resolve,
+            execute_command: caps.execute_command_provider.is_some(),
+        }
+    }
+}
+
 slotmap::new_key_type! {
     /// Stable id assigned to a `(workspace, server_id)` pair. Used by
     /// the multiplexor to route messages and by the UI to reference a
@@ -147,6 +214,7 @@ pub struct ServerReadyEvent {
     pub languages: Vec<String>,
     pub capabilities: NavCapabilities,
     pub mutation: MutationCapabilities,
+    pub advanced: AdvancedCapabilities,
 }
 
 pub struct LspManager {
@@ -340,6 +408,7 @@ impl LspManager {
         let outgoing = client.outgoing.clone();
         let capabilities = NavCapabilities::from_caps(&client.capabilities());
         let mutation = MutationCapabilities::from_caps(&client.capabilities());
+        let advanced = AdvancedCapabilities::from_caps(&client.capabilities());
         let arc = Arc::new(client);
         let lifecycle = Arc::new(Lifecycle::new(outgoing));
         {
@@ -357,6 +426,7 @@ impl LspManager {
             languages: config.languages.clone(),
             capabilities,
             mutation,
+            advanced,
         });
         Ok(())
     }
@@ -376,6 +446,10 @@ impl LspManager {
                     .as_ref()
                     .map(|c| MutationCapabilities::from_caps(c))
                     .unwrap_or_default();
+                let advanced = caps_snapshot
+                    .as_ref()
+                    .map(|c| AdvancedCapabilities::from_caps(c))
+                    .unwrap_or_default();
                 ServerStatus {
                     id,
                     server_id: slot.config.id.clone(),
@@ -392,6 +466,7 @@ impl LspManager {
                     rss_mb: None,
                     capabilities,
                     mutation,
+                    advanced,
                 }
             })
             .collect()
@@ -419,6 +494,7 @@ pub struct ServerStatus {
     pub rss_mb: Option<u64>,
     pub capabilities: NavCapabilities,
     pub mutation: MutationCapabilities,
+    pub advanced: AdvancedCapabilities,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -523,5 +599,80 @@ mod nav_capabilities_tests {
         assert!(!mutation.prepare_rename);
         assert!(!mutation.document_formatting);
         assert!(!mutation.range_formatting);
+    }
+
+    #[test]
+    fn advanced_capabilities_default_when_no_providers() {
+        let caps = ServerCapabilities::default();
+        let advanced = AdvancedCapabilities::from_caps(&caps);
+        assert!(!advanced.inlay_hint);
+        assert!(!advanced.inlay_hint_resolve);
+        assert!(!advanced.semantic_tokens_full);
+        assert!(!advanced.code_action);
+        assert!(!advanced.code_action_resolve);
+        assert!(!advanced.execute_command);
+    }
+
+    #[test]
+    fn advanced_capabilities_extracted_from_bool_provider() {
+        let caps = ServerCapabilities {
+            inlay_hint_provider: Some(OneOf::Left(true)),
+            code_action_provider: Some(lsp_types::CodeActionProviderCapability::Simple(true)),
+            execute_command_provider: Some(lsp_types::ExecuteCommandOptions::default()),
+            ..Default::default()
+        };
+        let advanced = AdvancedCapabilities::from_caps(&caps);
+        assert!(advanced.inlay_hint);
+        assert!(!advanced.inlay_hint_resolve);
+        assert!(advanced.code_action);
+        assert!(!advanced.code_action_resolve);
+        assert!(advanced.execute_command);
+    }
+
+    #[test]
+    fn advanced_capabilities_detects_resolve_providers() {
+        let caps = ServerCapabilities {
+            inlay_hint_provider: Some(OneOf::Right(
+                lsp_types::InlayHintServerCapabilities::Options(lsp_types::InlayHintOptions {
+                    resolve_provider: Some(true),
+                    work_done_progress_options: WorkDoneProgressOptions::default(),
+                }),
+            )),
+            code_action_provider: Some(lsp_types::CodeActionProviderCapability::Options(
+                lsp_types::CodeActionOptions {
+                    resolve_provider: Some(true),
+                    code_action_kinds: None,
+                    work_done_progress_options: WorkDoneProgressOptions::default(),
+                },
+            )),
+            ..Default::default()
+        };
+        let advanced = AdvancedCapabilities::from_caps(&caps);
+        assert!(advanced.inlay_hint);
+        assert!(advanced.inlay_hint_resolve);
+        assert!(advanced.code_action);
+        assert!(advanced.code_action_resolve);
+    }
+
+    #[test]
+    fn advanced_capabilities_detects_semantic_tokens_full() {
+        let caps = ServerCapabilities {
+            semantic_tokens_provider: Some(
+                lsp_types::SemanticTokensServerCapabilities::SemanticTokensOptions(
+                    lsp_types::SemanticTokensOptions {
+                        full: Some(lsp_types::SemanticTokensFullOptions::Bool(true)),
+                        legend: lsp_types::SemanticTokensLegend {
+                            token_types: vec![],
+                            token_modifiers: vec![],
+                        },
+                        range: None,
+                        work_done_progress_options: WorkDoneProgressOptions::default(),
+                    },
+                ),
+            ),
+            ..Default::default()
+        };
+        let advanced = AdvancedCapabilities::from_caps(&caps);
+        assert!(advanced.semantic_tokens_full);
     }
 }

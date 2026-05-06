@@ -24,6 +24,15 @@ export interface MutationCapabilities {
   rangeFormatting: boolean;
 }
 
+export interface AdvancedCapabilities {
+  inlayHint: boolean;
+  inlayHintResolve: boolean;
+  semanticTokensFull: boolean;
+  codeAction: boolean;
+  codeActionResolve: boolean;
+  executeCommand: boolean;
+}
+
 export interface ServerStatus {
   serverId: string;
   languages: string[];
@@ -32,6 +41,7 @@ export interface ServerStatus {
   rssMb: number | null;
   capabilities: NavCapabilities;
   mutation: MutationCapabilities;
+  advanced: AdvancedCapabilities;
 }
 
 export function isWorkspaceTrusted(workspacePath: string): Promise<TrustState> {
@@ -298,5 +308,124 @@ export function lspRangeFormatting(
       tabSize,
       insertSpaces,
     },
+  });
+}
+
+// === M4.3 advanced types ===
+
+export interface LspInlayHintLabelPart {
+  value: string;
+  tooltip?: string | { kind: "markdown" | "plaintext"; value: string };
+  location?: { uri: string; range: LspRange };
+  command?: { title: string; command: string; arguments?: unknown[] };
+}
+
+export interface LspInlayHint {
+  position: LspPosition;
+  label: string | LspInlayHintLabelPart[];
+  kind?: 1 | 2;
+  textEdits?: LspTextEdit[];
+  tooltip?: string | { kind: "markdown" | "plaintext"; value: string };
+  paddingLeft?: boolean;
+  paddingRight?: boolean;
+  data?: unknown;
+}
+
+export interface LspSemanticTokens {
+  resultId?: string;
+  data: number[];
+}
+
+export type LspSemanticTokensResult = LspSemanticTokens | { edits: unknown[] } | null;
+
+export interface LspCodeAction {
+  title: string;
+  kind?: string;
+  diagnostics?: LspDiagnostic[];
+  isPreferred?: boolean;
+  disabled?: { reason: string };
+  edit?: LspWorkspaceEdit;
+  command?: { title: string; command: string; arguments?: unknown[] };
+  data?: unknown;
+}
+
+export interface LspCommand {
+  title: string;
+  command: string;
+  arguments?: unknown[];
+}
+
+export type LspCodeActionOrCommand = LspCodeAction | LspCommand;
+
+export function lspInlayHint(
+  path: string,
+  range: LspRange,
+  serverId?: string,
+): Promise<LspInlayHint[]> {
+  return invoke<LspInlayHint[]>("lsp_inlay_hint", {
+    req: {
+      path,
+      serverId,
+      startLine: range.start.line,
+      startCharacter: range.start.character,
+      endLine: range.end.line,
+      endCharacter: range.end.character,
+    },
+  });
+}
+
+export function lspInlayHintResolve(
+  serverId: string,
+  hint: LspInlayHint,
+): Promise<LspInlayHint | null> {
+  return invoke<LspInlayHint | null>("lsp_inlay_hint_resolve", {
+    req: { serverId, hint },
+  });
+}
+
+export function lspSemanticTokens(
+  path: string,
+  serverId?: string,
+): Promise<LspSemanticTokensResult> {
+  return invoke<LspSemanticTokensResult>("lsp_semantic_tokens", {
+    req: { path, line: 0, character: 0, serverId },
+  });
+}
+
+export function lspCodeAction(
+  path: string,
+  range: LspRange,
+  diagnostics: LspDiagnostic[],
+  serverId?: string,
+): Promise<LspCodeActionOrCommand[]> {
+  return invoke<LspCodeActionOrCommand[]>("lsp_code_action", {
+    req: {
+      path,
+      serverId,
+      startLine: range.start.line,
+      startCharacter: range.start.character,
+      endLine: range.end.line,
+      endCharacter: range.end.character,
+      diagnostics,
+    },
+  });
+}
+
+export function lspCodeActionResolve(
+  serverId: string,
+  action: LspCodeAction,
+): Promise<LspCodeAction | null> {
+  return invoke<LspCodeAction | null>("lsp_code_action_resolve", {
+    req: { serverId, action },
+  });
+}
+
+export function lspExecuteCommand(
+  serverId: string,
+  command: string,
+  args: unknown[] = [],
+): Promise<unknown> {
+  return invoke<unknown>("lsp_execute_command", {
+    req: { serverId, command, arguments: args },
   });
 }

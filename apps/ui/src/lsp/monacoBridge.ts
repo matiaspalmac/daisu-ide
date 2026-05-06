@@ -22,6 +22,13 @@ import {
   provideDocumentFormattingEdits,
   provideRangeFormattingEdits,
 } from "./formatAdapter";
+import { makeInlayHintsProvider } from "./inlayHintAdapter";
+import {
+  makeSemanticTokensProvider,
+  type SemanticTokensLegend,
+} from "./semanticTokensAdapter";
+import { makeCodeActionProvider, runCodeAction } from "./codeActionAdapter";
+import { lspExecuteCommand, type LspCodeAction } from "../lib/lsp";
 import { debounce } from "./debounce";
 
 // Per-(language, serverId) Monaco disposables. Re-sync replaces the entire
@@ -182,10 +189,65 @@ async function syncProviders(
           }),
         );
       }
+      // M4.3 advanced providers (capability-gated):
+      if (status.advanced.inlayHint) {
+        ds.push(
+          monacoNs.languages.registerInlayHintsProvider(
+            language,
+            makeInlayHintsProvider({
+              serverId: status.serverId,
+              hasResolveProvider: status.advanced.inlayHintResolve,
+            }),
+          ),
+        );
+      }
+      if (status.advanced.semanticTokensFull) {
+        // Legend should come from `caps.semantic_tokens_provider.legend`
+        // but ServerStatus does not currently carry it; ship a placeholder
+        // and refresh from a future status field. rust-analyzer/tsserver
+        // both supply rich legends — see M4.x followup.
+        const legend: SemanticTokensLegend = {
+          tokenTypes: [],
+          tokenModifiers: [],
+        };
+        ds.push(
+          monacoNs.languages.registerDocumentSemanticTokensProvider(
+            language,
+            makeSemanticTokensProvider({ serverId: status.serverId, legend }),
+          ),
+        );
+      }
+      if (status.advanced.codeAction) {
+        ds.push(
+          monacoNs.languages.registerCodeActionProvider(
+            language,
+            makeCodeActionProvider(monacoNs, {
+              serverId: status.serverId,
+              hasResolveProvider: status.advanced.codeActionResolve,
+            }),
+          ),
+        );
+      }
       registrations.set(key, ds);
     }
   }
+  // Register the runCodeAction + executeCommand bridge commands once.
+  if (!commandsRegistered) {
+    monacoNs.editor.registerCommand(
+      "daisu.lsp.runCodeAction",
+      (_accessor, serverId: string, hasResolve: boolean, action: LspCodeAction) =>
+        void runCodeAction(monacoNs, serverId, hasResolve, action),
+    );
+    monacoNs.editor.registerCommand(
+      "daisu.lsp.executeCommand",
+      (_accessor, serverId: string, command: string, args: unknown[]) =>
+        void lspExecuteCommand(serverId, command, args).catch(() => undefined),
+    );
+    commandsRegistered = true;
+  }
 }
+
+let commandsRegistered = false;
 
 function pathOf(model: monaco.editor.ITextModel): string {
   return (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
