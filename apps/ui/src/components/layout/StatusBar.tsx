@@ -13,6 +13,7 @@ import { EncodingSegment } from "../statusbar/EncodingSegment";
 import { IndentSegment } from "../statusbar/IndentSegment";
 import { LanguagePicker } from "../statusbar/LanguagePicker";
 import { McpStatusChip } from "../agent/McpStatusChip";
+import { LspTrustChip } from "../statusbar/LspTrustChip";
 
 const utilityCls =
   "h-5 px-1.5 inline-flex items-center gap-1 text-[var(--fg-muted)] hover:text-[var(--warn)] hover:bg-[var(--warn-soft)] rounded-[var(--radius-sm)] transition-colors text-[11px]";
@@ -101,6 +102,7 @@ export function StatusBar(): JSX.Element {
             <span>0</span>
           </button>
         )}
+        <LspTrustChip />
         <McpStatusChip />
         {!isFleet && design.statusBarUtility && (
         <>

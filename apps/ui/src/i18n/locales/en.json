@@ -598,6 +598,15 @@
     "searchHeading": "SEARCH",
     "explorerHeading": "EXPLORER"
   },
+  "lsp": {
+    "untrustedChip": "Workspace untrusted",
+    "trustButton": "Trust workspace",
+    "trustDialogTitle": "Trust this workspace?",
+    "trustDialogBody": "Language servers in this workspace can run code from project files (build scripts, proc macros, package.json scripts). Only trust workspaces from sources you know.",
+    "trustDialogConfirm": "Trust",
+    "trustDialogCancel": "Cancel",
+    "noWorkspaceOpen": "No workspace open"
+  },
   "editorKeySound": {
     "heading": "Typing sounds",
     "description": "Synthesized soft mechanical-keyboard clicks while typing in the editor. Pure Web Audio — no asset download.",

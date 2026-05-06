@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/daisu-app", "crates/daisu-agent"]
+members = ["crates/daisu-app", "crates/daisu-agent", "crates/daisu-lsp"]
 
 [workspace.package]
 version = "0.2.0"
