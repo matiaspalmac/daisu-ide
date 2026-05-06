@@ -41,12 +41,14 @@ pub fn registry() -> Vec<ToolDescriptor> {
     vec![
         ToolDescriptor {
             name: "read_file",
-            description: "Read a file from the workspace as UTF-8.",
+            description: "Read a UTF-8 file. For files >2000 lines, pass offset (0-indexed) + limit; the result envelope reports total_lines and truncated.",
             tier: PermissionTier::Auto,
             input_schema: r#"{
                 "type":"object",
                 "properties": {
-                    "path": {"type":"string", "description":"Workspace-relative file path"}
+                    "path": {"type":"string", "description":"Workspace-relative file path"},
+                    "offset": {"type":"integer", "minimum":0, "description":"0-indexed line to start from (default 0)"},
+                    "limit": {"type":"integer", "minimum":1, "maximum":2000, "description":"Max lines to return (default 2000, hard cap 2000)"}
                 },
                 "required":["path"],
                 "additionalProperties": false
