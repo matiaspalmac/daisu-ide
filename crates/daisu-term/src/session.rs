@@ -50,7 +50,7 @@ fn default_shell() -> String {
 
 /// Resolve the spawn cwd. When the caller passes an empty string, ".",
 /// or a non-existent directory, fall back to the user's home directory —
-/// matches VSCode's behaviour when no workspace folder is open. Avoids
+/// matches `VSCode`'s behaviour when no workspace folder is open. Avoids
 /// crashes on Windows where the process cwd may resolve to a read-only
 /// `Program Files` location.
 fn resolve_cwd(cwd: &str) -> String {
