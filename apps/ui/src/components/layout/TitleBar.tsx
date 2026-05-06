@@ -411,8 +411,21 @@ export function TitleBar(): JSX.Element {
         </div>
       )}
 
-      {/* Drag spacer */}
-      <div className="flex-1" data-tauri-drag-region />
+      {/* Drag spacer — manual `startDragging()` instead of
+          `data-tauri-drag-region`, which routes every mousemove over the
+          drag area through the IPC bridge. With a long flex-1 spacer
+          that flood was visible as ~hundreds of `internal_on_mousemove`
+          IPC calls per second of mouse motion (tauri-apps/tauri#8770).
+          Manual handlers only fire on mousedown / dblclick. */}
+      <div
+        className="flex-1"
+        onMouseDown={(e) => {
+          if (e.button === 0) void win?.startDragging();
+        }}
+        onDoubleClick={() => {
+          void win?.toggleMaximize();
+        }}
+      />
 
       {/* Focus mode toggle */}
       <button
