@@ -8,6 +8,7 @@ use tauri::{Emitter, Manager, WebviewWindow};
 const DROPPED_PATH_EVENT: &str = "system:dropped-path";
 const BEFORE_CLOSE_EVENT: &str = "system:before-close";
 
+#[allow(clippy::too_many_lines)]
 fn main() {
     tauri::Builder::default()
         .manage(AppState::default())
@@ -94,6 +95,10 @@ fn main() {
             commands::lsp::lsp_references,
             commands::lsp::lsp_document_symbol,
             commands::lsp::lsp_workspace_symbol,
+            commands::lsp::lsp_prepare_rename,
+            commands::lsp::lsp_rename,
+            commands::lsp::lsp_formatting,
+            commands::lsp::lsp_range_formatting,
             commands::terminal::terminal_spawn,
             commands::terminal::terminal_write,
             commands::terminal::terminal_resize,

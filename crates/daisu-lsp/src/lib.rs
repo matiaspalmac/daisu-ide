@@ -84,6 +84,37 @@ impl NavCapabilities {
     }
 }
 
+/// Boolean flags advertising which LSP mutation features the server
+/// declared during the initialize handshake. Mirrors `NavCapabilities`
+/// for the write-side request set used by M4.2c (rename + format).
+/// Same `struct_excessive_bools` rationale: 1:1 with LSP provider flags.
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Default, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MutationCapabilities {
+    pub rename: bool,
+    pub prepare_rename: bool,
+    pub document_formatting: bool,
+    pub range_formatting: bool,
+}
+
+impl MutationCapabilities {
+    #[must_use]
+    pub fn from_caps(caps: &lsp_types::ServerCapabilities) -> Self {
+        let (rename, prepare_rename) = match &caps.rename_provider {
+            None => (false, false),
+            Some(lsp_types::OneOf::Left(b)) => (*b, false),
+            Some(lsp_types::OneOf::Right(opts)) => (true, opts.prepare_provider.unwrap_or(false)),
+        };
+        Self {
+            rename,
+            prepare_rename,
+            document_formatting: caps.document_formatting_provider.is_some(),
+            range_formatting: caps.document_range_formatting_provider.is_some(),
+        }
+    }
+}
+
 slotmap::new_key_type! {
     /// Stable id assigned to a `(workspace, server_id)` pair. Used by
     /// the multiplexor to route messages and by the UI to reference a
@@ -115,6 +146,7 @@ pub struct ServerReadyEvent {
     pub server_id: String,
     pub languages: Vec<String>,
     pub capabilities: NavCapabilities,
+    pub mutation: MutationCapabilities,
 }
 
 pub struct LspManager {
@@ -307,6 +339,7 @@ impl LspManager {
         .await?;
         let outgoing = client.outgoing.clone();
         let capabilities = NavCapabilities::from_caps(&client.capabilities());
+        let mutation = MutationCapabilities::from_caps(&client.capabilities());
         let arc = Arc::new(client);
         let lifecycle = Arc::new(Lifecycle::new(outgoing));
         {
@@ -323,6 +356,7 @@ impl LspManager {
             server_id: config.id.clone(),
             languages: config.languages.clone(),
             capabilities,
+            mutation,
         });
         Ok(())
     }
@@ -333,10 +367,14 @@ impl LspManager {
             .servers
             .iter()
             .map(|(id, slot)| {
-                let capabilities = slot
-                    .client
+                let caps_snapshot = slot.client.as_ref().map(|c| c.capabilities());
+                let capabilities = caps_snapshot
                     .as_ref()
-                    .map(|c| NavCapabilities::from_caps(&c.capabilities()))
+                    .map(|c| NavCapabilities::from_caps(c))
+                    .unwrap_or_default();
+                let mutation = caps_snapshot
+                    .as_ref()
+                    .map(|c| MutationCapabilities::from_caps(c))
                     .unwrap_or_default();
                 ServerStatus {
                     id,
@@ -353,6 +391,7 @@ impl LspManager {
                     },
                     rss_mb: None,
                     capabilities,
+                    mutation,
                 }
             })
             .collect()
@@ -379,6 +418,7 @@ pub struct ServerStatus {
     pub state: ServerState,
     pub rss_mb: Option<u64>,
     pub capabilities: NavCapabilities,
+    pub mutation: MutationCapabilities,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -444,5 +484,44 @@ mod nav_capabilities_tests {
     async fn subscribe_ready_returns_receiver() {
         let mgr = LspManager::default();
         let _rx = mgr.subscribe_ready();
+    }
+
+    #[test]
+    fn mutation_capabilities_extracted_from_bool_rename_provider() {
+        let caps = ServerCapabilities {
+            rename_provider: Some(OneOf::Left(true)),
+            document_formatting_provider: Some(OneOf::Left(true)),
+            document_range_formatting_provider: Some(OneOf::Left(true)),
+            ..Default::default()
+        };
+        let mutation = MutationCapabilities::from_caps(&caps);
+        assert!(mutation.rename);
+        assert!(!mutation.prepare_rename);
+        assert!(mutation.document_formatting);
+        assert!(mutation.range_formatting);
+    }
+
+    #[test]
+    fn mutation_capabilities_detects_prepare_provider_in_rename_options() {
+        let caps = ServerCapabilities {
+            rename_provider: Some(OneOf::Right(lsp_types::RenameOptions {
+                prepare_provider: Some(true),
+                work_done_progress_options: WorkDoneProgressOptions::default(),
+            })),
+            ..Default::default()
+        };
+        let mutation = MutationCapabilities::from_caps(&caps);
+        assert!(mutation.rename);
+        assert!(mutation.prepare_rename);
+    }
+
+    #[test]
+    fn mutation_capabilities_default_when_no_providers() {
+        let caps = ServerCapabilities::default();
+        let mutation = MutationCapabilities::from_caps(&caps);
+        assert!(!mutation.rename);
+        assert!(!mutation.prepare_rename);
+        assert!(!mutation.document_formatting);
+        assert!(!mutation.range_formatting);
     }
 }

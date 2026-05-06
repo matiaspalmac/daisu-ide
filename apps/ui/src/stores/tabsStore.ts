@@ -502,10 +502,29 @@ export const useTabs = create<TabsState>((set, get) => ({
       await get().saveActiveAs();
       return;
     }
-    await saveFile(active.path, active.content);
+    // Run editor.action.formatDocument before write when formatOnSave is on
+    // and a formatter provider exists for this language. Best-effort: a
+    // failed format must not block save.
+    try {
+      const { useSettings } = await import("./settingsStore");
+      if (useSettings.getState().settings.editor.formatOnSave) {
+        const { getActiveEditor } = await import("../lib/monaco-editor-ref");
+        const editor = getActiveEditor();
+        if (editor) {
+          await editor
+            .getAction("editor.action.formatDocument")
+            ?.run()
+            .catch(() => undefined);
+        }
+      }
+    } catch {
+      // settings module load shouldn't ever fail; treat as opt-out.
+    }
+    const latest = get().tabs.find((t) => t.id === active.id) ?? active;
+    await saveFile(active.path, latest.content);
     set((s) => ({
       tabs: s.tabs.map((t) =>
-        t.id === active.id ? { ...t, savedContent: active.content } : t,
+        t.id === active.id ? { ...t, savedContent: latest.content } : t,
       ),
     }));
     void get().saveSession();

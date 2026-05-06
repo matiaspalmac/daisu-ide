@@ -3,9 +3,11 @@
 use std::sync::Arc;
 
 use lsp_types::{
-    CompletionItem, CompletionParams, CompletionResponse, DocumentSymbolParams,
-    DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
-    Location, ReferenceParams, SignatureHelp, SignatureHelpParams, WorkspaceSymbolParams,
+    CompletionItem, CompletionParams, CompletionResponse, DocumentFormattingParams,
+    DocumentRangeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse,
+    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams, Location,
+    PrepareRenameResponse, ReferenceParams, RenameParams, SignatureHelp, SignatureHelpParams,
+    TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
     WorkspaceSymbolResponse,
 };
 use serde_json::Value;
@@ -221,4 +223,80 @@ pub async fn workspace_symbol(
     params: WorkspaceSymbolParams,
 ) -> Result<(WorkspaceSymbolResult, RequestId), LspError> {
     send_request(&client, "workspace/symbol", serde_json::to_value(params)?).await
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct PrepareRenameResult(pub Option<PrepareRenameResponse>);
+
+impl<'de> serde::Deserialize<'de> for PrepareRenameResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(Self(Option::<PrepareRenameResponse>::deserialize(d)?))
+    }
+}
+
+pub async fn prepare_rename(
+    client: Arc<Client>,
+    params: TextDocumentPositionParams,
+) -> Result<(PrepareRenameResult, RequestId), LspError> {
+    send_request(
+        &client,
+        "textDocument/prepareRename",
+        serde_json::to_value(params)?,
+    )
+    .await
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct RenameResult(pub Option<WorkspaceEdit>);
+
+impl<'de> serde::Deserialize<'de> for RenameResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(Self(Option::<WorkspaceEdit>::deserialize(d)?))
+    }
+}
+
+pub async fn rename(
+    client: Arc<Client>,
+    params: RenameParams,
+) -> Result<(RenameResult, RequestId), LspError> {
+    send_request(
+        &client,
+        "textDocument/rename",
+        serde_json::to_value(params)?,
+    )
+    .await
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct TextEditsResult(pub Vec<TextEdit>);
+
+impl<'de> serde::Deserialize<'de> for TextEditsResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let opt = Option::<Vec<TextEdit>>::deserialize(d)?;
+        Ok(Self(opt.unwrap_or_default()))
+    }
+}
+
+pub async fn formatting(
+    client: Arc<Client>,
+    params: DocumentFormattingParams,
+) -> Result<(TextEditsResult, RequestId), LspError> {
+    send_request(
+        &client,
+        "textDocument/formatting",
+        serde_json::to_value(params)?,
+    )
+    .await
+}
+
+pub async fn range_formatting(
+    client: Arc<Client>,
+    params: DocumentRangeFormattingParams,
+) -> Result<(TextEditsResult, RequestId), LspError> {
+    send_request(
+        &client,
+        "textDocument/rangeFormatting",
+        serde_json::to_value(params)?,
+    )
+    .await
 }
