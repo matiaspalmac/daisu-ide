@@ -254,7 +254,11 @@ export function Editor(): JSX.Element {
           verticalSliderSize: 12,
           horizontalSliderSize: 12,
           useShadows: false,
-          alwaysConsumeMouseWheel: false,
+          // Keep Monaco's default (true) — when this is false, hovering
+          // the editor without focus lets the wheel event bubble to the
+          // nearest scrollable ancestor, so the user has to click into
+          // the editor before scrolling works (microsoft/monaco-editor
+          // #69 + #4599).
         },
         overviewRulerBorder: false,
         stickyScroll: { enabled: true },
