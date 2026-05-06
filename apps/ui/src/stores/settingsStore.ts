@@ -22,6 +22,7 @@ const SettingsSchema = z.object({
     smoothScrolling: z.boolean().default(true),
     bracketPairColorization: z.boolean().default(true),
     formatOnSave: z.boolean().default(false),
+    terminalDefaultShellId: z.string().default(""),
     keySoundEnabled: z.boolean().default(false),
     keySoundVolume: z.number().min(0).max(1).default(0.3),
     keySoundPack: z.enum(["soft", "typewriter", "mechanical"]).default("soft"),

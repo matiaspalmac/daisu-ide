@@ -1,9 +1,10 @@
-import type { JSX } from "react";
+import { useEffect, type JSX } from "react";
 import { useTranslation } from "react-i18next";
 import { ToggleField } from "../controls/ToggleField";
 import { SelectField } from "../controls/SelectField";
 import { NumberField } from "../controls/NumberField";
 import { TextField } from "../controls/TextField";
+import { useShells } from "../../../stores/shellsStore";
 
 export function EditorSettings(): JSX.Element {
   const { t } = useTranslation();
@@ -53,6 +54,8 @@ export function EditorSettings(): JSX.Element {
         label="Bracket pair colorization"
       />
       <ToggleField category="editor" field="formatOnSave" label="Format on save" />
+      <TerminalDefaultShellField />
+
 
       <h3 className="daisu-settings-section-title">{t("editorKeySound.heading")}</h3>
       <p className="daisu-field-desc">{t("editorKeySound.description")}</p>
@@ -80,5 +83,26 @@ export function EditorSettings(): JSX.Element {
         ]}
       />
     </div>
+  );
+}
+
+function TerminalDefaultShellField(): JSX.Element {
+  const { t } = useTranslation();
+  const shells = useShells((s) => s.shells);
+  const ensureLoaded = useShells((s) => s.ensureLoaded);
+  useEffect(() => {
+    void ensureLoaded();
+  }, [ensureLoaded]);
+  const options = [
+    { value: "" as const, label: t("terminal.shells.defaultAuto") },
+    ...shells.map((s) => ({ value: s.id, label: s.label })),
+  ];
+  return (
+    <SelectField
+      category="editor"
+      field="terminalDefaultShellId"
+      label={t("terminal.shells.defaultLabel")}
+      options={options}
+    />
   );
 }

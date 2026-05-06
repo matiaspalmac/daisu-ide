@@ -4,13 +4,31 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 export interface TermSpawnOpts {
   cwd: string;
   shell?: string | null;
+  shellId?: string | null;
   cols: number;
   rows: number;
+}
+
+export interface DetectedShell {
+  id: string;
+  label: string;
+  path: string;
+  args: string[];
+  icon: string;
+  isDefault: boolean;
 }
 
 export async function terminalSpawn(opts: TermSpawnOpts): Promise<string> {
   const { id } = await invoke<{ id: string }>("terminal_spawn", { req: opts });
   return id;
+}
+
+export function listShells(): Promise<DetectedShell[]> {
+  return invoke<DetectedShell[]>("terminal_list_shells");
+}
+
+export function rescanShells(): Promise<DetectedShell[]> {
+  return invoke<DetectedShell[]>("terminal_rescan_shells");
 }
 
 export function terminalWrite(id: string, data: string): Promise<void> {

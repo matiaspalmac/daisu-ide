@@ -11,7 +11,7 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, State};
 
-use daisu_term::{TermError, TermSpawnOpts};
+use daisu_term::{detect_shells, detect_shells_uncached, DetectedShell, TermError, TermSpawnOpts};
 
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
@@ -29,6 +29,8 @@ pub struct TermSpawnReq {
     pub cwd: String,
     #[serde(default)]
     pub shell: Option<String>,
+    #[serde(default)]
+    pub shell_id: Option<String>,
     pub cols: u16,
     pub rows: u16,
 }
@@ -49,9 +51,10 @@ pub async fn terminal_spawn(
     // don't stall the Tauri async runtime (which froze the UI).
     let mgr = state.term_manager.clone();
     let id = tokio::task::spawn_blocking(move || {
-        mgr.spawn(TermSpawnOpts {
+        mgr.spawn(&TermSpawnOpts {
             cwd: req.cwd,
             shell: req.shell,
+            shell_id: req.shell_id,
             cols: req.cols,
             rows: req.rows,
         })
@@ -131,4 +134,14 @@ pub async fn terminal_kill(state: State<'_, AppState>, req: TermKillReq) -> AppR
 #[tauri::command]
 pub async fn terminal_list(state: State<'_, AppState>) -> AppResult<Vec<String>> {
     Ok(state.term_manager.list())
+}
+
+#[tauri::command]
+pub async fn terminal_list_shells() -> AppResult<Vec<DetectedShell>> {
+    Ok(detect_shells())
+}
+
+#[tauri::command]
+pub async fn terminal_rescan_shells() -> AppResult<Vec<DetectedShell>> {
+    Ok(detect_shells_uncached())
 }

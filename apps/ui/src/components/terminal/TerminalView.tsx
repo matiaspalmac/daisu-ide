@@ -17,11 +17,12 @@ import { daisuNocturneTheme } from "./terminalTheme";
 
 interface Props {
   cwd: string;
+  shellId?: string | undefined;
   onReady?: (id: string) => void;
   onExit?: () => void;
 }
 
-export function TerminalView({ cwd, onReady, onExit }: Props): JSX.Element {
+export function TerminalView({ cwd, shellId, onReady, onExit }: Props): JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export function TerminalView({ cwd, onReady, onExit }: Props): JSX.Element {
 
     void (async () => {
       const { rows, cols } = term;
-      ptyId = await terminalSpawn({ cwd, cols, rows });
+      ptyId = await terminalSpawn({ cwd, cols, rows, ...(shellId ? { shellId } : {}) });
       if (disposed) {
         await terminalKill(ptyId);
         return;

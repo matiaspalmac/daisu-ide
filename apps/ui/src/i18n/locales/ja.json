@@ -610,6 +610,14 @@
   },
   "terminal": {
     "title": "ターミナル",
+    "shells": {
+      "newDefault": "デフォルトシェルを開く",
+      "pick": "シェルを選択",
+      "empty": "シェルが検出されません",
+      "rescan": "シェルを再スキャン",
+      "defaultLabel": "デフォルトシェル",
+      "defaultAuto": "自動 (システム既定)"
+    },
     "newTab": "新しいターミナル",
     "close": "ターミナルを閉じる",
     "killTab": "タブを終了",
