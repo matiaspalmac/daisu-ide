@@ -47,16 +47,44 @@ struct ChatRequest {
     messages: Vec<Value>,
     stream: bool,
     options: Options,
+    /// Override Ollama's default 5-minute idle unload. Without this every
+    /// turn after a pause pays a 2-6s model-reload tax for 7B-class models.
+    /// `"30m"` keeps the model resident across realistic sessions; the
+    /// daemon's own `OLLAMA_KEEP_ALIVE` env var cannot beat per-request
+    /// values, so frontends must set it explicitly. Lives at the request
+    /// root, not under `options` (Ollama API quirk).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    keep_alive: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     tools: Vec<Value>,
 }
 
+/// Generation parameters forwarded to llama.cpp via Ollama. Defaults come
+/// from the May 2026 research pass — see docs/local-llm-tuning.md. Every
+/// field is optional so callers can override per-request.
 #[derive(Debug, Serialize, Default)]
 struct Options {
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     num_predict: Option<u32>,
+    /// Total context window. Ollama's default is 2048 which silently
+    /// truncates the system prompt + tool defs + history on real chats.
+    /// 8192 is the smallest size that holds Daisu's prompt + 2-3 tool
+    /// turns without truncation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    num_ctx: Option<u32>,
+    /// Prefill batch size. Higher values trade VRAM for throughput; 512
+    /// roughly doubles prompt-eval speed on RTX-class GPUs vs the 128
+    /// default with negligible memory impact for 7B-class models.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    num_batch: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    top_k: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    top_p: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    repeat_penalty: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -194,7 +222,13 @@ fn build_payload(req: &CompletionRequest, stream: bool) -> ChatRequest {
         options: Options {
             temperature: req.temperature,
             num_predict: Some(req.max_tokens),
+            num_ctx: Some(8192),
+            num_batch: Some(512),
+            top_k: Some(40),
+            top_p: Some(0.9),
+            repeat_penalty: Some(1.05),
         },
+        keep_alive: Some("30m".into()),
         tools,
     }
 }
