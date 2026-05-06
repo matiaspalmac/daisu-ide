@@ -137,6 +137,43 @@ pnpm typecheck
 pnpm test
 ```
 
+## Tuning local models (Ollama)
+
+Daisu's agent runs against any Ollama-served model out of the box. For the
+best latency and tool-call discipline on a single-GPU workstation, set these
+environment variables for the Ollama daemon **before** starting Daisu:
+
+```powershell
+# Persistent (survives reboot)
+[Environment]::SetEnvironmentVariable("OLLAMA_FLASH_ATTENTION", "1", "User")
+[Environment]::SetEnvironmentVariable("OLLAMA_KV_CACHE_TYPE", "q8_0", "User")
+
+# Or just for the current session
+$env:OLLAMA_FLASH_ATTENTION = "1"
+$env:OLLAMA_KV_CACHE_TYPE   = "q8_0"
+```
+
+Restart the Ollama service afterwards. The Q8 KV cache halves VRAM usage on
+a 7B/32K window with a measured perplexity delta of ~0.004 on
+Qwen2.5-Coder-7B — effectively free quality. Flash attention is a hard
+prerequisite.
+
+Daisu sets `keep_alive: 30m` and `num_ctx: 8192` on every `/api/chat`
+request, so the model stays resident between turns and the system prompt +
+tool defs + history fit without truncation. No further config needed.
+
+**Recommended models**
+
+| VRAM | Best chat + tool use | Use it for |
+|---|---|---|
+| 6 GB | `llama3.2:3b` | Quick chat. Limited tool discipline — expect occasional spurious calls. |
+| 8 GB | `hermes-3-llama-3.1:8b` | Best generalist under 10 B. Ships native function-calling, ~91% valid JSON tool-call rate. |
+| 16 GB | `qwen2.5-coder:7b` or `llama3.1:8b` | Code-leaning vs general-purpose. Either pairs well with the 8 K context. |
+| 20 GB+ | `qwen3-coder:30b-a3b-q4_K_M` | MoE, ~3.3 B active params → 7 B-class speed with 30 B-class reasoning. |
+
+`ollama pull <model>` to install, then pick it from **Settings → AI →
+Model**.
+
 ## Discord Rich Presence
 
 Daisu ships with native Discord RPC enabled by default. While Discord is running, your activity will read:
