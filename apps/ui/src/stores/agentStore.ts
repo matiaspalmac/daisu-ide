@@ -195,8 +195,21 @@ export const useAgent = create<AgentState>((set, get) => ({
 
   cancel: async () => {
     const id = get().runId;
+    // Free the UI immediately so the user gets out of the streaming
+    // state even if the backend Cancelled event takes a while (slow
+    // Ollama models can keep generating on the server side after the
+    // HTTP connection drops). The pending message is marked cancelled
+    // here so it's not left dangling if the backend never replies.
+    const msgs = get().messages.map((m) =>
+      m.pending ? { ...m, pending: false, warning: "Cancelado" } : m,
+    );
+    set({ messages: msgs, isStreaming: false, runId: null });
     if (!id) return;
-    await cancelRun(id);
+    try {
+      await cancelRun(id);
+    } catch {
+      /* best-effort: backend may have already finished */
+    }
   },
 
   attachListener: async () => {
