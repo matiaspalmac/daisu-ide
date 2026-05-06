@@ -156,6 +156,168 @@ Examples:\n\
     )
 }
 
+/// Normalise a tool name emitted by the model into the `snake_case` form
+/// the registry uses. Models trained on different format families produce
+/// `read_file`, `readFile`, `read-file`, `Read`, `tool.read_file`, or
+/// `functions::read_file`. Without normalisation the dispatcher silently
+/// drops the call. Conversion rules:
+/// - strip namespace prefixes separated by `.` or `::`,
+/// - kebab `-` and whitespace become `_`,
+/// - camelCase / PascalCase split on uppercase boundaries,
+/// - lowercased throughout.
+fn normalize_tool_name(raw: &str) -> String {
+    let mut s = raw.trim();
+    // Strip last segment after :: or .
+    if let Some(idx) = s.rfind("::") {
+        s = &s[idx + 2..];
+    }
+    if let Some(idx) = s.rfind('.') {
+        s = &s[idx + 1..];
+    }
+    let mut out = String::with_capacity(s.len() + 4);
+    let mut prev_lower_or_digit = false;
+    for c in s.chars() {
+        if c == '-' || c == '_' || c.is_whitespace() {
+            if !out.ends_with('_') {
+                out.push('_');
+            }
+            prev_lower_or_digit = false;
+        } else if c.is_uppercase() {
+            if prev_lower_or_digit && !out.ends_with('_') {
+                out.push('_');
+            }
+            for low in c.to_lowercase() {
+                out.push(low);
+            }
+            prev_lower_or_digit = false;
+        } else {
+            out.push(c);
+            prev_lower_or_digit = c.is_lowercase() || c.is_ascii_digit();
+        }
+    }
+    // Trim trailing/leading underscores from edge cases.
+    out.trim_matches('_').to_string()
+}
+
+/// Cline-style history compaction: when the same `read_file(path)` or
+/// `list_dir(path)` appears multiple times in a conversation, replace
+/// every Tool result *except the latest* with a small placeholder so
+/// the model attends to current state and we save a chunk of context
+/// per duplicate. Mutates in place. Tool args are matched by name +
+/// the `path` field (not full args object) — most coding agents only
+/// vary the path between reads of the same file.
+fn dedupe_file_reads(messages: &mut [Message]) {
+    use std::collections::HashMap;
+
+    let mut latest_index_per_key: HashMap<(String, String), usize> = HashMap::new();
+    for (i, m) in messages.iter().enumerate() {
+        if !matches!(m.role, Role::Assistant) {
+            continue;
+        }
+        let Some(calls) = m.tool_calls.as_ref() else {
+            continue;
+        };
+        for c in calls {
+            if c.name != "read_file" && c.name != "list_dir" {
+                continue;
+            }
+            let Some(path) = c.arguments.get("path").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            latest_index_per_key.insert((c.name.clone(), path.to_string()), i);
+        }
+    }
+
+    let mut redactions: Vec<(usize, String, String)> = Vec::new(); // (msg_idx, tool_id, replacement)
+    for (i, m) in messages.iter().enumerate() {
+        if !matches!(m.role, Role::Assistant) {
+            continue;
+        }
+        let Some(calls) = m.tool_calls.as_ref() else {
+            continue;
+        };
+        for c in calls {
+            if c.name != "read_file" && c.name != "list_dir" {
+                continue;
+            }
+            let Some(path) = c.arguments.get("path").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            let key = (c.name.clone(), path.to_string());
+            let Some(&latest) = latest_index_per_key.get(&key) else {
+                continue;
+            };
+            if i >= latest {
+                continue;
+            }
+            let replacement = format!(
+                "[[NOTE] {tool}({path}) deduplicated — see later result for current contents]",
+                tool = c.name,
+                path = path,
+            );
+            redactions.push((i, c.id.clone(), replacement));
+        }
+    }
+    if redactions.is_empty() {
+        return;
+    }
+    for (assistant_idx, tool_id, replacement) in redactions {
+        for j in (assistant_idx + 1)..messages.len() {
+            if matches!(messages[j].role, Role::Tool)
+                && messages[j].tool_call_id.as_deref() == Some(&tool_id)
+            {
+                messages[j].content = replacement.clone();
+                break;
+            }
+        }
+    }
+}
+
+/// Build a corrective hint string from a tool error message, used to
+/// nudge small models toward the right next-call shape. Empty string
+/// when no specific hint applies.
+fn repair_hint_for(name: &str, args: &serde_json::Value, err: &str) -> String {
+    let path = args
+        .get("path")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let lower = err.to_ascii_lowercase();
+    if lower.contains("escapes workspace")
+        || lower.contains("not allowed")
+        || lower.contains("verbatim")
+        || lower.contains("unc")
+    {
+        format!(
+            "HINT: '{path}' looks absolute or escapes the workspace. \
+             Use a workspace-relative path like 'src/main.rs' (no leading /, no C:\\, no '..')."
+        )
+    } else if lower.contains("no such file")
+        || lower.contains("not found")
+        || lower.contains("os error 2")
+        || lower.contains("os error 3")
+    {
+        format!(
+            "HINT: '{path}' doesn't exist. Try list_dir on the parent directory first to see real names — \
+             case mismatch is common, and the model may have invented a path."
+        )
+    } else if name == "read_file" && lower.contains("is a directory") {
+        format!(
+            "HINT: '{path}' is a directory, not a file. Use list_dir for directories, read_file only for files."
+        )
+    } else if name == "propose_edit"
+        && (lower.contains("did not match") || lower.contains("no match"))
+    {
+        "HINT: read_file the target first to capture the exact current contents (whitespace included), \
+         then resubmit propose_edit with new_text reflecting only the wanted changes.".to_string()
+    } else if name == "write_file" && lower.contains("too large") {
+        "HINT: contents exceed the 1 MiB limit. Split the file or write multiple smaller files."
+            .to_string()
+    } else {
+        String::new()
+    }
+}
+
 /// Decide whether the user's message looks like chit-chat that doesn't
 /// need filesystem tools. When true, the agent loop skips advertising
 /// tools to the model so small local models (llama3.2:3b, qwen-coder:7b)
@@ -221,13 +383,13 @@ fn extract_fallback_tool_calls(text: &str, registry: &Arc<ToolRegistry>) -> Fall
         let Ok(v) = serde_json::from_str::<serde_json::Value>(raw.trim()) else {
             return false;
         };
-        let name = v
+        let raw_name = v
             .get("name")
             .or_else(|| v.get("tool"))
             .or_else(|| v.get("function"))
             .and_then(serde_json::Value::as_str)
-            .unwrap_or("")
-            .to_string();
+            .unwrap_or("");
+        let name = normalize_tool_name(raw_name);
         if name.is_empty() || registry.get(&name).is_none() {
             return false;
         }
@@ -517,6 +679,13 @@ fn tool_defs_from_registry(registry: &ToolRegistry) -> Vec<ToolDef> {
                 name: d.name.to_string(),
                 description: Some(d.description.to_string()),
                 input_schema,
+                // All in-tree tools opt into strict mode — schemas in
+                // `tools::registry()` already carry `additionalProperties:
+                // false` and every property in `required`. Providers that
+                // don't expose strict (Gemini, Ollama, LM Studio) ignore
+                // this flag. MCP-injected tools default to strict=false
+                // since their schemas come from third parties.
+                strict: true,
             }
         })
         .collect()
@@ -1444,9 +1613,14 @@ when the request is ambiguous.",
         while iteration < MAX_AGENT_ITERATIONS && error.is_none() {
             iteration += 1;
 
+            // Compact history before the provider call. Cheap, pure, and
+            // shrinks tool-heavy conversations 30-60% on average.
+            let mut compacted = messages.clone();
+            dedupe_file_reads(&mut compacted);
+
             let completion = CompletionRequest {
                 model: model.clone(),
-                messages: messages.clone(),
+                messages: compacted,
                 system: system_prompt.clone(),
                 max_tokens: 4096,
                 temperature,
@@ -1693,8 +1867,36 @@ when the request is ambiguous.",
                         output: output.clone(),
                     },
                 );
-                let result_text = serde_json::to_string(&output)
-                    .unwrap_or_else(|_| "(unserialisable result)".into());
+                // The text we hand back to the model differs from the JSON
+                // envelope the UI sees: small models attend to imperative
+                // prose ("Try again with corrected arguments") far more
+                // reliably than to a JSON blob. This is Aider's reflection
+                // pattern adapted for tool calls — see commands/agent.rs
+                // commit notes for the May 2026 research pass.
+                let result_text = match &result {
+                    ToolResult::Ok { value } => serde_json::to_string(value)
+                        .unwrap_or_else(|_| "(unserialisable result)".into()),
+                    ToolResult::Denied { reason } => format!(
+                        "TOOL_DENIED ({tool}): {reason}\n\
+                         The user declined this action. Do NOT retry the same call. \
+                         Acknowledge the denial in plain text or propose a different approach.",
+                        tool = call.name,
+                    ),
+                    ToolResult::Error { message } => {
+                        let hint = repair_hint_for(&call.name, &call.arguments, message);
+                        let hint_line = if hint.is_empty() {
+                            String::new()
+                        } else {
+                            format!("\n{hint}")
+                        };
+                        format!(
+                            "TOOL_ERROR ({tool}): {message}{hint_line}\n\
+                             Try again with corrected arguments, OR explain in plain \
+                             text why this approach won't work and ask the user how to proceed.",
+                            tool = call.name,
+                        )
+                    }
+                };
                 let tool_msg = Message {
                     role: Role::Tool,
                     content: result_text,
