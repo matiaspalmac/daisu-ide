@@ -30,7 +30,7 @@ impl Tool for WriteFile {
             name: "write_file",
             description: "Write or replace a file (UTF-8). Requires approval.",
             tier: PermissionTier::Prompt,
-            input_schema: r#"{"type":"object","properties":{"path":{"type":"string"},"contents":{"type":"string"}},"required":["path","contents"]}"#,
+            input_schema: r#"{"type":"object","properties":{"path":{"type":"string"},"contents":{"type":"string"}},"required":["path","contents"],"additionalProperties":false}"#,
         }
     }
 

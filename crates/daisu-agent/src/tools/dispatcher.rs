@@ -57,6 +57,15 @@ pub trait Tool: Send + Sync {
 
 pub struct ToolRegistry {
     tools: HashMap<&'static str, Arc<dyn Tool>>,
+    /// Compiled JSON-Schema validators per tool, keyed by the same name
+    /// used in `tools`. Built once at `register()` and reused on every
+    /// dispatch — `jsonschema-rs` measures 75–645× faster than `valico`
+    /// in compile-once-validate-many use. A failed compile leaves the
+    /// validator missing; dispatch falls through to lenient mode for
+    /// that one tool with a single eprintln, so a malformed schema
+    /// degrades to "model can call but isn't pre-validated" rather than
+    /// "tool is unreachable".
+    validators: HashMap<&'static str, jsonschema::Validator>,
 }
 
 impl ToolRegistry {
@@ -64,12 +73,27 @@ impl ToolRegistry {
     pub fn new() -> Self {
         Self {
             tools: HashMap::new(),
+            validators: HashMap::new(),
         }
     }
 
     pub fn register(&mut self, tool: Arc<dyn Tool>) {
-        let name = tool.descriptor().name;
+        let descriptor = tool.descriptor();
+        let name = descriptor.name;
         self.tools.insert(name, tool);
+        match serde_json::from_str::<Value>(descriptor.input_schema)
+            .map_err(|e| e.to_string())
+            .and_then(|schema| jsonschema::validator_for(&schema).map_err(|e| e.to_string()))
+        {
+            Ok(v) => {
+                self.validators.insert(name, v);
+            }
+            Err(e) => {
+                eprintln!(
+                    "agent: tool {name} input_schema failed to compile — {e}; pre-dispatch validation disabled"
+                );
+            }
+        }
     }
 
     #[must_use]
@@ -91,15 +115,40 @@ impl ToolRegistry {
     /// an existing allowlist entry or trigger an async approval flow.
     pub async fn dispatch(
         &self,
-        call: ToolCall,
+        mut call: ToolCall,
         gate: &PermissionGate,
         cwd: &Path,
         scope: &str,
     ) -> ToolResult {
+        // Normalise the name before lookup so models that emit camelCase,
+        // kebab-case or namespaced variants (`functions.read_file`,
+        // `readFile`, `read-file`) still resolve. Mirrors the fallback
+        // parser pass at agent.rs::normalize_tool_name; kept independent
+        // here because cloud providers route through `dispatch` directly.
+        call.name = normalize_tool_name_inplace(&call.name);
         let Some(tool) = self.get(&call.name) else {
             return ToolResult::err(format!("unknown tool: {}", call.name));
         };
         let descriptor = tool.descriptor();
+
+        // Pre-dispatch JSON-Schema validation. Surfaces exact JSON-pointer
+        // paths to the model on the very next turn (e.g.
+        // `/path: "" is shorter than minimum length 1`). Skipped silently
+        // if the schema didn't compile — see register() for details.
+        if let Some(validator) = self.validators.get(descriptor.name) {
+            let errors: Vec<String> = validator
+                .iter_errors(&call.arguments)
+                .take(5) // cap so a 50-error blowup doesn't drown the model
+                .map(|e| format!("{}: {}", e.instance_path, e))
+                .collect();
+            if !errors.is_empty() {
+                return ToolResult::err(format!(
+                    "schema validation failed for {}: {}",
+                    call.name,
+                    errors.join("; ")
+                ));
+            }
+        }
 
         if descriptor.tier != PermissionTier::Auto {
             match gate.is_allowed(&call.name, scope) {
@@ -152,6 +201,41 @@ impl Default for ToolRegistry {
     }
 }
 
+/// Normalise a tool name into snake_case. See agent.rs::normalize_tool_name
+/// for full rules; this is the daisu-agent-local copy (the crate boundary
+/// makes sharing awkward, and the function is small).
+fn normalize_tool_name_inplace(raw: &str) -> String {
+    let mut s = raw.trim();
+    if let Some(idx) = s.rfind("::") {
+        s = &s[idx + 2..];
+    }
+    if let Some(idx) = s.rfind('.') {
+        s = &s[idx + 1..];
+    }
+    let mut out = String::with_capacity(s.len() + 4);
+    let mut prev_lower_or_digit = false;
+    for c in s.chars() {
+        if c == '-' || c == '_' || c.is_whitespace() {
+            if !out.ends_with('_') {
+                out.push('_');
+            }
+            prev_lower_or_digit = false;
+        } else if c.is_uppercase() {
+            if prev_lower_or_digit && !out.ends_with('_') {
+                out.push('_');
+            }
+            for low in c.to_lowercase() {
+                out.push(low);
+            }
+            prev_lower_or_digit = false;
+        } else {
+            out.push(c);
+            prev_lower_or_digit = c.is_lowercase() || c.is_ascii_digit();
+        }
+    }
+    out.trim_matches('_').to_string()
+}
+
 fn summarise_call(call: &ToolCall) -> String {
     let body = call.arguments.to_string();
     let trimmed = if body.len() > 200 {
@@ -174,10 +258,20 @@ fn summarise_call(call: &ToolCall) -> String {
 ///    normalised lexical path joined onto the canonical `cwd`.
 /// 4. Verify the resulting absolute path starts with `cwd`.
 pub(crate) fn resolve_within(cwd: &Path, raw: &str) -> AgentResult<PathBuf> {
-    let candidate = if Path::new(raw).is_absolute() {
-        PathBuf::from(raw)
+    if let Some(reason) = reject_windows_path_traps(raw) {
+        return Err(AgentError::PermissionDenied {
+            tool: String::new(),
+            reason: format!("{reason}: {raw}"),
+        });
+    }
+    // Coerce common shapes models emit by accident: forward-slash on
+    // Windows, workspace-absolute paths that just happen to share the
+    // cwd prefix. Both become workspace-relative before resolution.
+    let coerced = coerce_to_relative(cwd, raw);
+    let candidate = if Path::new(&coerced).is_absolute() {
+        PathBuf::from(&coerced)
     } else {
-        cwd.join(raw)
+        cwd.join(&coerced)
     };
     let normalised = lexical_normalise(&candidate).ok_or_else(|| AgentError::PermissionDenied {
         tool: String::new(),
@@ -194,6 +288,58 @@ pub(crate) fn resolve_within(cwd: &Path, raw: &str) -> AgentResult<PathBuf> {
         });
     }
     Ok(resolved)
+}
+
+/// Reject Windows-only path traps that bypass `canonicalize` (verbatim
+/// namespace `\\?\`, device namespace `\\.\`, UNC `\\server\share`) and
+/// reserved DOS device names (CON, PRN, AUX, NUL, COM1-9, LPT1-9 — opening
+/// any of these on Windows opens a device, not a file). Returns Some(reason)
+/// when the path should be rejected.
+fn reject_windows_path_traps(raw: &str) -> Option<&'static str> {
+    let lower = raw.to_ascii_lowercase();
+    if lower.starts_with(r"\\?\") || lower.starts_with(r"\\.\") {
+        return Some("verbatim/device-namespace path not allowed");
+    }
+    if lower.starts_with(r"\\") {
+        return Some("UNC path not allowed");
+    }
+    const RESERVED: &[&str] = &[
+        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
+        "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+    ];
+    let stem = std::path::Path::new(&lower)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+    if RESERVED.iter().any(|r| stem.eq_ignore_ascii_case(r)) {
+        return Some("reserved Windows device name");
+    }
+    None
+}
+
+/// Coerce well-meaning model mistakes into the canonical relative form:
+/// - workspace-absolute paths (`C:\Proyectos\foo\src\main.rs` when
+///   workspace = `C:\Proyectos\foo`) → `src\main.rs`.
+/// - forward slashes on Windows → backslashes.
+/// Anything that doesn't match either case passes through unchanged.
+fn coerce_to_relative(cwd: &Path, raw: &str) -> String {
+    let normalised_seps = if cfg!(windows) {
+        raw.replace('/', "\\")
+    } else {
+        raw.to_string()
+    };
+    if let Ok(cwd_canon) = cwd.canonicalize() {
+        let cwd_str = cwd_canon.to_string_lossy().to_string();
+        let lower_cwd = cwd_str.to_ascii_lowercase();
+        let lower_raw = normalised_seps.to_ascii_lowercase();
+        if lower_raw.starts_with(&lower_cwd) {
+            let rel = &normalised_seps[cwd_str.len()..];
+            return rel
+                .trim_start_matches(std::path::MAIN_SEPARATOR)
+                .to_string();
+        }
+    }
+    normalised_seps
 }
 
 /// Lexically resolve `..` and `.` segments. Returns `None` when the

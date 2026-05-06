@@ -27,7 +27,7 @@ impl Tool for ReadFile {
             name: "read_file",
             description: "Read a file from the workspace as UTF-8.",
             tier: PermissionTier::Auto,
-            input_schema: r#"{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}"#,
+            input_schema: r#"{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}"#,
         }
     }
 
