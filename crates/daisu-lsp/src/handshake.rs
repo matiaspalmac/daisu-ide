@@ -14,18 +14,17 @@ use tokio::sync::mpsc;
 use crate::jsonrpc::{Correlator, Notification, Request, Response};
 use crate::LspError;
 
-/// Build a `file://` Uri for an absolute path. Panics if the path is
-/// not absolute.
-#[must_use]
-pub fn file_uri(path: &Path) -> Uri {
-    let url = url::Url::from_file_path(path).expect("workspace must be absolute");
-    Uri::from_str(url.as_str()).expect("valid file uri")
+/// Build a `file://` Uri for an absolute path. Returns an error if the
+/// path is not absolute or cannot be converted to a `file:` URL.
+pub fn file_uri(path: &Path) -> Result<Uri, LspError> {
+    let url = url::Url::from_file_path(path)
+        .map_err(|()| LspError::Rpc(format!("path must be absolute: {}", path.display())))?;
+    Uri::from_str(url.as_str())
+        .map_err(|e| LspError::Rpc(format!("invalid file uri ({}): {e}", path.display())))
 }
 
-#[allow(clippy::missing_panics_doc)]
-#[must_use]
-pub fn build_initialize_params(workspace: &Path) -> InitializeParams {
-    let uri = file_uri(workspace);
+pub fn build_initialize_params(workspace: &Path) -> Result<InitializeParams, LspError> {
+    let uri = file_uri(workspace)?;
     let folder_name = workspace.file_name().map_or_else(
         || "workspace".to_string(),
         |n| n.to_string_lossy().to_string(),
@@ -50,7 +49,7 @@ pub fn build_initialize_params(workspace: &Path) -> InitializeParams {
         }),
         ..Default::default()
     };
-    p
+    Ok(p)
 }
 
 pub async fn perform_initialize(
@@ -63,7 +62,7 @@ pub async fn perform_initialize(
         jsonrpc: "2.0".into(),
         id,
         method: "initialize".into(),
-        params: Some(serde_json::to_value(build_initialize_params(workspace))?),
+        params: Some(serde_json::to_value(build_initialize_params(workspace)?)?),
     };
     let bytes = serde_json::to_vec(&req)?;
     outgoing
@@ -128,7 +127,7 @@ mod tests {
     #[test]
     fn initialize_params_carry_workspace_uri() {
         let tmp = tempfile::tempdir().unwrap();
-        let p = build_initialize_params(tmp.path());
+        let p = build_initialize_params(tmp.path()).unwrap();
         let folder = p.workspace_folders.as_ref().unwrap();
         assert_eq!(folder.len(), 1);
         assert!(folder[0].uri.to_string().starts_with("file:"));
@@ -137,16 +136,14 @@ mod tests {
     #[test]
     fn initialize_params_request_utf16_encoding() {
         let tmp = tempfile::tempdir().unwrap();
-        let p = build_initialize_params(tmp.path());
+        let p = build_initialize_params(tmp.path()).unwrap();
         let enc = p.capabilities.general.unwrap().position_encodings.unwrap();
         assert_eq!(enc, vec![PositionEncodingKind::UTF16]);
     }
 
     #[test]
     fn initialize_params_path_must_be_absolute() {
-        let res = std::panic::catch_unwind(|| {
-            let _ = build_initialize_params(&PathBuf::from("relative/path"));
-        });
+        let res = build_initialize_params(&PathBuf::from("relative/path"));
         assert!(res.is_err());
     }
 }

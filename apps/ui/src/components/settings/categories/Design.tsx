@@ -165,8 +165,8 @@ function LayoutPicker(): JSX.Element {
                       : design.classicSnapshot;
                   void setSetting("design", {
                     layoutMode: "fleet",
-                    sidebarSide: "right",
-                    rightPanelSide: "left",
+                    sidebarSide: "left",
+                    rightPanelSide: "right",
                     activityBarVisible: false,
                     sidebarVisible: true,
                     rightPanelVisible: true,

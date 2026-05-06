@@ -345,20 +345,31 @@ export function App(): JSX.Element {
         {!sidebarOnRight && sidebarPanel}
         {rightPanelOnLeft && rightPanel}
         <Panel id="center" defaultSize="56%" minSize="30%">
-          <EditorArea />
+          {/* The vertical Group + editor Panel are always mounted so that
+              toggling BottomPanel never reparents <EditorArea/>. Reparenting
+              the Monaco editor mid-session disposes its model and crashes
+              syncActiveTab on the next render with `Model is disposed!`. */}
+          <Group orientation="vertical" className="h-full">
+            <Panel id="editor" defaultSize="70%" minSize="20%">
+              <EditorArea />
+            </Panel>
+            {bottomPanelOpen && (
+              <>
+                <Separator className="daisu-resize-handle daisu-resize-handle-horizontal" />
+                <Panel id="bottom" defaultSize="30%" minSize="10%" maxSize="80%">
+                  <Suspense fallback={null}>
+                    <BottomPanel />
+                  </Suspense>
+                </Panel>
+              </>
+            )}
+          </Group>
         </Panel>
         {!rightPanelOnLeft && rightPanel}
         {sidebarOnRight && sidebarPanel}
         </Group>
         {activityBarVisible && activityBarOnRight && !focusMode && <ActivityBar />}
       </div>
-      {bottomPanelOpen && (
-        <div className="h-[260px] flex-shrink-0">
-          <Suspense fallback={null}>
-            <BottomPanel />
-          </Suspense>
-        </div>
-      )}
       {design.statusBarVisible && !focusMode && <StatusBar />}
       <ToastViewport />
       <CloseConfirmModalConnected />

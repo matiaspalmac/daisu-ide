@@ -29,6 +29,10 @@ pub struct TermSession {
     pub master: Box<dyn MasterPty + Send>,
     pub child: Box<dyn portable_pty::Child + Send + Sync>,
     pub output: broadcast::Sender<Vec<u8>>,
+    /// Writer half of the master PTY. `MasterPty::take_writer` is
+    /// one-shot per session, so we take it once at spawn and re-use it
+    /// for every subsequent `write` call.
+    pub writer: Box<dyn std::io::Write + Send>,
 }
 
 #[derive(Default)]
@@ -42,6 +46,21 @@ fn default_shell() -> String {
     } else {
         std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into())
     }
+}
+
+/// Resolve the spawn cwd. When the caller passes an empty string, ".",
+/// or a non-existent directory, fall back to the user's home directory —
+/// matches VSCode's behaviour when no workspace folder is open. Avoids
+/// crashes on Windows where the process cwd may resolve to a read-only
+/// `Program Files` location.
+fn resolve_cwd(cwd: &str) -> String {
+    let needs_fallback = cwd.is_empty() || cwd == "." || !std::path::Path::new(cwd).is_dir();
+    if needs_fallback {
+        if let Some(home) = dirs::home_dir() {
+            return home.display().to_string();
+        }
+    }
+    cwd.to_string()
 }
 
 impl TermManager {
@@ -63,7 +82,7 @@ impl TermManager {
 
         let shell = opts.shell.unwrap_or_else(default_shell);
         let mut cmd = CommandBuilder::new(shell);
-        cmd.cwd(&opts.cwd);
+        cmd.cwd(resolve_cwd(&opts.cwd));
         let child = pair
             .slave
             .spawn_command(cmd)
@@ -72,17 +91,22 @@ impl TermManager {
 
         let (tx, _) = broadcast::channel::<Vec<u8>>(1024);
         let id = Uuid::new_v4().to_string();
+        let writer = pair
+            .master
+            .take_writer()
+            .map_err(|e| TermError::Pty(e.to_string()))?;
+        let reader = pair
+            .master
+            .try_clone_reader()
+            .map_err(|e| TermError::Pty(e.to_string()))?;
         let session = TermSession {
             id: id.clone(),
             master: pair.master,
             child,
             output: tx.clone(),
+            writer,
         };
 
-        let reader = session
-            .master
-            .try_clone_reader()
-            .map_err(|e| TermError::Pty(e.to_string()))?;
         let tx_for_reader = tx.clone();
         std::thread::spawn(move || {
             let mut reader = reader;
@@ -112,13 +136,9 @@ impl TermManager {
             .get(id)
             .cloned()
             .ok_or_else(|| TermError::NotFound(id.into()))?;
-        let s = session.lock();
-        let mut writer = s
-            .master
-            .take_writer()
-            .map_err(|e| TermError::Pty(e.to_string()))?;
-        std::io::Write::write_all(&mut writer, bytes)?;
-        std::io::Write::flush(&mut writer)?;
+        let mut s = session.lock();
+        std::io::Write::write_all(&mut s.writer, bytes)?;
+        std::io::Write::flush(&mut s.writer)?;
         Ok(())
     }
 
@@ -173,6 +193,29 @@ impl TermManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resolve_cwd_falls_back_to_home_when_empty() {
+        let home = dirs::home_dir().expect("home dir on this platform");
+        assert_eq!(resolve_cwd(""), home.display().to_string());
+        assert_eq!(resolve_cwd("."), home.display().to_string());
+    }
+
+    #[test]
+    fn resolve_cwd_falls_back_when_path_does_not_exist() {
+        let home = dirs::home_dir().expect("home dir on this platform");
+        assert_eq!(
+            resolve_cwd("/this/path/definitely/does/not/exist/xyz123"),
+            home.display().to_string(),
+        );
+    }
+
+    #[test]
+    fn resolve_cwd_keeps_existing_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().display().to_string();
+        assert_eq!(resolve_cwd(&p), p);
+    }
 
     #[test]
     fn manager_spawn_kill_round_trip() {

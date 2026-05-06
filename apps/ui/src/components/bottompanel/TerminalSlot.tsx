@@ -7,8 +7,16 @@ import { TerminalView } from "../terminal/TerminalView";
 
 export function TerminalSlot(): JSX.Element {
   const { t } = useTranslation();
-  const { tabs, activeId, newTab, closeTab, setActive } = useTerminal();
-  const cwd = useWorkspace((s) => s.rootPath ?? ".");
+  // Individual selectors — destructuring the whole store returns a fresh
+  // object reference on every render, which trips React 18's
+  // useSyncExternalStore "getSnapshot should be cached" guard and triggers
+  // an infinite render loop the moment BottomPanel mounts.
+  const tabs = useTerminal((s) => s.tabs);
+  const activeId = useTerminal((s) => s.activeId);
+  const newTab = useTerminal((s) => s.newTab);
+  const closeTab = useTerminal((s) => s.closeTab);
+  const setActive = useTerminal((s) => s.setActive);
+  const cwd = useWorkspace((s) => s.rootPath ?? "");
 
   if (tabs.length === 0) {
     return (

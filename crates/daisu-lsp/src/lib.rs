@@ -139,7 +139,7 @@ impl LspManager {
             Some(l) => l,
             None => return Ok(()),
         };
-        let uri = file_uri(path);
+        let uri = file_uri(path)?;
         let workspace = {
             let inner = self.inner.read().await;
             inner
@@ -175,7 +175,7 @@ impl LspManager {
     }
 
     pub async fn change_document(&self, path: &std::path::Path, new_text: String) -> LspResult<()> {
-        let uri = file_uri(path);
+        let uri = file_uri(path)?;
         let lifecycles: Vec<Arc<Lifecycle>> = {
             let inner = self.inner.read().await;
             inner
@@ -195,7 +195,7 @@ impl LspManager {
     }
 
     pub async fn close_document(&self, path: &std::path::Path) -> LspResult<()> {
-        let uri = file_uri(path);
+        let uri = file_uri(path)?;
         let ids = {
             let mut inner = self.inner.write().await;
             inner.open_docs.remove(&uri).unwrap_or_default()

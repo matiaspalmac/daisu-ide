@@ -1,8 +1,9 @@
-import { type JSX, useEffect } from "react";
+import { type JSX, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "@phosphor-icons/react";
 import { useBottomPanel, type BottomTab } from "../../stores/bottomPanelStore";
 import { useDiagnostics, startDiagnosticsListener } from "../../stores/diagnosticsStore";
+import type { LspDiagnostic } from "../../lib/lsp";
 import { ProblemsView } from "./ProblemsView";
 import { OutputView } from "./OutputView";
 import { PlaceholderView } from "./PlaceholderView";
@@ -10,10 +11,37 @@ import { TerminalSlot } from "./TerminalSlot";
 
 const TAB_ORDER: BottomTab[] = ["problems", "output", "debug", "terminal", "ports"];
 
+function computeTotals(
+  byKey: Record<string, LspDiagnostic[]>,
+): { errors: number; warnings: number; infos: number; hints: number } {
+  const totals = { errors: 0, warnings: 0, infos: 0, hints: 0 };
+  for (const v of Object.values(byKey)) {
+    for (const d of v) {
+      switch (d.severity ?? 1) {
+        case 1: totals.errors += 1; break;
+        case 2: totals.warnings += 1; break;
+        case 3: totals.infos += 1; break;
+        case 4: totals.hints += 1; break;
+      }
+    }
+  }
+  return totals;
+}
+
 export function BottomPanel(): JSX.Element | null {
   const { t } = useTranslation();
-  const { open, active, setActive, setOpen } = useBottomPanel();
-  const totals = useDiagnostics((s) => s.totals());
+  // Individual selectors — destructuring the full store returns a fresh
+  // object reference on every render and trips React 18's
+  // useSyncExternalStore "getSnapshot should be cached" guard.
+  const open = useBottomPanel((s) => s.open);
+  const active = useBottomPanel((s) => s.active);
+  const setActive = useBottomPanel((s) => s.setActive);
+  const setOpen = useBottomPanel((s) => s.setOpen);
+  // Subscribe to the raw map and derive totals locally; calling the
+  // store's totals() inside a selector returns a new object literal each
+  // render, which is the same infinite-loop trap as a destructure.
+  const byKey = useDiagnostics((s) => s.byKey);
+  const totals = useMemo(() => computeTotals(byKey), [byKey]);
 
   useEffect(() => {
     startDiagnosticsListener();
