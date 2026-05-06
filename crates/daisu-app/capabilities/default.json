@@ -38,6 +38,13 @@
     "store:allow-delete",
     "os:default",
     "os:allow-locale",
-    "window-state:default"
+    "window-state:default",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download",
+    "updater:allow-install",
+    "updater:allow-download-and-install",
+    "process:default",
+    "process:allow-restart"
   ]
 }
