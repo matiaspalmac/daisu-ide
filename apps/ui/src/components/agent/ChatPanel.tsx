@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import { useAgent, type ChatMessage, type ToolBlock } from "../../stores/agentStore";
 import { useWorkspace } from "../../stores/workspaceStore";
+import { PermissionInline } from "./PermissionModal";
 
 export function ChatPanel(): JSX.Element {
   const { t } = useTranslation();
@@ -131,6 +132,8 @@ export function ChatPanel(): JSX.Element {
           </div>
         )}
       </div>
+
+      <PermissionInline />
 
       <form className="daisu-agent-composer" onSubmit={handleSubmit}>
         <label className="sr-only" htmlFor="agent-composer-input">

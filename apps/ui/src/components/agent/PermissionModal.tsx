@@ -1,13 +1,6 @@
 import { useEffect, type JSX } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
+import { ShieldWarning, X } from "@phosphor-icons/react";
 import { usePermissionStore } from "../../stores/permissionStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 import {
@@ -18,20 +11,14 @@ import {
 import { isTauri } from "../../lib/tauri-env";
 
 /**
- * Mounted once in `App.tsx`. Listens for `agent://permission-request`
- * events from the Rust gate, queues them in `permissionStore`, and
- * renders one Radix dialog per pending request.
- *
- * "Deny + edit prompt" is a placeholder for M3 phase 3 — for the
- * scaffold it just denies and closes. Phase 3 will route the
- * rejected prompt back to the chat composer.
+ * Mount once at the app root. No UI — only wires the Rust gate's
+ * `agent://permission-request` event into the permission store. The
+ * actual prompt is rendered inline inside the agent panel via
+ * {@link PermissionInline}, anchored above the composer instead of
+ * blocking the whole IDE with a modal.
  */
 export function PermissionModal(): JSX.Element | null {
-  const { t } = useTranslation();
-  const current = usePermissionStore((s) => s.current);
   const enqueue = usePermissionStore((s) => s.enqueue);
-  const clearCurrent = usePermissionStore((s) => s.clearCurrent);
-  const workspacePath = useWorkspace((s) => s.rootPath);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -45,6 +32,21 @@ export function PermissionModal(): JSX.Element | null {
       if (unlisten) unlisten();
     };
   }, [enqueue]);
+
+  return null;
+}
+
+/**
+ * Inline permission prompt rendered above the chat composer when the
+ * agent is asking to run a tool. Replaces the global modal so the
+ * request lives next to the conversation it relates to and the user
+ * can keep reading the chat while deciding.
+ */
+export function PermissionInline(): JSX.Element | null {
+  const { t } = useTranslation();
+  const current = usePermissionStore((s) => s.current);
+  const clearCurrent = usePermissionStore((s) => s.clearCurrent);
+  const workspacePath = useWorkspace((s) => s.rootPath);
 
   if (!current) return null;
 
@@ -65,60 +67,77 @@ export function PermissionModal(): JSX.Element | null {
   }
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) void decide("deny");
-      }}
+    <div
+      className="daisu-permission-inline"
+      role="alertdialog"
+      aria-labelledby="permission-inline-title"
     >
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {t("permissionModal.title", { tool: current.tool_name })}
-          </DialogTitle>
-          <DialogDescription>
-            <Trans
-              i18nKey="permissionModal.description"
-              values={{ tool: current.tool_name, tier: current.tier, scope: current.scope }}
-              components={[<code key="0" />, <code key="1" />]}
-            />
-          </DialogDescription>
-        </DialogHeader>
-        <div className="px-4 py-3 text-xs text-[var(--fg-secondary)]">
-          <p className="mb-1 font-mono break-all">{current.summary}</p>
-        </div>
-        <DialogFooter>
-          <button
-            type="button"
-            className="daisu-btn"
-            onClick={() => void decide("deny")}
-          >
-            {t("permissionModal.deny")}
-          </button>
-          <button
-            type="button"
-            className="daisu-btn"
-            onClick={() => void decide("deny")}
-            title={t("permissionModal.denyEditTooltip")}
-          >
-            {t("permissionModal.denyEdit")}
-          </button>
-          <button
-            type="button"
-            className="daisu-btn"
-            onClick={() => void decide("allowonce")}
-          >
-            {t("permissionModal.allowOnce")}
-          </button>
-          <button
-            type="button"
-            className="daisu-btn daisu-btn-primary"
-            onClick={() => void decide("allowalways")}
-          >
-            {t("permissionModal.allowAlways")}
-          </button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <div className="daisu-permission-inline-head">
+        <ShieldWarning
+          size={14}
+          weight="fill"
+          className="text-[var(--accent)]"
+        />
+        <span
+          id="permission-inline-title"
+          className="daisu-permission-inline-title"
+        >
+          {t("permissionModal.title", { tool: current.tool_name })}
+        </span>
+        <button
+          type="button"
+          className="daisu-permission-inline-close"
+          onClick={() => void decide("deny")}
+          aria-label={t("permissionModal.deny")}
+        >
+          <X size={12} />
+        </button>
+      </div>
+      <p className="daisu-permission-inline-desc">
+        <Trans
+          i18nKey="permissionModal.description"
+          values={{
+            tool: current.tool_name,
+            tier: current.tier,
+            scope: current.scope,
+          }}
+          components={[<code key="0" />, <code key="1" />]}
+        />
+      </p>
+      <p className="daisu-permission-inline-summary font-mono">
+        {current.summary}
+      </p>
+      <div className="daisu-permission-inline-actions">
+        <button
+          type="button"
+          className="daisu-btn"
+          onClick={() => void decide("deny")}
+        >
+          {t("permissionModal.deny")}
+        </button>
+        <button
+          type="button"
+          className="daisu-btn"
+          onClick={() => void decide("deny")}
+          title={t("permissionModal.denyEditTooltip")}
+        >
+          {t("permissionModal.denyEdit")}
+        </button>
+        <button
+          type="button"
+          className="daisu-btn"
+          onClick={() => void decide("allowonce")}
+        >
+          {t("permissionModal.allowOnce")}
+        </button>
+        <button
+          type="button"
+          className="daisu-btn daisu-btn-primary"
+          onClick={() => void decide("allowalways")}
+        >
+          {t("permissionModal.allowAlways")}
+        </button>
+      </div>
+    </div>
   );
 }
