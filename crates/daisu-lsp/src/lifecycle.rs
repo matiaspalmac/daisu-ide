@@ -173,8 +173,8 @@ mod tests {
         let raw = rx.recv().await.unwrap();
         let v: serde_json::Value = serde_json::from_slice(&raw).unwrap();
         assert_eq!(v["method"], "textDocument/didChange");
-        assert_eq!(v["textDocument"]["version"], 6);
-        assert_eq!(v["contentChanges"][0]["text"], "x4");
+        assert_eq!(v["params"]["textDocument"]["version"], 6);
+        assert_eq!(v["params"]["contentChanges"][0]["text"], "x4");
         assert!(rx.try_recv().is_err());
     }
 }

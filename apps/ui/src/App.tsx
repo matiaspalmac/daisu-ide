@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Group, Panel, Separator, usePanelRef } from "react-resizable-panels";
 import { listen } from "@tauri-apps/api/event";
 import { IconContext } from "@phosphor-icons/react";
@@ -11,8 +11,16 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { EditorArea } from "./components/layout/EditorArea";
 import { RightPanel } from "./components/layout/RightPanel";
 import { StatusBar } from "./components/layout/StatusBar";
-import { BottomPanel } from "./components/bottompanel/BottomPanel";
 import { useBottomPanel } from "./stores/bottomPanelStore";
+
+// xterm.js + 4 addons live behind BottomPanel (~85 kB gzipped). Lazy-load
+// keeps the main bundle under the size-limit budget; the panel only renders
+// when the user explicitly toggles it (Ctrl+`, Problems/Output, etc.).
+const BottomPanel = lazy(() =>
+  import("./components/bottompanel/BottomPanel").then((m) => ({
+    default: m.BottomPanel,
+  })),
+);
 import { useSearchListeners } from "./hooks/useSearchListeners";
 import { useDiscordRpc } from "./hooks/useDiscordRpc";
 import { ToastViewport } from "./components/ui/Toast";
@@ -346,7 +354,9 @@ export function App(): JSX.Element {
       </div>
       {bottomPanelOpen && (
         <div className="h-[260px] flex-shrink-0">
-          <BottomPanel />
+          <Suspense fallback={null}>
+            <BottomPanel />
+          </Suspense>
         </div>
       )}
       {design.statusBarVisible && !focusMode && <StatusBar />}
