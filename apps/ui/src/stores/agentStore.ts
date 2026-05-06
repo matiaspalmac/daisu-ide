@@ -26,6 +26,12 @@ export interface ToolBlock {
     ok: boolean;
     output: unknown;
   };
+  /** Wall-clock millis when ToolUseStart fired. */
+  startedAt?: number;
+  /** Wall-clock millis when args streaming finished (ToolUseDone). */
+  argsAt?: number;
+  /** Wall-clock millis when ToolResult arrived. */
+  completedAt?: number;
 }
 
 export interface ChatMessage {
@@ -298,6 +304,7 @@ export const useAgent = create<AgentState>((set, get) => ({
             name: payload.name,
             argsJson: "",
             status: "running",
+            startedAt: Date.now(),
           };
           msgs[idx] = {
             ...msgs[idx],
@@ -322,7 +329,9 @@ export const useAgent = create<AgentState>((set, get) => ({
         const idx = msgs.findIndex((m) => m.pending);
         if (idx >= 0 && msgs[idx]?.toolCalls) {
           const calls = msgs[idx].toolCalls!.map((c) =>
-            c.id === payload.id ? { ...c, status: "done" as const } : c,
+            c.id === payload.id
+              ? { ...c, status: "done" as const, argsAt: Date.now() }
+              : c,
           );
           msgs[idx] = { ...msgs[idx], toolCalls: calls };
           set({ messages: msgs });
@@ -342,6 +351,7 @@ export const useAgent = create<AgentState>((set, get) => ({
               ...c,
               status: "result" as const,
               result: { ok: payload.ok, output: payload.output },
+              completedAt: Date.now(),
             };
           });
           return changed ? { ...m, toolCalls: next } : m;
