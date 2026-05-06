@@ -165,6 +165,8 @@ export interface SendMessageOptions {
   systemPrompt?: string;
   baseUrl?: string;
   temperature?: number;
+  /** Conversation mode: auto (default heuristic) | chat | agent | plan. */
+  chatMode?: "auto" | "chat" | "agent" | "plan";
 }
 
 export function sendMessage(opts: SendMessageOptions): Promise<string> {
@@ -180,6 +182,7 @@ export function cancelRun(runId: string): Promise<boolean> {
 export type StreamPayload =
   | { type: "started"; runId: string; conversationId: string }
   | { type: "delta"; runId: string; text: string }
+  | { type: "replaceText"; runId: string; text: string }
   | { type: "warning"; runId: string; message: string }
   | { type: "toolUseStart"; runId: string; id: string; name: string }
   | { type: "toolUseArgsDelta"; runId: string; id: string; fragment: string }

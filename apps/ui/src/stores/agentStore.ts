@@ -40,6 +40,15 @@ export interface ChatMessage {
   toolCalls?: ToolBlock[];
 }
 
+/**
+ * Conversation mode the user picks in the composer:
+ *  - `auto`: heuristic decides whether to advertise tools (default).
+ *  - `chat`: tools never advertised, model answers in plain text.
+ *  - `agent`: full tool access, heuristic disabled.
+ *  - `plan`: read-only tools only, plan-first system prompt addendum.
+ */
+export type ChatMode = "auto" | "chat" | "agent" | "plan";
+
 interface AgentState {
   conversations: ConversationSummary[];
   activeConvoId: string | null;
@@ -48,6 +57,7 @@ interface AgentState {
   runId: string | null;
   error: string | null;
   workspacePath: string | null;
+  chatMode: ChatMode;
 
   setWorkspace: (path: string | null) => Promise<void>;
   refreshConversations: () => Promise<void>;
@@ -57,9 +67,23 @@ interface AgentState {
   sendMessage: (text: string) => Promise<void>;
   cancel: () => Promise<void>;
   attachListener: () => Promise<UnlistenFn>;
+  setChatMode: (mode: ChatMode) => void;
 }
 
 let listenerRef: Promise<UnlistenFn> | null = null;
+
+const CHAT_MODE_STORAGE_KEY = "daisu:chat-mode";
+function loadStoredChatMode(): ChatMode {
+  try {
+    const v = localStorage.getItem(CHAT_MODE_STORAGE_KEY);
+    if (v === "chat" || v === "agent" || v === "plan" || v === "auto") {
+      return v;
+    }
+  } catch {
+    /* localStorage may be unavailable in tests */
+  }
+  return "auto";
+}
 
 export const useAgent = create<AgentState>((set, get) => ({
   conversations: [],
@@ -69,6 +93,16 @@ export const useAgent = create<AgentState>((set, get) => ({
   runId: null,
   error: null,
   workspacePath: null,
+  chatMode: loadStoredChatMode(),
+
+  setChatMode: (mode) => {
+    set({ chatMode: mode });
+    try {
+      localStorage.setItem(CHAT_MODE_STORAGE_KEY, mode);
+    } catch {
+      /* noop */
+    }
+  },
 
   setWorkspace: async (path) => {
     set({
@@ -181,6 +215,7 @@ export const useAgent = create<AgentState>((set, get) => ({
             ? { baseUrl: ai.lmstudioBaseUrl }
             : {}),
         temperature: ai.temperature,
+        chatMode: get().chatMode,
       });
       set({ runId });
     } catch (e) {
@@ -235,6 +270,15 @@ export const useAgent = create<AgentState>((set, get) => ({
             ...msgs[idx],
             content: msgs[idx].content + payload.text,
           };
+          set({ messages: msgs });
+        }
+      } else if (payload.type === "replaceText") {
+        // Backend stripped a tool-call JSON payload out of the streamed
+        // text. Replace the pending message body wholesale.
+        const msgs = state.messages.slice();
+        const idx = msgs.findIndex((m) => m.pending);
+        if (idx >= 0 && msgs[idx]) {
+          msgs[idx] = { ...msgs[idx], content: payload.text };
           set({ messages: msgs });
         }
       } else if (payload.type === "warning") {

@@ -206,6 +206,17 @@
       "assistant": "エージェント",
       "tool": "ツール"
     },
+    "modeAuto": "自動",
+    "modeChat": "チャット",
+    "modeAgent": "エージェント",
+    "modePlan": "プラン",
+    "modeAutoTip": "自動: ツール使用の要否をヒューリスティックが判定します。",
+    "modeChatTip": "チャット専用: ツール無効、テキストのみで応答します。",
+    "modeAgentTip": "エージェント: 全ツール利用可、リクエストを最後まで実行します。",
+    "modePlanTip": "プラン: 読み取り専用ツールのみ。変更前にプランを提案します。",
+    "modePickerLabel": "会話モード",
+    "modelPickerLabel": "モデル",
+    "providerPickerLabel": "プロバイダー",
     "comingM4": "エージェントチャットは M4 で利用可能 — プロバイダは M3 で設定"
   },
   "palette": {

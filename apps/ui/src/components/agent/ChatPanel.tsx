@@ -13,9 +13,15 @@ import {
   CheckCircle,
   XCircle,
 } from "@phosphor-icons/react";
-import { useAgent, type ChatMessage, type ToolBlock } from "../../stores/agentStore";
+import {
+  useAgent,
+  type ChatMessage,
+  type ToolBlock,
+  type ChatMode,
+} from "../../stores/agentStore";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { PermissionInline } from "./PermissionModal";
+import { ModelInlinePicker } from "./ModelInlinePicker";
 
 export function ChatPanel(): JSX.Element {
   const { t } = useTranslation();
@@ -32,6 +38,8 @@ export function ChatPanel(): JSX.Element {
   const sendMessage = useAgent((s) => s.sendMessage);
   const cancel = useAgent((s) => s.cancel);
   const attach = useAgent((s) => s.attachListener);
+  const chatMode = useAgent((s) => s.chatMode);
+  const setChatMode = useAgent((s) => s.setChatMode);
 
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -73,6 +81,7 @@ export function ChatPanel(): JSX.Element {
           <span className="daisu-glyph" aria-hidden="true">話</span>
           <span>{t("chat.title")}</span>
         </div>
+        <ModelInlinePicker />
         <button
           type="button"
           className="daisu-icon-btn"
@@ -136,6 +145,20 @@ export function ChatPanel(): JSX.Element {
       <PermissionInline />
 
       <form className="daisu-agent-composer" onSubmit={handleSubmit}>
+        <div
+          className="daisu-agent-mode-row"
+          role="radiogroup"
+          aria-label={t("chat.modePickerLabel")}
+        >
+          {(["auto", "chat", "agent", "plan"] as const).map((m) => (
+            <ModeButton
+              key={m}
+              mode={m}
+              active={chatMode === m}
+              onPick={setChatMode}
+            />
+          ))}
+        </div>
         <label className="sr-only" htmlFor="agent-composer-input">
           {t("chat.messageLabel")}
         </label>
@@ -178,6 +201,44 @@ export function ChatPanel(): JSX.Element {
         </div>
       </form>
     </div>
+  );
+}
+
+interface ModeButtonProps {
+  mode: ChatMode;
+  active: boolean;
+  onPick: (m: ChatMode) => void;
+}
+
+// Static key map keeps i18next's typed key union happy. Using a template
+// literal would force `t()` into the dynamic-string overload that
+// CustomTypeOptions disables.
+const MODE_LABEL_KEYS = {
+  auto: "chat.modeAuto",
+  chat: "chat.modeChat",
+  agent: "chat.modeAgent",
+  plan: "chat.modePlan",
+} as const;
+const MODE_TIP_KEYS = {
+  auto: "chat.modeAutoTip",
+  chat: "chat.modeChatTip",
+  agent: "chat.modeAgentTip",
+  plan: "chat.modePlanTip",
+} as const;
+
+function ModeButton({ mode, active, onPick }: ModeButtonProps): JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      className={`daisu-agent-mode${active ? " is-active" : ""}`}
+      title={t(MODE_TIP_KEYS[mode])}
+      onClick={() => onPick(mode)}
+    >
+      {t(MODE_LABEL_KEYS[mode])}
+    </button>
   );
 }
 

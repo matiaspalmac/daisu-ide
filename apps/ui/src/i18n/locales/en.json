@@ -206,6 +206,17 @@
       "assistant": "Agent",
       "tool": "Tool"
     },
+    "modeAuto": "Auto",
+    "modeChat": "Chat",
+    "modeAgent": "Agent",
+    "modePlan": "Plan",
+    "modeAutoTip": "Auto: heuristic decides whether to use tools.",
+    "modeChatTip": "Chat-only: tools disabled, plain-text replies.",
+    "modeAgentTip": "Agent: full tool access, executes the request end-to-end.",
+    "modePlanTip": "Plan: read-only tools, model proposes a plan before any change.",
+    "modePickerLabel": "Conversation mode",
+    "modelPickerLabel": "Model",
+    "providerPickerLabel": "Provider",
     "comingM4": "Agent chat available in M4 — provider configured in M3"
   },
   "palette": {
