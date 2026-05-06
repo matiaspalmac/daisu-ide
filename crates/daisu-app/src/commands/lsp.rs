@@ -10,8 +10,11 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use lsp_types::{
-    CompletionItem, CompletionParams, CompletionResponse, Hover, HoverParams, Position,
-    SignatureHelp, SignatureHelpParams, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
+    CompletionItem, CompletionParams, CompletionResponse, DocumentSymbolParams,
+    DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
+    Location, PartialResultParams, Position, ReferenceContext, ReferenceParams, SignatureHelp,
+    SignatureHelpParams, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
+    WorkDoneProgressParams, WorkspaceSymbolParams, WorkspaceSymbolResponse,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -62,6 +65,7 @@ pub async fn lsp_workspace_trust(
         .await
         .map_err(map_lsp)?;
     start_diagnostics_emitter(&app, &state);
+    start_server_ready_emitter(&app, &state);
     Ok(TrustState { trusted: true })
 }
 
@@ -248,6 +252,9 @@ fn home_lsp_config_path() -> PathBuf {
 }
 
 static EMITTER_STARTED: AtomicBool = AtomicBool::new(false);
+static READY_EMITTER_STARTED: AtomicBool = AtomicBool::new(false);
+
+const SERVER_READY_EVENT: &str = "lsp://server-ready";
 
 fn start_diagnostics_emitter(app: &tauri::AppHandle, state: &AppState) {
     if EMITTER_STARTED.swap(true, Ordering::SeqCst) {
@@ -260,4 +267,137 @@ fn start_diagnostics_emitter(app: &tauri::AppHandle, state: &AppState) {
             let _ = app.emit(DIAGNOSTICS_EVENT, &ev);
         }
     });
+}
+
+fn start_server_ready_emitter(app: &tauri::AppHandle, state: &AppState) {
+    if READY_EMITTER_STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let app = app.clone();
+    let mut sub = state.lsp_manager.subscribe_ready();
+    tokio::spawn(async move {
+        while let Ok(ev) = sub.recv().await {
+            let _ = app.emit(SERVER_READY_EVENT, &ev);
+        }
+    });
+}
+
+#[tauri::command]
+pub async fn lsp_definition(
+    state: State<'_, AppState>,
+    req: PositionReq,
+) -> AppResult<Option<GotoDefinitionResponse>> {
+    let pos = position_params(&req)?;
+    let client = first_running_client(&state, &req).await?;
+    let params = GotoDefinitionParams {
+        text_document_position_params: pos,
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    };
+    let (res, _) = requests::definition(client, params)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReferencesReq {
+    pub path: String,
+    pub line: u32,
+    pub character: u32,
+    #[serde(default)]
+    pub server_id: Option<String>,
+    pub include_declaration: bool,
+}
+
+#[tauri::command]
+pub async fn lsp_references(
+    state: State<'_, AppState>,
+    req: ReferencesReq,
+) -> AppResult<Vec<Location>> {
+    let pos_req = PositionReq {
+        path: req.path.clone(),
+        line: req.line,
+        character: req.character,
+        server_id: req.server_id.clone(),
+    };
+    let pos = position_params(&pos_req)?;
+    let client = first_running_client(&state, &pos_req).await?;
+    let params = ReferenceParams {
+        text_document_position: pos,
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+        context: ReferenceContext {
+            include_declaration: req.include_declaration,
+        },
+    };
+    let (locs, _) = requests::references(client, params)
+        .await
+        .map_err(map_lsp)?;
+    Ok(locs)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentSymbolReq {
+    pub path: String,
+    #[serde(default)]
+    pub server_id: Option<String>,
+}
+
+#[tauri::command]
+pub async fn lsp_document_symbol(
+    state: State<'_, AppState>,
+    req: DocumentSymbolReq,
+) -> AppResult<Option<DocumentSymbolResponse>> {
+    use std::str::FromStr;
+    let url = url::Url::from_file_path(PathBuf::from(&req.path))
+        .map_err(|()| AppError::Internal(format!("bad path: {}", req.path)))?;
+    let uri =
+        Uri::from_str(url.as_str()).map_err(|e| AppError::Internal(format!("bad uri: {e}")))?;
+    let pos_req = PositionReq {
+        path: req.path.clone(),
+        line: 0,
+        character: 0,
+        server_id: req.server_id.clone(),
+    };
+    let client = first_running_client(&state, &pos_req).await?;
+    let params = DocumentSymbolParams {
+        text_document: TextDocumentIdentifier { uri },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    };
+    let (res, _) = requests::document_symbol(client, params)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceSymbolReq {
+    pub query: String,
+    pub server_id: String,
+}
+
+#[tauri::command]
+pub async fn lsp_workspace_symbol(
+    state: State<'_, AppState>,
+    req: WorkspaceSymbolReq,
+) -> AppResult<Option<WorkspaceSymbolResponse>> {
+    let client = state
+        .lsp_manager
+        .client_by_id(&req.server_id)
+        .await
+        .ok_or_else(|| AppError::Internal(format!("no client for {}", req.server_id)))?;
+    let params = WorkspaceSymbolParams {
+        query: req.query,
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    };
+    let (res, _) = requests::workspace_symbol(client, params)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
 }

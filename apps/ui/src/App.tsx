@@ -28,6 +28,8 @@ import { CloseConfirmModal } from "./components/tabs/CloseConfirmModal";
 import { SettingsModal } from "./components/settings/SettingsModal";
 import { CommandPalette } from "./components/palette/CommandPalette";
 import { SymbolSearchPalette } from "./components/agent/SymbolSearchPalette";
+import { LspWorkspaceSymbolPalette } from "./components/palette/LspWorkspaceSymbolPalette";
+import { FileSymbolPalette } from "./components/palette/FileSymbolPalette";
 import { PermissionModal } from "./components/agent/PermissionModal";
 import { InlineEditOverlay } from "./components/agent/InlineEditOverlay";
 import { useUI } from "./stores/uiStore";
@@ -376,6 +378,8 @@ export function App(): JSX.Element {
       <SettingsModal />
       <CommandPalette />
       <SymbolSearchPalette />
+      <LspWorkspaceSymbolPalette />
+      <FileSymbolPalette />
       <PermissionModal />
       <InlineEditOverlay />
       <ResizeHandles />

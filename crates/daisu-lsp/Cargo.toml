@@ -18,7 +18,7 @@ missing_panics_doc = "allow"
 
 [dependencies]
 lsp-types = "0.97"
-tokio = { workspace = true, features = ["process", "sync", "io-util", "macros", "rt", "time"] }
+tokio = { workspace = true, features = ["process", "sync", "io-util", "io-std", "macros", "rt", "time"] }
 tokio-util = { workspace = true, features = ["io"] }
 futures.workspace = true
 serde.workspace = true

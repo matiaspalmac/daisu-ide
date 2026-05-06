@@ -139,6 +139,8 @@ export const ACTION_HANDLERS: Record<string, (ctx: ActionContext) => void> = {
   "palette.openFiles": () => usePalette.getState().togglePalette("files"),
   "palette.openCommands": () => usePalette.getState().togglePalette("commands"),
   "palette.openSymbols": () => usePalette.getState().togglePalette("symbols"),
+  "palette.openLspSymbols": () => usePalette.getState().togglePalette("lspSymbols"),
+  "palette.openFileSymbols": () => usePalette.getState().togglePalette("fileSymbols"),
   "agent.slash.explain": () => runSlashCommand("explain"),
   "agent.slash.fix": () => runSlashCommand("fix"),
   "agent.slash.test": () => runSlashCommand("test"),
