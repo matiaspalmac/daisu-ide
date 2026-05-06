@@ -54,38 +54,172 @@ fn map_agent(e: daisu_agent::AgentError) -> AppError {
     AppError::Internal(format!("agent: {e}"))
 }
 
+/// Long-form default system prompt for cloud providers (Anthropic, OpenAI,
+/// Gemini). Drawn from the May 2026 prompt research pass — fuses
+/// Cursor's "only call tools when necessary" line, Lovable's "default to
+/// discussion mode" pattern, and Cline's positive/negative few-shot
+/// pairs. Kept under ~600 tokens so prompt-cache hits stay viable.
+fn default_system_prompt_long(workspace: &str) -> String {
+    format!(
+        "You are Daisu, a coding assistant inside the Daisu IDE. You are \
+pair-programming with the user inside their workspace at {workspace}. \
+Always reply in the user's language.\n\
+\n\
+# Tools\n\
+You have exactly four tools:\n\
+- list_dir(path): list files/folders in a workspace-relative directory\n\
+- read_file(path): read a workspace-relative file as UTF-8\n\
+- write_file(path, contents): create or overwrite a file (workspace-relative)\n\
+- propose_edit(path, new_text): propose a reviewable patch for an existing file\n\
+\n\
+You have no other tools. Never invent or reference tools that are not listed.\n\
+\n\
+# When to use tools vs. reply in chat\n\
+Default to plain-text chat. Only call a tool when the user's request \
+clearly needs reading, listing, writing, or editing a file in this \
+workspace.\n\
+\n\
+CALL A TOOL when the message contains intent verbs like: open, read, show, \
+look at, list, find, search, edit, change, fix, refactor, rename, create, \
+write, add, implement, generate.\n\
+\n\
+DO NOT CALL A TOOL for: greetings (\"hi\", \"hola\"), thanks, smalltalk, \
+opinions, explanations of concepts, language/library questions you can \
+answer from memory, or clarifying questions back to the user.\n\
+\n\
+When the request is ambiguous, ask one short clarifying question instead \
+of guessing. Use at most one tool per turn, then stop and wait for the \
+result.\n\
+\n\
+# Path & safety rules\n\
+All paths are workspace-relative (e.g. `src/app.ts`). Never use absolute \
+roots (`/`, `C:\\`), never use `..` to escape the workspace, never touch \
+`.git/`, `node_modules/`, build outputs, or files under `.daisu/`. Read a \
+file before proposing an edit to it. Prefer `propose_edit` over \
+`write_file` for existing files; reserve `write_file` for new files or \
+full rewrites the user asked for. Never hardcode secrets. Never name \
+tools to the user — say \"I'll read src/app.ts\", not \"I'll call read_file\".\n\
+\n\
+# Output format\n\
+Reply in concise markdown. Code goes in fenced blocks with a language tag. \
+Avoid filler openers like \"Certainly!\", \"Great!\", \"Sure!\". Be direct. \
+Match the user's language.\n\
+\n\
+# Examples\n\
+User: \"hola, ¿en qué andas?\"\n\
+You: \"Listo para ayudarte con el código. ¿Qué querés que veamos?\"  (no tools)\n\
+\n\
+User: \"explain what a Rust trait is\"\n\
+You: <plain-text explanation in user's locale>  (no tools)\n\
+\n\
+User: \"open package.json\"\n\
+You: call read_file(\"package.json\")\n\
+\n\
+User: \"fix the typo in README\"\n\
+You: call read_file(\"README.md\") — wait — then call propose_edit(...)\n"
+    )
+}
+
+/// Short imperative variant for small local models (Ollama, LM Studio).
+/// Strips the prose, leans on numbered rules and a short example block —
+/// 3B-class models pattern-match more reliably on terse imperatives at
+/// the prompt tail than on long explanations.
+fn default_system_prompt_short(workspace: &str) -> String {
+    format!(
+        "You are Daisu, a coding assistant in the Daisu IDE. Workspace: {workspace}. \
+Reply in the user's language.\n\
+\n\
+Tools (only these, never invent others):\n\
+- list_dir(path)\n\
+- read_file(path)\n\
+- write_file(path, contents)\n\
+- propose_edit(path, new_text)\n\
+\n\
+RULES:\n\
+1. Default to chat. Only call a tool when the user asks to read, list, write, \
+edit, open, show, find, fix, or create a file in the workspace.\n\
+2. Greetings, thanks, smalltalk, concept questions: REPLY IN PLAIN TEXT, NO TOOLS.\n\
+3. One tool per turn, then stop and wait.\n\
+4. Paths are workspace-relative. Never use `/`, `C:\\`, or `..`. Never touch \
+`.git/`, `node_modules/`, `.daisu/`.\n\
+5. Read a file before editing it. Use propose_edit for existing files, \
+write_file only for new files.\n\
+6. Never say tool names to the user. Say \"I'll read X\", not \"I'll call read_file\".\n\
+7. Be concise. No \"Certainly!\", \"Sure!\", \"Great!\". Markdown + fenced code blocks.\n\
+\n\
+Examples:\n\
+- \"hi\" -> \"Hi! What are we building?\"  (no tool)\n\
+- \"hola\" -> \"¡Hola! ¿En qué te ayudo?\"  (no tool)\n\
+- \"what is a closure?\" -> explain in plain text  (no tool)\n\
+- \"open src/main.rs\" -> call read_file(\"src/main.rs\")\n\
+- \"rename foo to bar in utils.ts\" -> read_file then propose_edit\n"
+    )
+}
+
+/// Decide whether the user's message looks like chit-chat that doesn't
+/// need filesystem tools. When true, the agent loop skips advertising
+/// tools to the model so small local models (llama3.2:3b, qwen-coder:7b)
+/// don't reflexively call `list_dir(".")` for greetings. Action verbs
+/// in any of EN/ES/PT keep tools enabled.
+fn is_conversational_opener(text: &str) -> bool {
+    let lower = text.trim().to_lowercase();
+    if lower.is_empty() {
+        return false;
+    }
+    // Action verbs that imply tool use. Match as whole words/prefixes so
+    // "lista" catches "listame", "listar", "list".
+    const ACTION_PREFIXES: &[&str] = &[
+        "lee ", "leer", "lis", "list", "ver ", "muestr", "abre ", "abrir", "open ", "read ",
+        "show ", "find ", "busca", "search", "grep", "escrib", "write ", "crea ", "create",
+        "borra", "delet", "remove", "edita", "edit ", "modif", "run ", "ejecut", "git ", "diff",
+        "estado", "status", "analiz", "analyse", "analyze", "revis", "explica", "explain", "checa",
+        "check ",
+    ];
+    for kw in ACTION_PREFIXES {
+        if lower.contains(kw) {
+            return false;
+        }
+    }
+    // Short messages without action verbs are very likely chit-chat.
+    // 120 chars is generous enough to cover "hola, ¿qué puedes hacer?".
+    lower.chars().count() <= 120
+}
+
 /// Recover tool calls that a non-tool-aware model emits as text instead of
 /// using the wire-level `tool_calls` field. Small Ollama models (e.g.
-/// `qwen2.5-coder:1.5b`) ignore the `tools` parameter and just print a
-/// JSON object describing the call inside a fenced code block. Without
-/// this fallback the agent loop terminates after the first turn and the
-/// user sees the raw JSON instead of the tool result.
+/// `qwen2.5-coder:1.5b`, `llama3.2:3b`) ignore the `tools` parameter and
+/// print a JSON object describing the call as plain text. Without this
+/// fallback the agent loop terminates after the first turn and the user
+/// sees the raw JSON instead of the tool result.
 ///
-/// Recognised shapes (each must live inside a ```` ```json ```` fence):
-///   `{"name": "<tool>", "arguments": { ... }}`
-///   `{"tool": "<tool>", "input": { ... }}`
-///   `{"function": "<tool>", "parameters": { ... }}`
+/// Recognised shapes:
+/// - Fenced JSON code block: ```` ```json\n{...}\n``` ````
+/// - Bare unfenced JSON object anywhere in the text
+/// - Qwen3-coder XML tag: `<tool_call>{...}</tool_call>`
+/// - Llama 3.1 python-tag: `<|python_tag|>{...}<|eom_id|>` (or up to EOS)
+///
+/// Object key tolerance: `name`/`tool`/`function` for the tool id,
+/// `arguments`/`input`/`parameters` for the args object.
 ///
 /// Calls are dropped silently if the name doesn't match a registered tool
 /// — better to fall through to the "no tool calls" branch than to invent
 /// dispatches the user didn't grant permission for.
-fn extract_fallback_tool_calls(text: &str, registry: &Arc<ToolRegistry>) -> Vec<ProviderToolCall> {
+///
+/// Returns both the recovered calls and a `cleaned_text` with every
+/// consumed JSON / XML region removed, so the chat doesn't render the
+/// raw tool-call payload alongside the executed tool card.
+struct FallbackParse {
+    calls: Vec<ProviderToolCall>,
+    cleaned_text: String,
+}
+
+fn extract_fallback_tool_calls(text: &str, registry: &Arc<ToolRegistry>) -> FallbackParse {
     let mut out = Vec::new();
-    let mut cursor = 0usize;
-    while let Some(rel) = text[cursor..].find("```") {
-        let after_open = cursor + rel + 3;
-        // Skip the optional language tag up to the next newline.
-        let body_start = match text[after_open..].find('\n') {
-            Some(n) => after_open + n + 1,
-            None => break,
-        };
-        let Some(close_rel) = text[body_start..].find("```") else {
-            break;
-        };
-        let body = text[body_start..body_start + close_rel].trim();
-        cursor = body_start + close_rel + 3;
-        let Ok(v) = serde_json::from_str::<serde_json::Value>(body) else {
-            continue;
+    let mut consumed: Vec<(usize, usize)> = Vec::new();
+
+    let push_call = |out: &mut Vec<ProviderToolCall>, raw: &str| -> bool {
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(raw.trim()) else {
+            return false;
         };
         let name = v
             .get("name")
@@ -95,7 +229,7 @@ fn extract_fallback_tool_calls(text: &str, registry: &Arc<ToolRegistry>) -> Vec<
             .unwrap_or("")
             .to_string();
         if name.is_empty() || registry.get(&name).is_none() {
-            continue;
+            return false;
         }
         let arguments = v
             .get("arguments")
@@ -108,8 +242,253 @@ fn extract_fallback_tool_calls(text: &str, registry: &Arc<ToolRegistry>) -> Vec<
             name,
             arguments,
         });
+        true
+    };
+
+    // 1) Fenced ```...``` code blocks (json/yaml language tag tolerated).
+    let mut cursor = 0usize;
+    while let Some(rel) = text[cursor..].find("```") {
+        let after_open = cursor + rel + 3;
+        let body_start = match text[after_open..].find('\n') {
+            Some(n) => after_open + n + 1,
+            None => break,
+        };
+        let Some(close_rel) = text[body_start..].find("```") else {
+            break;
+        };
+        let body_end = body_start + close_rel;
+        if push_call(&mut out, &text[body_start..body_end]) {
+            consumed.push((cursor + rel, body_end + 3));
+        }
+        cursor = body_end + 3;
     }
-    out
+
+    // 2) Qwen3-coder <tool_call>...</tool_call>.
+    let mut cursor = 0usize;
+    while let Some(rel) = text[cursor..].find("<tool_call>") {
+        let body_start = cursor + rel + "<tool_call>".len();
+        let Some(end_rel) = text[body_start..].find("</tool_call>") else {
+            break;
+        };
+        let body_end = body_start + end_rel;
+        if push_call(&mut out, &text[body_start..body_end]) {
+            consumed.push((cursor + rel, body_end + "</tool_call>".len()));
+        }
+        cursor = body_end + "</tool_call>".len();
+    }
+
+    // 3) Llama 3.1 python-tag.
+    if let Some(rel) = text.find("<|python_tag|>") {
+        let body_start = rel + "<|python_tag|>".len();
+        let body_end = text[body_start..]
+            .find("<|eom_id|>")
+            .or_else(|| text[body_start..].find("<|eot_id|>"))
+            .map(|n| body_start + n)
+            .unwrap_or(text.len());
+        if push_call(&mut out, &text[body_start..body_end]) {
+            consumed.push((rel, body_end));
+        }
+    }
+
+    // 4) Bare unfenced JSON. Scan for `{` and try to balance braces while
+    //    respecting strings and escapes; only accept the substring if it
+    //    parses, has a known tool name, and isn't nested inside a region
+    //    we already consumed (avoids double-counting fenced blocks).
+    let bytes = text.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] != b'{' {
+            i += 1;
+            continue;
+        }
+        if consumed.iter().any(|(s, e)| i >= *s && i < *e) {
+            i += 1;
+            continue;
+        }
+        if let Some(end) = find_balanced_object_end(bytes, i) {
+            if push_call(&mut out, &text[i..=end]) {
+                consumed.push((i, end + 1));
+                i = end + 1;
+                continue;
+            }
+        }
+        i += 1;
+    }
+
+    // Build a cleaned_text with the consumed regions stripped out.
+    // Sort + merge overlapping ranges, then walk the source pasting
+    // the gaps. Trim leftover whitespace/newlines so the chat doesn't
+    // show the empty fence skeleton ("```json\n\n```").
+    consumed.sort_by_key(|r| r.0);
+    let mut cleaned = String::with_capacity(text.len());
+    let mut cursor = 0;
+    for (s, e) in &consumed {
+        if *s > cursor {
+            cleaned.push_str(&text[cursor..*s]);
+        }
+        cursor = (*e).max(cursor);
+    }
+    if cursor < text.len() {
+        cleaned.push_str(&text[cursor..]);
+    }
+    let cleaned_text = collapse_blank_runs(cleaned.trim()).to_string();
+
+    FallbackParse {
+        calls: out,
+        cleaned_text,
+    }
+}
+
+/// Collapse runs of 3+ newlines (and whitespace-only lines between them)
+/// down to a single blank line. After stripping fenced JSON blocks the
+/// surrounding prose often has dangling empties; this keeps the chat
+/// transcript readable.
+fn collapse_blank_runs(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut blank_streak = 0u32;
+    for line in s.lines() {
+        if line.trim().is_empty() {
+            blank_streak += 1;
+            if blank_streak <= 1 {
+                out.push('\n');
+            }
+        } else {
+            blank_streak = 0;
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out.trim_end().to_string()
+}
+
+/// Walk a byte slice starting at an opening `{` and return the index of
+/// its matching `}`. Tracks string literals and `\` escapes so braces
+/// inside JSON strings don't count. Returns None on EOF inside a string
+/// or unbalanced input — matches the "ignore malformed tail" policy of
+/// the fallback parser.
+fn find_balanced_object_end(bytes: &[u8], start: usize) -> Option<usize> {
+    debug_assert!(bytes[start] == b'{');
+    let mut depth = 0i32;
+    let mut in_string = false;
+    let mut escaped = false;
+    let mut i = start;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if c == b'\\' {
+                escaped = true;
+            } else if c == b'"' {
+                in_string = false;
+            }
+        } else {
+            match c {
+                b'"' => in_string = true,
+                b'{' => depth += 1,
+                b'}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some(i);
+                    }
+                }
+                _ => {}
+            }
+        }
+        i += 1;
+    }
+    None
+}
+
+#[cfg(test)]
+mod fallback_parser_tests {
+    use super::*;
+    use daisu_agent::tools::ToolRegistry;
+
+    fn registry() -> Arc<ToolRegistry> {
+        Arc::new(ToolRegistry::default())
+    }
+
+    #[test]
+    fn fenced_json_write_file() {
+        let text = "Sure thing!\n```json\n{\"name\": \"write_file\", \"arguments\": {\"path\": \"a.md\", \"contents\": \"hi\"}}\n```";
+        let res = extract_fallback_tool_calls(text, &registry());
+        assert_eq!(res.calls.len(), 1);
+        assert_eq!(res.calls[0].name, "write_file");
+        assert_eq!(res.calls[0].arguments["path"], "a.md");
+        assert_eq!(res.cleaned_text, "Sure thing!");
+    }
+
+    #[test]
+    fn unfenced_json_object() {
+        let text = "Voy a listar:\n{\"name\": \"list_dir\", \"arguments\": {\"path\": \".\"}}\n";
+        let res = extract_fallback_tool_calls(text, &registry());
+        assert_eq!(res.calls.len(), 1);
+        assert_eq!(res.calls[0].name, "list_dir");
+        assert_eq!(res.cleaned_text, "Voy a listar:");
+    }
+
+    #[test]
+    fn qwen3_xml_tag() {
+        let text =
+            "<tool_call>{\"name\": \"read_file\", \"arguments\": {\"path\": \"x\"}}</tool_call>";
+        let res = extract_fallback_tool_calls(text, &registry());
+        assert_eq!(res.calls.len(), 1);
+        assert_eq!(res.calls[0].name, "read_file");
+    }
+
+    #[test]
+    fn llama3_python_tag() {
+        let text =
+            "<|python_tag|>{\"name\": \"list_dir\", \"parameters\": {\"path\": \".\"}}<|eom_id|>";
+        let res = extract_fallback_tool_calls(text, &registry());
+        assert_eq!(res.calls.len(), 1);
+        assert_eq!(res.calls[0].name, "list_dir");
+    }
+
+    #[test]
+    fn ignores_unknown_tool_name() {
+        let text = "{\"name\": \"nuke_disk\", \"arguments\": {}}";
+        let res = extract_fallback_tool_calls(text, &registry());
+        assert!(res.calls.is_empty());
+        // Unknown names leave the original text intact — the user still
+        // sees what the model wrote.
+        assert_eq!(res.cleaned_text, text);
+    }
+
+    #[test]
+    fn ignores_plain_json_without_name() {
+        let text = "config: {\"path\": \"x\", \"contents\": \"hi\"}";
+        let res = extract_fallback_tool_calls(text, &registry());
+        assert!(res.calls.is_empty());
+    }
+
+    #[test]
+    fn dedupes_fenced_and_bare() {
+        // The same call inside a fence shouldn't be picked up twice by the
+        // bare-JSON pass.
+        let text = "```json\n{\"name\": \"list_dir\", \"arguments\": {\"path\": \".\"}}\n```";
+        let res = extract_fallback_tool_calls(text, &registry());
+        assert_eq!(res.calls.len(), 1);
+        assert_eq!(res.cleaned_text, "");
+    }
+
+    #[test]
+    fn handles_braces_inside_strings() {
+        let text =
+            "{\"name\": \"write_file\", \"arguments\": {\"path\": \"a.md\", \"contents\": \"x{y}z\"}}";
+        let res = extract_fallback_tool_calls(text, &registry());
+        assert_eq!(res.calls.len(), 1);
+        assert_eq!(res.calls[0].arguments["contents"], "x{y}z");
+    }
+
+    #[test]
+    fn cleans_text_around_consumed_block() {
+        let text = "Sure! Here's the file:\n```json\n{\"name\": \"write_file\", \"arguments\": {\"path\": \"a.md\", \"contents\": \"hi\"}}\n```\nLet me know!";
+        let res = extract_fallback_tool_calls(text, &registry());
+        assert_eq!(res.calls.len(), 1);
+        assert_eq!(res.cleaned_text, "Sure! Here's the file:\nLet me know!");
+    }
 }
 
 /// Build the `ToolDef` list the LLM sees from the static tool registry.
@@ -770,6 +1149,26 @@ pub async fn agent_delete_conversation(
         .map_err(map_agent)
 }
 
+/// Conversation mode the user picked in the composer. Drives whether
+/// tools are advertised, which subset, and what system prompt addendum
+/// is appended. Default is `Auto` — keep the May 2026 heuristic that
+/// strips tools for greetings while leaving them on for action verbs.
+#[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ChatMode {
+    /// Pure chat. Tools are never advertised; the model answers in text.
+    Chat,
+    /// Full agent. All tools available; heuristic disabled.
+    Agent,
+    /// Plan-first: read-only tools advertised; the model is asked to
+    /// produce a plan before any side-effect call.
+    Plan,
+    /// Default. Honour the conversational-opener heuristic.
+    #[default]
+    #[serde(other)]
+    Auto,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SendMessageRequest {
@@ -779,6 +1178,8 @@ pub struct SendMessageRequest {
     pub system_prompt: Option<String>,
     pub base_url: Option<String>,
     pub temperature: Option<f32>,
+    #[serde(default)]
+    pub chat_mode: ChatMode,
 }
 
 #[derive(Debug, Serialize)]
@@ -799,6 +1200,14 @@ enum StreamPayload {
         conversation_id: String,
     },
     Delta {
+        run_id: String,
+        text: String,
+    },
+    /// Replace the entire accumulated text for the active assistant turn.
+    /// Emitted when the fallback parser strips a tool-call payload from
+    /// the streamed text so the chat UI can re-render with the cleaned
+    /// version instead of the raw JSON the model emitted.
+    ReplaceText {
         run_id: String,
         text: String,
     },
@@ -898,26 +1307,93 @@ pub async fn agent_send_message(
     let tool_registry = state.tool_registry.clone();
 
     let provider = build_provider(&convo.provider, req.base_url.as_deref()).await?;
-    let tools = tool_defs_from_registry(&state.tool_registry);
+    let all_tools = tool_defs_from_registry(&state.tool_registry);
+    // Conversational opener heuristic: small local models (llama3.2:3b,
+    // qwen2.5-coder:1.5b) call tools for greetings even when the system
+    // prompt forbids it. Strip tools entirely when the user's first turn
+    // looks like chit-chat so the model is forced to answer in text.
+    // Cheap and reversible — once the user asks for an action, the tool
+    // list comes back automatically on the next message.
+    // Chat-mode resolution. Explicit user mode (Chat/Agent/Plan) wins
+    // over the auto heuristic. Auto preserves the May 2026 behaviour:
+    // strip tools for greetings, full catalog otherwise.
+    let convo_provider_is_ollama = convo.provider == "ollama";
+    let conversational_opener = is_conversational_opener(&req.user_text);
+    let mode_strips_tools = match req.chat_mode {
+        ChatMode::Chat => true,
+        ChatMode::Agent => false,
+        ChatMode::Plan => false, // Plan keeps read-only tools, see below.
+        ChatMode::Auto => conversational_opener,
+    };
+    let tool_choice = if mode_strips_tools {
+        Some(daisu_agent::provider::ToolChoice::None)
+    } else {
+        None
+    };
+    // Tool curation per mode:
+    // - Chat: drop everything. Ollama ignores tool_choice anyway, and on
+    //   cloud providers tool_choice=None already prevents calls.
+    // - Plan: only Auto-tier (read-only) tools. Hides write_file /
+    //   propose_edit so the model has to discuss before doing.
+    // - Agent / Auto: full catalogue. For Auto we still strip on Ollama
+    //   when the message looks conversational, since the daemon ignores
+    //   tool_choice and would otherwise tool-spam.
+    let tools = match req.chat_mode {
+        ChatMode::Chat => Vec::new(),
+        ChatMode::Plan => all_tools
+            .into_iter()
+            .filter(|t| matches!(t.name.as_str(), "read_file" | "list_dir"))
+            .collect(),
+        ChatMode::Agent => all_tools,
+        ChatMode::Auto => {
+            if conversational_opener && convo_provider_is_ollama {
+                Vec::new()
+            } else {
+                all_tools
+            }
+        }
+    };
     // Inject a default system prompt when the frontend doesn't send one.
-    // Small local models (llama3.2:3b, qwen2.5-coder:1.5b) otherwise call
-    // tools for trivial inputs like "hola" or pass paths like "/" that
-    // escape the workspace. Anchor them to the cwd and tell them tools
-    // are optional.
-    let system_prompt = req.system_prompt.clone().or_else(|| {
+    // We pick one of two variants based on the provider class: cloud
+    // models (Anthropic/OpenAI/Gemini) get the long version with full
+    // few-shot, since their context window is generous and they
+    // generalise better from positive+negative examples. Local models
+    // (Ollama, LM Studio) get a tight imperative variant — small models
+    // attend more reliably to short rules at the prompt tail than to
+    // verbose prose. Both variants share tool semantics so chat history
+    // stays portable across providers.
+    let mut system_prompt = req.system_prompt.clone().or_else(|| {
+        let workspace_str = workspace.display().to_string();
         Some(
-            "You are a coding assistant inside Daisu IDE. Reply in the user's language. \
-             Only call tools when the user explicitly asks to read, list, or write files. \
-             For greetings or general questions, answer with plain text and call no tools.\n\n\
-             Tool guide:\n\
-             - list_dir(path): list directory entries. Use \".\" for the workspace root. \
-             Use this for \"ver/listar/explorar archivos\".\n\
-             - read_file(path): read a single file's text contents. Path must point to a FILE, never a directory.\n\
-             - write_file(path, contents): create or overwrite a file. Requires user approval.\n\n\
-             Path rules: paths are relative to the workspace root (\".\"). Never pass \"/\", \
-             absolute system paths, or paths with \"..\".".to_string()
+            if convo_provider_is_ollama || convo.provider == "lmstudio" {
+                default_system_prompt_short(&workspace_str)
+            } else {
+                default_system_prompt_long(&workspace_str)
+            },
         )
     });
+    // Mode-specific prompt addenda. Kept short — appended at the end of
+    // the system prompt where small models attend most strongly.
+    if let Some(ref mut sp) = system_prompt {
+        match req.chat_mode {
+            ChatMode::Chat => sp.push_str(
+                "\n\n# Mode: CHAT\nYou are in chat-only mode. Do not call any tool. \
+Answer in plain text only.",
+            ),
+            ChatMode::Plan => sp.push_str(
+                "\n\n# Mode: PLAN\nYou may only inspect the workspace (list_dir, \
+read_file). You CANNOT write or edit files in this turn. Produce a \
+short, numbered plan describing what you would do, then ask the user \
+to confirm before switching to Agent mode.",
+            ),
+            ChatMode::Agent => sp.push_str(
+                "\n\n# Mode: AGENT\nFull tool access. Execute the user's request \
+end-to-end. Still keep one tool per turn and ask for clarification \
+when the request is ambiguous.",
+            ),
+            ChatMode::Auto => {}
+        }
+    }
     let temperature = req.temperature;
 
     let app_handle = app.clone();
@@ -940,40 +1416,42 @@ pub async fn agent_send_message(
         let mut error: Option<String> = None;
         let mut cancelled = false;
 
-        while iteration < MAX_AGENT_ITERATIONS {
-            iteration += 1;
-
-            // Re-load history from disk every iteration so persisted tool
-            // results from the previous turn are part of the next prompt.
-            let history = {
-                let store_c = store.clone();
-                let cid = convo_id.clone();
-                match tokio::task::spawn_blocking(move || store_c.get_messages(&cid)).await {
-                    Ok(Ok(h)) => h,
-                    Ok(Err(e)) => {
-                        error = Some(format!("history: {e}"));
-                        break;
-                    }
-                    Err(e) => {
-                        error = Some(format!("history join: {e}"));
-                        break;
-                    }
-                }
-            };
-            let messages: Vec<Message> = history
+        // Load history once before the loop. Each iteration mutates the
+        // in-memory buffer (push assistant turn, push tool messages) in
+        // lock-step with persistence so we never re-deserialise the same
+        // SQLite rows on a multi-step tool chase. ~50ms × MAX_ITER saved
+        // on the hot path.
+        let mut messages: Vec<Message> = match {
+            let store_c = store.clone();
+            let cid = convo_id.clone();
+            tokio::task::spawn_blocking(move || store_c.get_messages(&cid)).await
+        } {
+            Ok(Ok(h)) => h
                 .into_iter()
                 .filter(|m| m.role != "system")
                 .map(stored_to_message)
-                .collect();
+                .collect(),
+            Ok(Err(e)) => {
+                error = Some(format!("history: {e}"));
+                Vec::new()
+            }
+            Err(e) => {
+                error = Some(format!("history join: {e}"));
+                Vec::new()
+            }
+        };
+
+        while iteration < MAX_AGENT_ITERATIONS && error.is_none() {
+            iteration += 1;
 
             let completion = CompletionRequest {
                 model: model.clone(),
-                messages,
+                messages: messages.clone(),
                 system: system_prompt.clone(),
                 max_tokens: 4096,
                 temperature,
                 tools: tools.clone(),
-                tool_choice: None,
+                tool_choice: tool_choice.clone(),
             };
 
             let mut stream = provider.stream(completion);
@@ -1077,11 +1555,25 @@ pub async fn agent_send_message(
             // Fallback for non-tool-aware models that emit tool calls as
             // fenced JSON in the text channel instead of via the wire
             // protocol. We synthesise the same UI events the provider
-            // would have, so downstream code is uniform.
+            // would have so downstream code is uniform, and replace the
+            // accumulated text with the parser's cleaned version so the
+            // raw JSON payload doesn't show up next to the tool card.
             if emitted_tool_calls.is_empty() && !accumulated_text.is_empty() {
                 let parsed = extract_fallback_tool_calls(&accumulated_text, &tool_registry);
-                if !parsed.is_empty() {
-                    for c in &parsed {
+                if !parsed.calls.is_empty() {
+                    // Tell the UI to drop everything streamed so far for
+                    // this turn — we're about to replace it with the
+                    // cleaned text. Without this the raw fenced JSON
+                    // stays rendered in the chat alongside the tool card.
+                    let _ = app_handle.emit(
+                        STREAM_EVENT,
+                        StreamPayload::ReplaceText {
+                            run_id: run_id_bg.clone(),
+                            text: parsed.cleaned_text.clone(),
+                        },
+                    );
+                    accumulated_text = parsed.cleaned_text;
+                    for c in &parsed.calls {
                         let _ = app_handle.emit(
                             STREAM_EVENT,
                             StreamPayload::ToolUseStart {
@@ -1108,7 +1600,7 @@ pub async fn agent_send_message(
                             },
                         );
                     }
-                    emitted_tool_calls = parsed;
+                    emitted_tool_calls = parsed.calls;
                 }
             }
 
@@ -1150,8 +1642,9 @@ pub async fn agent_send_message(
             {
                 let store_c = store.clone();
                 let cid = convo_id.clone();
+                let to_persist = assistant_msg.clone();
                 if let Err(e) = tokio::task::spawn_blocking(move || {
-                    store_c.append_message(&cid, &assistant_msg, None)
+                    store_c.append_message(&cid, &to_persist, None)
                 })
                 .await
                 .map_err(|e| format!("persist join: {e}"))
@@ -1161,6 +1654,9 @@ pub async fn agent_send_message(
                     break;
                 }
             }
+            // Mirror the persisted turn into the in-memory buffer so the
+            // next iteration's prompt includes it without re-reading SQLite.
+            messages.push(assistant_msg);
 
             // Dispatch each tool call.
             let mut all_succeeded = true;
@@ -1212,8 +1708,9 @@ pub async fn agent_send_message(
                 };
                 let store_c = store.clone();
                 let cid = convo_id.clone();
+                let to_persist = tool_msg.clone();
                 if let Err(e) = tokio::task::spawn_blocking(move || {
-                    store_c.append_message(&cid, &tool_msg, None)
+                    store_c.append_message(&cid, &to_persist, None)
                 })
                 .await
                 .map_err(|e| format!("persist join: {e}"))
@@ -1222,6 +1719,7 @@ pub async fn agent_send_message(
                     error = Some(e);
                     break;
                 }
+                messages.push(tool_msg);
             }
 
             if cancelled || error.is_some() {
