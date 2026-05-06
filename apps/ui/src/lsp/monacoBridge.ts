@@ -14,6 +14,14 @@ import { makeSignatureHelpProvider } from "./signatureHelpAdapter";
 import { makeDefinitionProvider } from "./definitionAdapter";
 import { makeReferenceProvider } from "./referencesAdapter";
 import { makeDocumentSymbolProvider } from "./documentSymbolAdapter";
+import {
+  provideRenameLocation,
+  applyRename,
+} from "./renameAdapter";
+import {
+  provideDocumentFormattingEdits,
+  provideRangeFormattingEdits,
+} from "./formatAdapter";
 import { debounce } from "./debounce";
 
 // Per-(language, serverId) Monaco disposables. Re-sync replaces the entire
@@ -100,9 +108,87 @@ async function syncProviders(
           ),
         );
       }
+      // M4.2c mutation providers (capability-gated):
+      if (status.mutation.rename) {
+        ds.push(
+          monacoNs.languages.registerRenameProvider(language, {
+            // Monaco types `resolveRenameLocation` as `RenameLocation & Rejection`
+            // but the runtime contract is union-via-discriminator: either the
+            // `rejectReason` field is present and rendered as the disabled
+            // tooltip, or `range`+`text` populate the inline widget. Cast
+            // through unknown to satisfy the over-strict structural type.
+            resolveRenameLocation: async (model, position) => {
+              const path = pathOf(model);
+              const result = await provideRenameLocation(path, language, {
+                line: position.lineNumber - 1,
+                character: position.column - 1,
+              });
+              if (!result) {
+                const word = model.getWordAtPosition(position);
+                if (!word) {
+                  return {
+                    rejectReason: "Not a renameable symbol",
+                  } as unknown as monaco.languages.RenameLocation & monaco.languages.Rejection;
+                }
+                return {
+                  range: {
+                    startLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endLineNumber: position.lineNumber,
+                    endColumn: word.endColumn,
+                  },
+                  text: word.word,
+                };
+              }
+              return result as unknown as monaco.languages.RenameLocation &
+                monaco.languages.Rejection;
+            },
+            async provideRenameEdits(model, position, newName) {
+              const path = pathOf(model);
+              const summary = await applyRename(monacoNs, path, language, {
+                line: position.lineNumber - 1,
+                character: position.column - 1,
+              }, newName);
+              // Monaco's RenameProvider expects an edit object even if we
+              // applied edits ourselves. Returning an empty `edits` array
+              // signals "edits applied externally, do not re-apply".
+              if (summary.applied === 0) return null;
+              return { edits: [] };
+            },
+          }),
+        );
+      }
+      if (status.mutation.documentFormatting) {
+        ds.push(
+          monacoNs.languages.registerDocumentFormattingEditProvider(language, {
+            provideDocumentFormattingEdits: (model, options) =>
+              provideDocumentFormattingEdits(pathOf(model), language, options),
+          }),
+        );
+      }
+      if (status.mutation.rangeFormatting) {
+        ds.push(
+          monacoNs.languages.registerDocumentRangeFormattingEditProvider(language, {
+            provideDocumentRangeFormattingEdits: (model, range, options) =>
+              provideRangeFormattingEdits(
+                pathOf(model),
+                language,
+                {
+                  start: { line: range.startLineNumber - 1, character: range.startColumn - 1 },
+                  end: { line: range.endLineNumber - 1, character: range.endColumn - 1 },
+                },
+                options,
+              ),
+          }),
+        );
+      }
       registrations.set(key, ds);
     }
   }
+}
+
+function pathOf(model: monaco.editor.ITextModel): string {
+  return (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
 }
 
 export async function trackModelOpen(
@@ -130,8 +216,11 @@ export async function trackModelOpen(
   });
 }
 
-export async function flushPendingChange(uri: monaco.Uri): Promise<void> {
-  const path = (uri as { fsPath?: string }).fsPath ?? uri.path;
+export async function flushPendingChange(uri: monaco.Uri | string): Promise<void> {
+  const path =
+    typeof uri === "string"
+      ? uri
+      : ((uri as { fsPath?: string }).fsPath ?? uri.path);
   const fn = pendingFlush.get(path);
   if (fn) await fn();
 }

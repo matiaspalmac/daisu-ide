@@ -10,11 +10,13 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use lsp_types::{
-    CompletionItem, CompletionParams, CompletionResponse, DocumentSymbolParams,
-    DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
-    Location, PartialResultParams, Position, ReferenceContext, ReferenceParams, SignatureHelp,
-    SignatureHelpParams, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
-    WorkDoneProgressParams, WorkspaceSymbolParams, WorkspaceSymbolResponse,
+    CompletionItem, CompletionParams, CompletionResponse, DocumentFormattingParams,
+    DocumentRangeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse, FormattingOptions,
+    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams, Location,
+    PartialResultParams, Position, PrepareRenameResponse, Range, ReferenceContext, ReferenceParams,
+    RenameParams, SignatureHelp, SignatureHelpParams, TextDocumentIdentifier,
+    TextDocumentPositionParams, TextEdit, Uri, WorkDoneProgressParams, WorkspaceEdit,
+    WorkspaceSymbolParams, WorkspaceSymbolResponse,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -397,6 +399,147 @@ pub async fn lsp_workspace_symbol(
         partial_result_params: PartialResultParams::default(),
     };
     let (res, _) = requests::workspace_symbol(client, params)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[tauri::command]
+pub async fn lsp_prepare_rename(
+    state: State<'_, AppState>,
+    req: PositionReq,
+) -> AppResult<Option<PrepareRenameResponse>> {
+    let pos = position_params(&req)?;
+    let client = first_running_client(&state, &req).await?;
+    let (res, _) = requests::prepare_rename(client, pos)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameReq {
+    pub path: String,
+    pub line: u32,
+    pub character: u32,
+    #[serde(default)]
+    pub server_id: Option<String>,
+    pub new_name: String,
+}
+
+#[tauri::command]
+pub async fn lsp_rename(
+    state: State<'_, AppState>,
+    req: RenameReq,
+) -> AppResult<Option<WorkspaceEdit>> {
+    let pos_req = PositionReq {
+        path: req.path.clone(),
+        line: req.line,
+        character: req.character,
+        server_id: req.server_id.clone(),
+    };
+    let pos = position_params(&pos_req)?;
+    let client = first_running_client(&state, &pos_req).await?;
+    let params = RenameParams {
+        text_document_position: pos,
+        new_name: req.new_name,
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    };
+    let (res, _) = requests::rename(client, params).await.map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FormattingReq {
+    pub path: String,
+    #[serde(default)]
+    pub server_id: Option<String>,
+    pub tab_size: u32,
+    pub insert_spaces: bool,
+}
+
+fn formatting_options(req: &FormattingReq) -> FormattingOptions {
+    FormattingOptions {
+        tab_size: req.tab_size,
+        insert_spaces: req.insert_spaces,
+        ..Default::default()
+    }
+}
+
+fn path_to_uri(path: &str) -> AppResult<Uri> {
+    use std::str::FromStr;
+    let url = url::Url::from_file_path(PathBuf::from(path))
+        .map_err(|()| AppError::Internal(format!("bad path: {path}")))?;
+    Uri::from_str(url.as_str()).map_err(|e| AppError::Internal(format!("bad uri: {e}")))
+}
+
+#[tauri::command]
+pub async fn lsp_formatting(
+    state: State<'_, AppState>,
+    req: FormattingReq,
+) -> AppResult<Vec<TextEdit>> {
+    let uri = path_to_uri(&req.path)?;
+    let pos_req = PositionReq {
+        path: req.path.clone(),
+        line: 0,
+        character: 0,
+        server_id: req.server_id.clone(),
+    };
+    let client = first_running_client(&state, &pos_req).await?;
+    let params = DocumentFormattingParams {
+        text_document: TextDocumentIdentifier { uri },
+        options: formatting_options(&req),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    };
+    let (res, _) = requests::formatting(client, params)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RangeFormattingReq {
+    pub path: String,
+    #[serde(default)]
+    pub server_id: Option<String>,
+    pub start_line: u32,
+    pub start_character: u32,
+    pub end_line: u32,
+    pub end_character: u32,
+    pub tab_size: u32,
+    pub insert_spaces: bool,
+}
+
+#[tauri::command]
+pub async fn lsp_range_formatting(
+    state: State<'_, AppState>,
+    req: RangeFormattingReq,
+) -> AppResult<Vec<TextEdit>> {
+    let uri = path_to_uri(&req.path)?;
+    let pos_req = PositionReq {
+        path: req.path.clone(),
+        line: 0,
+        character: 0,
+        server_id: req.server_id.clone(),
+    };
+    let client = first_running_client(&state, &pos_req).await?;
+    let params = DocumentRangeFormattingParams {
+        text_document: TextDocumentIdentifier { uri },
+        range: Range {
+            start: Position::new(req.start_line, req.start_character),
+            end: Position::new(req.end_line, req.end_character),
+        },
+        options: FormattingOptions {
+            tab_size: req.tab_size,
+            insert_spaces: req.insert_spaces,
+            ..Default::default()
+        },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    };
+    let (res, _) = requests::range_formatting(client, params)
         .await
         .map_err(map_lsp)?;
     Ok(res.0)

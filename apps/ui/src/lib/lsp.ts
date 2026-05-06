@@ -17,6 +17,13 @@ export interface NavCapabilities {
   workspaceSymbol: boolean;
 }
 
+export interface MutationCapabilities {
+  rename: boolean;
+  prepareRename: boolean;
+  documentFormatting: boolean;
+  rangeFormatting: boolean;
+}
+
 export interface ServerStatus {
   serverId: string;
   languages: string[];
@@ -24,6 +31,7 @@ export interface ServerStatus {
   state: "idle" | "spawning" | "ready" | "crashed";
   rssMb: number | null;
   capabilities: NavCapabilities;
+  mutation: MutationCapabilities;
 }
 
 export function isWorkspaceTrusted(workspacePath: string): Promise<TrustState> {
@@ -205,5 +213,90 @@ export function lspWorkspaceSymbol(
 ): Promise<LspWorkspaceSymbolResponse | null> {
   return invoke<LspWorkspaceSymbolResponse | null>("lsp_workspace_symbol", {
     req: { query, serverId },
+  });
+}
+
+export interface LspTextEdit {
+  range: LspRange;
+  newText: string;
+}
+
+export interface LspAnnotatedTextEdit extends LspTextEdit {
+  annotationId?: string;
+}
+
+export interface LspOptionalVersionedTextDocumentIdentifier {
+  uri: string;
+  version: number | null;
+}
+
+export interface LspTextDocumentEdit {
+  textDocument: LspOptionalVersionedTextDocumentIdentifier;
+  edits: LspTextEdit[];
+}
+
+export interface LspWorkspaceEdit {
+  changes?: Record<string, LspTextEdit[]>;
+  documentChanges?: LspTextDocumentEdit[];
+}
+
+export type LspPrepareRenameResponse =
+  | LspRange
+  | { range: LspRange; placeholder: string }
+  | { defaultBehavior: boolean }
+  | null;
+
+export function lspPrepareRename(
+  path: string,
+  line: number,
+  character: number,
+  serverId?: string,
+): Promise<LspPrepareRenameResponse> {
+  return invoke<LspPrepareRenameResponse>("lsp_prepare_rename", {
+    req: { path, line, character, serverId },
+  });
+}
+
+export function lspRename(
+  path: string,
+  line: number,
+  character: number,
+  newName: string,
+  serverId?: string,
+): Promise<LspWorkspaceEdit | null> {
+  return invoke<LspWorkspaceEdit | null>("lsp_rename", {
+    req: { path, line, character, newName, serverId },
+  });
+}
+
+export function lspFormatting(
+  path: string,
+  tabSize: number,
+  insertSpaces: boolean,
+  serverId?: string,
+): Promise<LspTextEdit[]> {
+  return invoke<LspTextEdit[]>("lsp_formatting", {
+    req: { path, serverId, tabSize, insertSpaces },
+  });
+}
+
+export function lspRangeFormatting(
+  path: string,
+  range: LspRange,
+  tabSize: number,
+  insertSpaces: boolean,
+  serverId?: string,
+): Promise<LspTextEdit[]> {
+  return invoke<LspTextEdit[]>("lsp_range_formatting", {
+    req: {
+      path,
+      serverId,
+      startLine: range.start.line,
+      startCharacter: range.start.character,
+      endLine: range.end.line,
+      endCharacter: range.end.character,
+      tabSize,
+      insertSpaces,
+    },
   });
 }
