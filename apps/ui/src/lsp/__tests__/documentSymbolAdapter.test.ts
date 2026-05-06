@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../lib/lsp", () => ({ lspDocumentSymbol: vi.fn() }));
+vi.mock("../monacoBridge", () => ({
+  pathOfModel: vi.fn((m: { uri: { fsPath?: string; path?: string } }) =>
+    m.uri.fsPath ?? m.uri.path,
+  ),
+  modelOfPath: vi.fn(() => null),
+  flushPendingChange: vi.fn().mockResolvedValue(undefined),
+}));
 
 import { lspDocumentSymbol } from "../../lib/lsp";
 import { makeDocumentSymbolProvider } from "../documentSymbolAdapter";

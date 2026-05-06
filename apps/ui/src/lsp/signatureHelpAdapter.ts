@@ -1,5 +1,6 @@
 import type * as monaco from "monaco-editor";
 import { lspSignatureHelp, type LspSignatureHelp } from "../lib/lsp";
+import { pathOfModel } from "./monacoBridge";
 
 function toMonacoSignatureHelp(
   s: LspSignatureHelp,
@@ -38,7 +39,8 @@ export function makeSignatureHelpProvider(
   return {
     signatureHelpTriggerCharacters: ["(", ","],
     async provideSignatureHelp(model, position) {
-      const path = (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
+      const path = pathOfModel(model);
+      if (!path) return null;
       const s = await lspSignatureHelp(
         path,
         position.lineNumber - 1,

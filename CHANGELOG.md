@@ -4,6 +4,44 @@ All notable changes to Daisu IDE are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.4.0-m4] — 2026-05-06
+
+**M3 + M4 milestones close.** Agent foundations, LSP runtime, embedded terminal.
+
+### Added — M3 Agent foundations
+
+- **Provider abstraction** — Anthropic, OpenAI, Google, OpenRouter, Ollama with dynamic model listing per provider; OS-locale autodetect of Ollama install + best-coder-model heuristic
+- **Agentic tool loop** — unified registry, dispatch with permission gating, persistent conversations, message split with `tool_name` field, inline streaming
+- **Workspace symbol index** — rebuild + search Tauri commands, status query, symbol palette wired
+- **MCP client** — connect / disconnect / status / list-tools / call-tool, per-server lifecycle
+- **Inline edits** — propose / apply / reject overlay backed by per-edit Tauri commands
+- **Command palette** — Ctrl+P / Ctrl+Shift+P via Radix Dialog + fuzzysort, foundation for agent commands
+
+### Added — M4 Language server + terminal
+
+- **`daisu-lsp` crate** — hand-rolled LSP multiplexor over `lsp-types` + tokio: framing, transport (writer / reader / stderr drain), dispatcher, JSON-RPC correlator with cancel, `NotificationBus`, document `Lifecycle` with 200 ms didChange debounce
+- **Workspace trust gate** — explicit grant / revoke / is-trusted, marker stored under `~/.daisu/lsp-trust`, dialog flow with chip in status bar
+- **Configurable servers** — `~/.daisu/lsp.toml` with defaults for `rust-analyzer`, `tsserver`, `pyright`, `gopls`, `clangd`; PATH-based discovery with Windows extension probing
+- **Capability-gated providers** — completion, hover, signature help, definition, references, document symbol, workspace symbol, prepareRename + rename, formatting + range formatting, inlay hints, semantic tokens, code actions + execute command, all wired to Monaco
+- **Diagnostics** — backend cache + broadcast, Tauri event emit, frontend store + Problems panel with severity totals badge, Monaco markers via path-based model lookup
+- **Crashed-state surfacing** — `LspServerStatusChip` polls statuses, shows underlying handshake / spawn error in tooltip; bounded stderr ringbuffer per server captures the first 64 lines for context
+- **`daisu-term` crate + embedded terminal** — PTY-backed xterm.js panel with size sync, kill on close, multi-instance via `Ctrl+\``
+- **Shell selector + profile detection** — PowerShell, Cmd, Git Bash, installed WSL distros enumerated and switchable
+
+### Changed
+
+- Workspace `version` bumped from `0.2.0` to `0.4.0`
+- `ServerStatus` gains optional `lastError` field; `ResolutionPublic::Found` switched from tuple to struct variant (serde-tagged enums require struct variants for tagged newtypes)
+- `open_workspace` is now idempotent for the same path and returns whether it newly opened, gating the `lsp://workspace-opened` event so duplicate trust-chip mounts no longer nuke running clients
+- `trackModelOpen` takes an explicit `filePath`; LSP feature adapters resolve paths via the new `pathOfModel` helper instead of reading `model.uri.fsPath` (the synthetic `daisu://tab/<id>` URI breaks every backend lookup)
+- `startDiagnosticsListener` and `startWorkspaceOpenedListener` hoisted to App boot — Tauri events do not buffer, so the listeners must exist before any workspace-open / trust-grant fires
+- `flushPendingChange` accepts a model or a path string instead of a Monaco URI
+- `perform_initialize` races against `stdout_eof` and a 20 s timeout; failures include the captured stderr tail in the error message
+
+### Fixed
+
+- LSP was silently dead in five layered ways: (1) handshake hung forever when the spawned binary exited before replying — typical of the rustup proxy stub at `~/.cargo/bin/rust-analyzer` when the component is not installed; (2) repeated trust-chip mount nuked running clients; (3) diagnostics published before the lazy `<BottomPanel>` mounted were dropped; (4) didOpen sent synthetic `/tab/<uuid>` paths that backend `language_for` rejected; (5) every adapter and the markers bridge read the synthetic URI, so even a healthy server produced no UI signal
+
 ## [0.0.6-m1-phase5] — 2026-05-02
 
 **M1 milestone closes.** Status bar, search & replace, git overlay.
@@ -89,7 +127,8 @@ All notable changes to Daisu IDE are documented here. Format follows [Keep a Cha
 - GitHub Actions quality workflow
 - Initial CLAUDE.md / superpowers planning workflow
 
-[Unreleased]: https://github.com/matiaspalmac/daisu-ide/compare/v0.0.6-m1-phase5...HEAD
+[Unreleased]: https://github.com/matiaspalmac/daisu-ide/compare/v0.4.0-m4...HEAD
+[0.4.0-m4]: https://github.com/matiaspalmac/daisu-ide/releases/tag/v0.4.0-m4
 [0.0.6-m1-phase5]: https://github.com/matiaspalmac/daisu-ide/releases/tag/v0.0.6-m1-phase5
 [0.0.5-m1-phase4]: https://github.com/matiaspalmac/daisu-ide/releases/tag/v0.0.5-m1-phase4
 [0.0.4-m1-phase3]: https://github.com/matiaspalmac/daisu-ide/releases/tag/v0.0.4-m1-phase3

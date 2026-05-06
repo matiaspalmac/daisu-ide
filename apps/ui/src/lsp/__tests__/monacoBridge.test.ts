@@ -36,9 +36,9 @@ vi.mock("../codeActionAdapter", () => ({
   runCodeAction: vi.fn(),
 }));
 
-import { listServerStatus } from "../../lib/lsp";
+import { listServerStatus, documentOpen } from "../../lib/lsp";
 import { listen } from "@tauri-apps/api/event";
-import { attach } from "../monacoBridge";
+import { attach, trackModelOpen } from "../monacoBridge";
 
 function makeMonacoMock() {
   const dispose = vi.fn();
@@ -146,6 +146,31 @@ describe("monacoBridge", () => {
     expect(langs.registerInlayHintsProvider).toHaveBeenCalledTimes(1);
     expect(langs.registerDocumentSemanticTokensProvider).toHaveBeenCalledTimes(1);
     expect(langs.registerCodeActionProvider).toHaveBeenCalledTimes(1);
+  });
+
+  it("trackModelOpen no-ops when filePath is null (untitled scratch)", async () => {
+    const fakeModel = {
+      getValue: () => "scratch",
+      onDidChangeContent: vi.fn(),
+      onWillDispose: vi.fn(),
+      isDisposed: () => false,
+    } as unknown as Parameters<typeof trackModelOpen>[0];
+    await trackModelOpen(fakeModel, null);
+    expect(documentOpen).not.toHaveBeenCalled();
+  });
+
+  it("trackModelOpen forwards the explicit file path to the backend", async () => {
+    const fakeModel = {
+      getValue: () => "fn main(){}",
+      onDidChangeContent: vi.fn(),
+      onWillDispose: vi.fn(),
+      isDisposed: () => false,
+    } as unknown as Parameters<typeof trackModelOpen>[0];
+    await trackModelOpen(fakeModel, "C:/Proyectos/foo/src/main.rs");
+    expect(documentOpen).toHaveBeenCalledWith(
+      "C:/Proyectos/foo/src/main.rs",
+      "fn main(){}",
+    );
   });
 
   it("skips servers in non-ready state", async () => {

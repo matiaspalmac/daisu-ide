@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/daisu-app", "crates/daisu-agent", "crates/daisu-lsp", "crates/daisu-term"]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.4.0"
 edition = "2021"
 rust-version = "1.84"
 authors = ["Matias Palma <matiaspalma2594@gmail.com>"]

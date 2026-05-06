@@ -642,7 +642,9 @@
     "trustDialogBody": "Los language servers de este workspace pueden ejecutar código de los archivos del proyecto (build scripts, proc macros, scripts de package.json). Confiá solo en workspaces de fuentes conocidas.",
     "trustDialogConfirm": "Confiar",
     "trustDialogCancel": "Cancelar",
-    "noWorkspaceOpen": "Ningún workspace abierto"
+    "noWorkspaceOpen": "Ningún workspace abierto",
+    "serverErrorChip_one": "{{count}} language server caído",
+    "serverErrorChip_other": "{{count}} language servers caídos"
   },
   "editorKeySound": {
     "heading": "Sonidos de tecleo",

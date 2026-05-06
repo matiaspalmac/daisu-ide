@@ -1,6 +1,6 @@
 import type * as monacoNs from "monaco-editor";
 import { lspSemanticTokens, type LspSemanticTokensResult } from "../lib/lsp";
-import { flushPendingChange } from "./monacoBridge";
+import { flushPendingChange, pathOfModel } from "./monacoBridge";
 
 export interface SemanticTokensLegend {
   tokenTypes: string[];
@@ -27,7 +27,8 @@ export function makeSemanticTokensProvider(
   return {
     getLegend: () => opts.legend,
     async provideDocumentSemanticTokens(model) {
-      const path = pathOf(model);
+      const path = pathOfModel(model);
+      if (!path) return null;
       await flushPendingChange(path);
       const result = await lspSemanticTokens(path, opts.serverId).catch(
         () => null as LspSemanticTokensResult,
@@ -42,6 +43,3 @@ export function makeSemanticTokensProvider(
   };
 }
 
-function pathOf(model: monacoNs.editor.ITextModel): string {
-  return (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
-}

@@ -642,7 +642,9 @@
     "trustDialogBody": "Language servers in this workspace can run code from project files (build scripts, proc macros, package.json scripts). Only trust workspaces from sources you know.",
     "trustDialogConfirm": "Trust",
     "trustDialogCancel": "Cancel",
-    "noWorkspaceOpen": "No workspace open"
+    "noWorkspaceOpen": "No workspace open",
+    "serverErrorChip_one": "{{count}} language server failed",
+    "serverErrorChip_other": "{{count}} language servers failed"
   },
   "editorKeySound": {
     "heading": "Typing sounds",

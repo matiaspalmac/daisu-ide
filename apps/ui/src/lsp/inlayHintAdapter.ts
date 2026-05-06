@@ -6,7 +6,7 @@ import {
   type LspInlayHintLabelPart,
 } from "../lib/lsp";
 import { lspPositionToMonaco, lspRangeToMonaco } from "./positions";
-import { flushPendingChange } from "./monacoBridge";
+import { flushPendingChange, pathOfModel } from "./monacoBridge";
 
 const RESOLVE_KIND_TYPE = 1;
 
@@ -21,7 +21,8 @@ export function makeInlayHintsProvider(
 ): monacoNs.languages.InlayHintsProvider {
   const base: monacoNs.languages.InlayHintsProvider = {
     async provideInlayHints(model, range) {
-      const path = pathOf(model);
+      const path = pathOfModel(model);
+      if (!path) return { hints: [], dispose: () => undefined };
       await flushPendingChange(path);
       const hints = await lspInlayHint(
         path,
@@ -102,6 +103,3 @@ function toLabelPart(p: LspInlayHintLabelPart): monacoNs.languages.InlayHintLabe
   return part;
 }
 
-function pathOf(model: monacoNs.editor.ITextModel): string {
-  return (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
-}

@@ -10,7 +10,7 @@ import {
 } from "../lib/lsp";
 import { applyWorkspaceEdit } from "./workspaceEditApplier";
 import { lspRangeToMonaco } from "./positions";
-import { flushPendingChange } from "./monacoBridge";
+import { flushPendingChange, pathOfModel } from "./monacoBridge";
 
 export interface CodeActionAdapterOpts {
   serverId: string;
@@ -29,7 +29,8 @@ export function makeCodeActionProvider(
 ): monacoNs.languages.CodeActionProvider {
   return {
     async provideCodeActions(model, range, context) {
-      const path = pathOf(model);
+      const path = pathOfModel(model);
+      if (!path) return { actions: [], dispose: () => undefined };
       await flushPendingChange(path);
       const items = await lspCodeAction(
         path,
@@ -136,6 +137,3 @@ export async function runCodeAction(
   }
 }
 
-function pathOf(model: monacoNs.editor.ITextModel): string {
-  return (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
-}

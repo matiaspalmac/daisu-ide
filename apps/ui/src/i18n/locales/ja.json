@@ -642,7 +642,9 @@
     "trustDialogBody": "このワークスペースの言語サーバーはプロジェクトファイルのコード(build スクリプト、proc マクロ、package.json のスクリプト)を実行できます。信頼できるソースからのワークスペースのみ信頼してください。",
     "trustDialogConfirm": "信頼",
     "trustDialogCancel": "キャンセル",
-    "noWorkspaceOpen": "ワークスペースが開かれていません"
+    "noWorkspaceOpen": "ワークスペースが開かれていません",
+    "serverErrorChip_one": "{{count}} 個の言語サーバーが失敗しました",
+    "serverErrorChip_other": "{{count}} 個の言語サーバーが失敗しました"
   },
   "editorKeySound": {
     "heading": "タイピング音",

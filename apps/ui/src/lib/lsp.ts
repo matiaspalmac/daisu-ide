@@ -42,6 +42,11 @@ export interface ServerStatus {
   capabilities: NavCapabilities;
   mutation: MutationCapabilities;
   advanced: AdvancedCapabilities;
+  /** Human-readable failure context. Set when `state === "crashed"`,
+   *  populated by the backend with the underlying handshake/spawn error
+   *  (e.g., `Unknown binary 'rust-analyzer'`) so the UI can render the
+   *  actual cause instead of a generic "broken" label. */
+  lastError?: string;
 }
 
 export function isWorkspaceTrusted(workspacePath: string): Promise<TrustState> {

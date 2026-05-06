@@ -137,3 +137,16 @@ pub async fn discord_disconnect() -> AppResult<()> {
     .await
     .map_err(|e| AppError::Internal(format!("discord rpc join: {e}")))?
 }
+
+/// Synchronous shutdown helper for the `WindowEvent::CloseRequested` path.
+/// We can't `.await` on the close handler so we drain the static client
+/// inline. Discord's named pipe is closed before the process exits;
+/// otherwise the prior presence sticks around until Discord's next
+/// keep-alive poll notices the dropped pipe (~1 minute on Windows).
+pub fn shutdown_blocking() {
+    if let Ok(mut guard) = CLIENT.lock() {
+        if let Some(mut client) = guard.take() {
+            let _ = client.close();
+        }
+    }
+}

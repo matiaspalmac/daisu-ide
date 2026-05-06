@@ -47,9 +47,36 @@ pub struct TrustState {
 }
 
 #[tauri::command]
-pub async fn lsp_workspace_is_trusted(req: WorkspacePath) -> AppResult<TrustState> {
+pub async fn lsp_workspace_is_trusted(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    req: WorkspacePath,
+) -> AppResult<TrustState> {
     let p = PathBuf::from(&req.workspace_path);
     let trusted = trust::is_trusted(&p).map_err(map_lsp)?;
+    // When a workspace is already trusted (marker exists from a prior
+    // session) the trust dialog flow is skipped entirely. Without this
+    // branch, `manager.open_workspace` never gets called, so workspace
+    // stays None and every subsequent `lsp_document_open` fails with
+    // "no workspace open" silently. Diagnostics and lazy spawn are
+    // therefore both dead until the user revokes + re-trusts.
+    if trusted {
+        let config_path = home_lsp_config_path();
+        let newly_opened = state
+            .lsp_manager
+            .open_workspace(p, &config_path)
+            .await
+            .map_err(map_lsp)?;
+        start_diagnostics_emitter(&app, &state);
+        start_server_ready_emitter(&app, &state);
+        // Only emit on the transition into "opened" — re-emitting on every
+        // chip remount would re-fire `retrackModel` for every tracked
+        // Monaco model, leading to duplicate didOpen notifications and
+        // bumped slot refcounts that drift over time.
+        if newly_opened {
+            let _ = app.emit("lsp://workspace-opened", ());
+        }
+    }
     Ok(TrustState { trusted })
 }
 
@@ -62,13 +89,23 @@ pub async fn lsp_workspace_trust(
     let p = PathBuf::from(&req.workspace_path);
     trust::grant(&p).map_err(map_lsp)?;
     let config_path = home_lsp_config_path();
-    state
+    let newly_opened = state
         .lsp_manager
         .open_workspace(p, &config_path)
         .await
         .map_err(map_lsp)?;
     start_diagnostics_emitter(&app, &state);
     start_server_ready_emitter(&app, &state);
+    // Tell the frontend to re-emit didOpen for every Monaco model that
+    // was opened before the workspace became trusted. Without this, the
+    // user sees no LSP behaviour because each model's first
+    // `lsp_document_open` call errored out with `no workspace open` and
+    // was silently swallowed by monacoBridge. Gated on `newly_opened` to
+    // avoid spurious re-emissions when the user re-grants trust on an
+    // already-open workspace.
+    if newly_opened {
+        let _ = app.emit("lsp://workspace-opened", ());
+    }
     Ok(TrustState { trusted: true })
 }
 

@@ -70,6 +70,24 @@ Editor essentials are landing milestone-by-milestone.
 **EOL / encoding tools**
 - Convert LF ↔ CRLF in place, reload with alternate encoding (UTF-8 / UTF-16 / Windows-1252)
 
+**Agents (M3)**
+- Provider abstraction with dynamic model listing — Anthropic, OpenAI, Google, OpenRouter, Ollama (autodetected on startup, best coder model auto-selected)
+- Agentic tool loop end-to-end: tool registry, dispatch, permission gating, persistent conversations
+- Workspace symbol index (rebuild + search) and MCP client integration (connect / list-tools / call-tool)
+- Inline edits with propose / apply / reject flow
+
+**Language server (M4)**
+- Hand-rolled LSP runtime over `lsp-types` + tokio (transport, framing, dispatcher, lifecycle, trust gate)
+- Per-workspace multiplexor with lazy spawn, capability discovery, idempotent open
+- Stderr drain ringbuffer + `stdout_eof` watch + 20 s `initialize` timeout — broken servers surface in a status-bar chip with the underlying error
+- Monaco bridge providers: completion, hover, signature help, definition, references, document symbol, workspace symbol, rename + prepareRename, formatting + range formatting, inlay hints, semantic tokens, code actions
+- Diagnostics → Monaco markers + Problems panel (totals on tab badge, sorted by severity)
+
+**Embedded terminal (M4)**
+- PTY-backed xterm.js terminal in the bottom panel (`Ctrl+\``)
+- Shell selector with profile detection (PowerShell, Cmd, Git Bash, WSL distros)
+- Per-tab spawn with size sync, kill on close
+
 **Integrations**
 - Native Discord Rich Presence (Zed-style layout, calm assets, throttled, opt-out toggles in settings)
 
@@ -86,10 +104,11 @@ Daisu is shipped phase-by-phase. Each milestone is a tagged release.
 | **M0** Bootstrap | shipped | `v0.0.1-m0` |
 | **M1** Editor base — workspace, tabs, themes, settings, keybindings, status bar, search & replace, git overlay | shipped | `v0.0.6-m1-phase5` |
 | **M2** Tron UI overhaul — Tailwind v4 + shadcn + Monaco + welcome + chat + settings | shipped | `v0.1.0-m2` |
-| **M2.1** Daisu Nocturne identity — sumi-ink palette, Phosphor icons, kanji cues, breadcrumb, focus mode, sidebar swap, paper-card toasts, Discord RPC, refreshed branding | shipped | `main` |
-| **M3** Agent foundations — provider abstraction, agent runtime, persistent memory store, command palette | planned | — |
-| **M4** Multi-agent orchestration — agent inbox, parallel agent execution, audit trail | planned | — |
-| **M5** Extension host — Open VSX-compatible web-extension runtime | planned | — |
+| **M2.1** Daisu Nocturne identity — sumi-ink palette, Phosphor icons, kanji cues, breadcrumb, focus mode, sidebar swap, paper-card toasts, Discord RPC, refreshed branding | shipped | `v0.2.0-m2.1` |
+| **M3** Agent foundations — provider abstraction, agentic tool loop, conversations, MCP client, workspace symbol index, inline edits | shipped | `v0.4.0-m4` |
+| **M4** LSP runtime + embedded terminal — hand-rolled LSP multiplexor, navigation / mutation / advanced providers, shell selector, PTY xterm | shipped | `v0.4.0-m4` |
+| **M5** Multi-agent orchestration — agent inbox, parallel execution, audit trail | planned | — |
+| **M6** Extension host — Open VSX-compatible web-extension runtime | planned | — |
 
 ## Build from source
 

@@ -1,5 +1,6 @@
 import type * as monaco from "monaco-editor";
 import { lspHover, type LspHover } from "../lib/lsp";
+import { pathOfModel } from "./monacoBridge";
 
 function hoverToMarkdown(h: LspHover): monaco.IMarkdownString[] {
   const c = h.contents;
@@ -17,7 +18,8 @@ function hoverToMarkdown(h: LspHover): monaco.IMarkdownString[] {
 export function makeHoverProvider(serverId: string): monaco.languages.HoverProvider {
   return {
     async provideHover(model, position) {
-      const path = (model.uri as { fsPath?: string }).fsPath ?? model.uri.path;
+      const path = pathOfModel(model);
+      if (!path) return null;
       const h = await lspHover(
         path,
         position.lineNumber - 1,

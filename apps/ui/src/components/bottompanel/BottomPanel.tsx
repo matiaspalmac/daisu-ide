@@ -1,8 +1,8 @@
-import { type JSX, useEffect, useMemo } from "react";
+import { type JSX, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "@phosphor-icons/react";
 import { useBottomPanel, type BottomTab } from "../../stores/bottomPanelStore";
-import { useDiagnostics, startDiagnosticsListener } from "../../stores/diagnosticsStore";
+import { useDiagnostics } from "../../stores/diagnosticsStore";
 import type { LspDiagnostic } from "../../lib/lsp";
 import { ProblemsView } from "./ProblemsView";
 import { OutputView } from "./OutputView";
@@ -43,9 +43,9 @@ export function BottomPanel(): JSX.Element | null {
   const byKey = useDiagnostics((s) => s.byKey);
   const totals = useMemo(() => computeTotals(byKey), [byKey]);
 
-  useEffect(() => {
-    startDiagnosticsListener();
-  }, []);
+  // startDiagnosticsListener used to live here; it now runs at App boot
+  // so diagnostics published before the user opens the bottom panel are
+  // captured into the store rather than dropped.
 
   if (!open) return null;
 

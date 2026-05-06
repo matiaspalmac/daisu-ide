@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../lib/lsp", () => ({ lspDefinition: vi.fn() }));
 vi.mock("../ensureModel", () => ({ ensureModel: vi.fn().mockResolvedValue(undefined) }));
-vi.mock("../monacoBridge", () => ({ flushPendingChange: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("../monacoBridge", () => ({
+  flushPendingChange: vi.fn().mockResolvedValue(undefined),
+  pathOfModel: vi.fn((m: { uri: { fsPath?: string; path: string } }) =>
+    m.uri.fsPath ?? m.uri.path,
+  ),
+  modelOfPath: vi.fn(() => null),
+}));
 
 import { lspDefinition } from "../../lib/lsp";
 import { makeDefinitionProvider } from "../definitionAdapter";
