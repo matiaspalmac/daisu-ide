@@ -327,6 +327,8 @@ impl LlmProvider for OllamaProvider {
             usage: Some(TokenUsage {
                 input_tokens: env.prompt_eval_count.unwrap_or(0),
                 output_tokens: env.eval_count.unwrap_or(0),
+                cache_read_tokens: 0,
+                cache_creation_tokens: 0,
             }),
             tool_calls,
         })
@@ -390,6 +392,8 @@ impl LlmProvider for OllamaProvider {
                             usage = Some(TokenUsage {
                                 input_tokens: chunk.prompt_eval_count.unwrap_or(0),
                                 output_tokens: chunk.eval_count.unwrap_or(0),
+                                cache_read_tokens: 0,
+                                cache_creation_tokens: 0,
                             });
                             break;
                         }

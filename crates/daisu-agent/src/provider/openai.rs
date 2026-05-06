@@ -125,6 +125,14 @@ impl OpenAiProvider {
                     if let Some(d) = t.description.as_deref() {
                         v["description"] = json!(d);
                     }
+                    // Strict mode forces grammar-constrained sampling.
+                    // Mutually exclusive with parallel_tool_calls=true on
+                    // Chat Completions; safe on Responses API. Schema
+                    // must declare additionalProperties: false and list
+                    // every property in `required`.
+                    if t.strict {
+                        v["strict"] = json!(true);
+                    }
                     v
                 })
                 .collect();
@@ -186,6 +194,18 @@ struct EnvelopeUsage {
     input_tokens: u32,
     #[serde(default)]
     output_tokens: u32,
+    /// Auto-caching usage: prompts ≥1024 tokens get a 50% discount on
+    /// the cached prefix without any opt-in. The Responses API surfaces
+    /// it under `input_tokens_details.cached_tokens`. Default to 0 when
+    /// the field is absent (e.g. small prompts that didn't qualify).
+    #[serde(default)]
+    input_tokens_details: InputTokensDetails,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct InputTokensDetails {
+    #[serde(default)]
+    cached_tokens: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -420,6 +440,8 @@ impl LlmProvider for OpenAiProvider {
             usage: env.usage.map(|u| TokenUsage {
                 input_tokens: u.input_tokens,
                 output_tokens: u.output_tokens,
+                cache_read_tokens: u.input_tokens_details.cached_tokens,
+                cache_creation_tokens: 0,
             }),
             tool_calls,
         })
@@ -523,6 +545,8 @@ impl LlmProvider for OpenAiProvider {
                         usage = response.usage.map(|u| TokenUsage {
                             input_tokens: u.input_tokens,
                             output_tokens: u.output_tokens,
+                            cache_read_tokens: u.input_tokens_details.cached_tokens,
+                            cache_creation_tokens: 0,
                         });
                         break;
                     }

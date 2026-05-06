@@ -125,6 +125,13 @@ impl AnthropicProvider {
                     if let Some(d) = t.description.as_deref() {
                         v["description"] = json!(d);
                     }
+                    // Anthropic strict tool use compiles input_schema into
+                    // a grammar at sample time. Caveats: schema must not
+                    // use top-level oneOf/allOf/anyOf and must declare
+                    // additionalProperties: false on every object.
+                    if t.strict {
+                        v["strict"] = json!(true);
+                    }
                     v
                 })
                 .collect();
@@ -137,7 +144,151 @@ impl AnthropicProvider {
                 };
             }
         }
+        Self::apply_cache_breakpoints(&mut body, &req.model);
         body
+    }
+
+    /// Place ephemeral prompt-cache breakpoints. Continue.dev's "optimized"
+    /// strategy: cache the system prompt, the last tool definition, and
+    /// the last two user/tool-result messages. Uses 4 breakpoints (the
+    /// max). Skipped when the model is below the per-model min-token
+    /// threshold (Sonnet 4.6 = 2048; Opus 4.7 / Haiku 4.5 = 4096) — the
+    /// API silently rejects breakpoints under threshold and we eat a
+    /// pointless write. Hits cost 10% of base; 5-min writes 1.25× — the
+    /// break-even is ~2 reuses, so it's a near-pure win on any chat that
+    /// produces a follow-up turn.
+    fn apply_cache_breakpoints(body: &mut Value, model: &str) {
+        let min_for_model: u32 = if model.contains("opus") || model.contains("haiku-4") {
+            4096
+        } else {
+            2048
+        };
+        // Cheap proxy: char count / 4 for a BPE estimate. We'd rather
+        // skip a marginal cache than hit the API rejection path.
+        let estimate_tokens = |v: &Value| -> u32 {
+            (serde_json::to_string(v).map(|s| s.len()).unwrap_or(0) / 4) as u32
+        };
+        let stable_payload_tokens = estimate_tokens(&body["system"])
+            + estimate_tokens(body.get("tools").unwrap_or(&Value::Null));
+        if stable_payload_tokens < min_for_model {
+            return;
+        }
+
+        let mut budget = 4u8;
+
+        // (a) system: convert string to [{type: "text", text, cache_control}]
+        if let Some(sys) = body.get("system").and_then(Value::as_str) {
+            let sys_owned = sys.to_string();
+            body["system"] = json!([{
+                "type": "text",
+                "text": sys_owned,
+                "cache_control": { "type": "ephemeral" },
+            }]);
+            budget = budget.saturating_sub(1);
+        }
+
+        // (b) last tool definition: tag with cache_control.
+        if budget > 0 {
+            if let Some(tools) = body.get_mut("tools").and_then(Value::as_array_mut) {
+                if let Some(last) = tools.last_mut() {
+                    last["cache_control"] = json!({ "type": "ephemeral" });
+                    budget = budget.saturating_sub(1);
+                }
+            }
+        }
+
+        // (c) last 2 messages: anchor mid- and end-of-conversation cache.
+        // Wrap string content into a block list so we can attach cache_control.
+        if let Some(msgs) = body.get_mut("messages").and_then(Value::as_array_mut) {
+            let n = msgs.len();
+            for offset in 0..budget.min(2) {
+                let Some(i) = n.checked_sub(1 + offset as usize) else {
+                    break;
+                };
+                attach_cache_control_to_message(&mut msgs[i]);
+            }
+        }
+    }
+}
+
+/// Best-effort repair of a JSON object truncated mid-emission. Closes
+/// any open string + balances braces/brackets so the resulting text
+/// parses. Trailing commas inside containers are also stripped. Returns
+/// `None` when the input doesn't even start with `{` — a guard against
+/// accepting arbitrary garbage as "repaired".
+fn repair_truncated_json(raw: &str) -> Option<Value> {
+    let trimmed = raw.trim_end();
+    if !trimmed.starts_with('{') {
+        return None;
+    }
+    let bytes = trimmed.as_bytes();
+    let mut depth_braces: i32 = 0;
+    let mut depth_brackets: i32 = 0;
+    let mut in_string = false;
+    let mut escaped = false;
+    for &b in bytes {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if in_string {
+            match b {
+                b'\\' => escaped = true,
+                b'"' => in_string = false,
+                _ => {}
+            }
+        } else {
+            match b {
+                b'"' => in_string = true,
+                b'{' => depth_braces += 1,
+                b'}' => depth_braces -= 1,
+                b'[' => depth_brackets += 1,
+                b']' => depth_brackets -= 1,
+                _ => {}
+            }
+        }
+    }
+    let mut repaired = trimmed.trim_end_matches(',').to_string();
+    if in_string {
+        repaired.push('"');
+    }
+    while depth_brackets > 0 {
+        repaired.push(']');
+        depth_brackets -= 1;
+    }
+    while depth_braces > 0 {
+        repaired.push('}');
+        depth_braces -= 1;
+    }
+    serde_json::from_str(&repaired).ok()
+}
+
+/// Attach `cache_control: ephemeral` to a message's last text block.
+/// Wraps a plain `content: String` into a single-element block array if
+/// the message wasn't already in block form.
+fn attach_cache_control_to_message(m: &mut Value) {
+    let Some(obj) = m.as_object_mut() else { return };
+    let content = obj.get_mut("content");
+    match content {
+        Some(Value::String(s)) => {
+            let text = std::mem::take(s);
+            obj.insert(
+                "content".into(),
+                json!([{
+                    "type": "text",
+                    "text": text,
+                    "cache_control": { "type": "ephemeral" },
+                }]),
+            );
+        }
+        Some(Value::Array(arr)) => {
+            if let Some(last) = arr.last_mut() {
+                if let Some(block) = last.as_object_mut() {
+                    block.insert("cache_control".into(), json!({ "type": "ephemeral" }));
+                }
+            }
+        }
+        _ => {}
     }
 }
 
@@ -165,12 +316,19 @@ enum ContentBlock {
 }
 
 /// See [`super::anthropic`] module docs for why both fields default.
+/// Cache fields land here too — Anthropic returns them on every response
+/// once any block carries `cache_control`. Both default to 0 when caching
+/// is off so reading a cache-less response stays cheap.
 #[derive(Debug, Deserialize, Default, Clone, Copy)]
 struct EnvelopeUsage {
     #[serde(default)]
     input_tokens: u32,
     #[serde(default)]
     output_tokens: u32,
+    #[serde(default)]
+    cache_creation_input_tokens: u32,
+    #[serde(default)]
+    cache_read_input_tokens: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -367,6 +525,8 @@ impl LlmProvider for AnthropicProvider {
             usage: env.usage.map(|u| TokenUsage {
                 input_tokens: u.input_tokens,
                 output_tokens: u.output_tokens,
+                cache_read_tokens: u.cache_read_input_tokens,
+                cache_creation_tokens: u.cache_creation_input_tokens,
             }),
             tool_calls,
         })
@@ -404,6 +564,8 @@ impl LlmProvider for AnthropicProvider {
             let mut finish_reason: Option<String> = None;
             let mut input_tokens: u32 = 0;
             let mut output_tokens: u32 = 0;
+            let mut cache_read_tokens: u32 = 0;
+            let mut cache_creation_tokens: u32 = 0;
             let mut saw_usage = false;
             // block_index -> in-flight tool_use accumulator.
             let mut pending_tools: HashMap<u32, PendingToolUse> = HashMap::new();
@@ -420,6 +582,8 @@ impl LlmProvider for AnthropicProvider {
                         if let Some(u) = message.usage {
                             input_tokens = u.input_tokens;
                             output_tokens = u.output_tokens;
+                            cache_read_tokens = u.cache_read_input_tokens;
+                            cache_creation_tokens = u.cache_creation_input_tokens;
                             saw_usage = true;
                         }
                     }
@@ -451,14 +615,38 @@ impl LlmProvider for AnthropicProvider {
                     },
                     Ok(SseEvent::ContentBlockStop { index }) => {
                         if let Some(p) = pending_tools.remove(&index) {
-                            // Anthropic always emits valid JSON across the
-                            // accumulated input_json_delta fragments. Empty
-                            // is the standard "no-args" signal — fall back
-                            // to {} so downstream serde plays nicely.
+                            // Anthropic emits valid JSON in normal flow.
+                            // It can still arrive truncated when max_tokens
+                            // cuts a tool call mid-args, in which case we
+                            // try a lightweight repair before giving up so
+                            // partial argument data still reaches the model
+                            // for self-correction.
                             let parsed_args: Value = if p.args_json.trim().is_empty() {
                                 json!({})
                             } else {
-                                serde_json::from_str(&p.args_json).unwrap_or_else(|_| json!({}))
+                                match serde_json::from_str::<Value>(&p.args_json) {
+                                    Ok(v) => v,
+                                    Err(_) => match repair_truncated_json(&p.args_json) {
+                                        Some(v) => {
+                                            yield StreamEvent::Warning {
+                                                message: format!(
+                                                    "tool args for '{}' were truncated; repaired",
+                                                    p.name
+                                                ),
+                                            };
+                                            v
+                                        }
+                                        None => {
+                                            yield StreamEvent::Warning {
+                                                message: format!(
+                                                    "tool args for '{}' malformed; falling back to {{}}",
+                                                    p.name
+                                                ),
+                                            };
+                                            json!({})
+                                        }
+                                    },
+                                }
                             };
                             let id = p.id.clone();
                             completed_tools.insert(index, ToolCall {
@@ -487,7 +675,12 @@ impl LlmProvider for AnthropicProvider {
             }
 
             let usage = if saw_usage {
-                Some(TokenUsage { input_tokens, output_tokens })
+                Some(TokenUsage {
+                    input_tokens,
+                    output_tokens,
+                    cache_read_tokens,
+                    cache_creation_tokens,
+                })
             } else {
                 None
             };

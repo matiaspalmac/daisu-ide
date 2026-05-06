@@ -142,6 +142,12 @@ pub struct ToolDef {
     /// JSON Schema for the tool's input. Must be an object schema
     /// (`{"type":"object","properties":{...},"required":[...]}`).
     pub input_schema: serde_json::Value,
+    /// Request grammar-constrained sampling on providers that support
+    /// it (OpenAI `strict: true`, Anthropic `strict: true`). Requires
+    /// `additionalProperties: false` and every key in `required`.
+    /// Silently ignored by providers that don't expose strict mode.
+    #[serde(default)]
+    pub strict: bool,
 }
 
 /// One materialised tool call extracted from a model response. `id`
@@ -212,6 +218,17 @@ pub struct CompletionResponse {
 pub struct TokenUsage {
     pub input_tokens: u32,
     pub output_tokens: u32,
+    /// Tokens served from prompt cache. OpenAI auto-caches prompts >1024
+    /// tokens (50% discount); Anthropic caches breakpointed blocks
+    /// (90% discount on hits). Defaults to 0 for providers that don't
+    /// report it.
+    #[serde(default)]
+    pub cache_read_tokens: u32,
+    /// Tokens written to the prompt cache on this turn (Anthropic-only;
+    /// OpenAI/Gemini surface only the read figure). Costs 1.25× base
+    /// for 5-minute TTL on Anthropic, 2× for 1-hour.
+    #[serde(default)]
+    pub cache_creation_tokens: u32,
 }
 
 /// Incremental events emitted while a response streams.
