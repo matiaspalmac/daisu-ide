@@ -389,9 +389,13 @@ export function AiSettings(): JSX.Element {
             {t("ai.modelLabel")}
           </label>
           <p className="daisu-field-desc">
-            <Trans i18nKey="ai.modelHint" components={{ code: <code /> }} />
+            <Trans
+              i18nKey="ai.modelHint"
+              components={{ code: <code />, em: <em /> }}
+            />
           </p>
         </div>
+        <div className="flex flex-col gap-2 min-w-[260px] max-w-[360px] flex-1">
         {(() => {
           // Merge live catalog (cloud) and installed tags (Ollama) into a
           // single deduped option set. Native datalist filters by current
@@ -444,6 +448,7 @@ export function AiSettings(): JSX.Element {
           spellCheck={false}
           autoComplete="off"
         />
+        </div>
       </div>
       <div className="daisu-field-row">
         <button
