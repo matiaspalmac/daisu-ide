@@ -583,7 +583,7 @@ checksum = "52560adf09603e58c9a7ee1fe1dcb95a16927b17c127f0ac02d6e768a0e25bc1"
 
 [[package]]
 name = "daisu-agent"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -612,7 +612,7 @@ dependencies = [
 
 [[package]]
 name = "daisu-app"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.22.1",
  "daisu-agent",
@@ -654,7 +654,7 @@ dependencies = [
 
 [[package]]
 name = "daisu-lsp"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "arc-swap",
  "chrono",
@@ -675,7 +675,7 @@ dependencies = [
 
 [[package]]
 name = "daisu-term"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "dirs 5.0.1",
  "encoding_rs",
