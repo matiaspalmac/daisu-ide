@@ -52,7 +52,7 @@ async fn fake_lsp_responds_to_canned_completion() {
     };
     let (res, _) = requests::completion(arc.clone(), params).await.unwrap();
     assert!(res.0.is_some(), "completion should return Some");
-    if let Some(daisu_lsp_arc) = Arc::try_unwrap(arc).ok() {
+    if let Ok(daisu_lsp_arc) = Arc::try_unwrap(arc) {
         daisu_lsp_arc.shutdown().await;
     }
 }

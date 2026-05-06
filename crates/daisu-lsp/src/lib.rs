@@ -60,6 +60,9 @@ pub type LspResult<T> = Result<T, LspError>;
 /// Boolean flags advertising which LSP navigation features the server
 /// declared during the initialize handshake. Mirrored to the frontend so
 /// Monaco providers register only when the server can actually answer.
+/// `struct_excessive_bools` is allowed here intentionally — the shape
+/// mirrors the LSP `ServerCapabilities` provider flags 1:1.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Default, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NavCapabilities {

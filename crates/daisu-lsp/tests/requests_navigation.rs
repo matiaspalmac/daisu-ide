@@ -186,7 +186,7 @@ async fn document_symbol_parses_nested_tree_with_children() {
             assert_eq!(syms.len(), 1);
             assert_eq!(syms[0].children.as_ref().map_or(0, std::vec::Vec::len), 1);
         }
-        other => panic!("expected Nested, got {other:?}"),
+        flat @ DocumentSymbolResponse::Flat(_) => panic!("expected Nested, got {flat:?}"),
     }
 }
 
@@ -207,7 +207,9 @@ async fn document_symbol_parses_flat_legacy_response() {
         .unwrap();
     match res.0.expect("response not None") {
         DocumentSymbolResponse::Flat(syms) => assert_eq!(syms.len(), 1),
-        other => panic!("expected Flat, got {other:?}"),
+        nested @ DocumentSymbolResponse::Nested(_) => {
+            panic!("expected Flat, got {nested:?}")
+        }
     }
 }
 
@@ -240,7 +242,9 @@ async fn workspace_symbol_parses_query_response() {
             assert_eq!(syms.len(), 1);
             assert_eq!(syms[0].name, "MyStruct");
         }
-        other => panic!("expected Flat, got {other:?}"),
+        nested @ WorkspaceSymbolResponse::Nested(_) => {
+            panic!("expected Flat, got {nested:?}")
+        }
     }
 }
 

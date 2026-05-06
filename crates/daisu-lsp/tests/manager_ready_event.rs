@@ -1,4 +1,4 @@
-//! Integration test that LspManager emits `ServerReadyEvent` when a
+//! Integration test that `LspManager` emits `ServerReadyEvent` when a
 //! configured server completes its initialize handshake. Uses the
 //! `fake_lsp` mock binary as the spawned server.
 

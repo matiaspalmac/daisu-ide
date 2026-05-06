@@ -26,6 +26,7 @@ use std::io::{self};
 use serde_json::{json, Value};
 use tokio::io::{AsyncWriteExt, BufReader};
 
+#[allow(clippy::too_many_lines)]
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
     let mut args = std::env::args().skip(1);
@@ -79,7 +80,7 @@ async fn main() -> io::Result<()> {
             }
         };
         if log_enabled {
-            eprintln!("[fake_lsp] <- {}", msg);
+            eprintln!("[fake_lsp] <- {msg}");
         }
 
         let method = msg.get("method").and_then(Value::as_str).unwrap_or("");
@@ -109,7 +110,7 @@ async fn main() -> io::Result<()> {
                 "result": null
             })
         } else if let Some(canned_value) = canned.get(method) {
-            build_canned_response(id, canned_value)
+            build_canned_response(id.as_ref(), canned_value)
         } else {
             json!({
                 "jsonrpc": "2.0",
@@ -150,7 +151,7 @@ fn default_capabilities() -> Value {
     })
 }
 
-fn build_canned_response(id: Option<Value>, canned: &Value) -> Value {
+fn build_canned_response(id: Option<&Value>, canned: &Value) -> Value {
     // Caller can write either:
     //   "<method>": <result-json>           — shorthand for result
     //   "<method>": { "result": <...> }     — explicit
