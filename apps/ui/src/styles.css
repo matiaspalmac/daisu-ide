@@ -1018,6 +1018,10 @@ body {
   border-top: 0;
   height: var(--statusbar-h);
   padding: 0 14px;
+  /* Cursor "Ln X, Col Y" + tab counters change every keystroke. Without
+     tabular-nums each digit width changes ⇒ neighbouring segments slide
+     ⇒ CLS shift on every cursor move. */
+  font-variant-numeric: tabular-nums;
 }
 
 /* Titlebar — slim warm */
@@ -1565,6 +1569,12 @@ body.daisu-focus-mode header[class*="titlebar-h"]:hover { opacity: 1; }
   overflow-x: auto;
   scrollbar-width: none;
   white-space: nowrap;
+  /* Pin height so the editor area doesn't resize when the breadcrumb
+     swaps between empty and a full path (eg. switching tabs). Without
+     min-height the editor canvas reflows on every breadcrumb update,
+     producing avoidable CLS shifts. */
+  min-height: 22px;
+  font-variant-numeric: tabular-nums;
 }
 .daisu-breadcrumb::-webkit-scrollbar { display: none; }
 .daisu-breadcrumb-row {
@@ -2144,6 +2154,17 @@ body.daisu-focus-mode header[class*="titlebar-h"]:hover { opacity: 1; }
 }
 .daisu-agent-msg.is-pending {
   border-style: dashed;
+  /* Reserve enough room for ~3 lines of streamed assistant text so the
+     scroll viewport doesn't grow line-by-line as deltas arrive — that
+     was the dominant CLS source in chat sessions. The container can
+     still grow past min-height once the response exceeds it. */
+  min-height: 4.5em;
+  contain: layout;
+}
+.daisu-agent-msg-body {
+  /* Predictable text reflow — avoid font fallback substitution
+     bouncing the line-box height while a delta streams in. */
+  contain: layout;
 }
 .daisu-agent-msg-role {
   font-size: 10px;

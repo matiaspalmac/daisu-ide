@@ -10,7 +10,15 @@ const chipCls =
   "text-[var(--danger)] bg-[var(--danger-soft,rgba(255,80,80,0.12))] border border-[var(--danger)] " +
   "hover:bg-[var(--danger)] hover:text-[var(--bg-base)] transition-colors";
 
-const POLL_MS = 3000;
+// Poll cadence is intentionally slow (15s) — the chip's job is to surface
+// crashed servers, and the `lsp://server-ready` / `lsp://workspace-opened`
+// event listeners below already deliver transitions in real time. The
+// previous 3s value showed up in DevTools HAR captures as ~20 IPC calls
+// per minute of idle time, eating Tauri thread budget for nothing. A 15s
+// fallback only matters if the backend exits without firing any event,
+// which is rare; the user notices a crash through editor diagnostics
+// long before the chip appears anyway.
+const POLL_MS = 15000;
 
 /**
  * Status-bar chip surfacing crashed LSP servers. Mirrors `LspTrustChip`'s
