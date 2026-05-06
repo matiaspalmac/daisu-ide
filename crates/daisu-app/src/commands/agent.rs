@@ -54,6 +54,64 @@ fn map_agent(e: daisu_agent::AgentError) -> AppError {
     AppError::Internal(format!("agent: {e}"))
 }
 
+/// Recover tool calls that a non-tool-aware model emits as text instead of
+/// using the wire-level `tool_calls` field. Small Ollama models (e.g.
+/// `qwen2.5-coder:1.5b`) ignore the `tools` parameter and just print a
+/// JSON object describing the call inside a fenced code block. Without
+/// this fallback the agent loop terminates after the first turn and the
+/// user sees the raw JSON instead of the tool result.
+///
+/// Recognised shapes (each must live inside a ```` ```json ```` fence):
+///   `{"name": "<tool>", "arguments": { ... }}`
+///   `{"tool": "<tool>", "input": { ... }}`
+///   `{"function": "<tool>", "parameters": { ... }}`
+///
+/// Calls are dropped silently if the name doesn't match a registered tool
+/// — better to fall through to the "no tool calls" branch than to invent
+/// dispatches the user didn't grant permission for.
+fn extract_fallback_tool_calls(text: &str, registry: &Arc<ToolRegistry>) -> Vec<ProviderToolCall> {
+    let mut out = Vec::new();
+    let mut cursor = 0usize;
+    while let Some(rel) = text[cursor..].find("```") {
+        let after_open = cursor + rel + 3;
+        // Skip the optional language tag up to the next newline.
+        let body_start = match text[after_open..].find('\n') {
+            Some(n) => after_open + n + 1,
+            None => break,
+        };
+        let Some(close_rel) = text[body_start..].find("```") else {
+            break;
+        };
+        let body = text[body_start..body_start + close_rel].trim();
+        cursor = body_start + close_rel + 3;
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(body) else {
+            continue;
+        };
+        let name = v
+            .get("name")
+            .or_else(|| v.get("tool"))
+            .or_else(|| v.get("function"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+            .to_string();
+        if name.is_empty() || registry.get(&name).is_none() {
+            continue;
+        }
+        let arguments = v
+            .get("arguments")
+            .or_else(|| v.get("input"))
+            .or_else(|| v.get("parameters"))
+            .cloned()
+            .unwrap_or_else(|| serde_json::json!({}));
+        out.push(ProviderToolCall {
+            id: format!("fallback-{}-{name}", out.len()),
+            name,
+            arguments,
+        });
+    }
+    out
+}
+
 /// Build the `ToolDef` list the LLM sees from the static tool registry.
 /// Parses each tool's `input_schema` JSON literal once per request.
 ///
@@ -729,7 +787,11 @@ pub struct SendMessageResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase", tag = "type")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "type"
+)]
 enum StreamPayload {
     Started {
         run_id: String,
@@ -991,6 +1053,44 @@ pub async fn agent_send_message(
                     .await;
                 }
                 break;
+            }
+
+            // Fallback for non-tool-aware models that emit tool calls as
+            // fenced JSON in the text channel instead of via the wire
+            // protocol. We synthesise the same UI events the provider
+            // would have, so downstream code is uniform.
+            if emitted_tool_calls.is_empty() && !accumulated_text.is_empty() {
+                let parsed = extract_fallback_tool_calls(&accumulated_text, &tool_registry);
+                if !parsed.is_empty() {
+                    for c in &parsed {
+                        let _ = app_handle.emit(
+                            STREAM_EVENT,
+                            StreamPayload::ToolUseStart {
+                                run_id: run_id_bg.clone(),
+                                id: c.id.clone(),
+                                name: c.name.clone(),
+                            },
+                        );
+                        let fragment =
+                            serde_json::to_string(&c.arguments).unwrap_or_else(|_| "{}".into());
+                        let _ = app_handle.emit(
+                            STREAM_EVENT,
+                            StreamPayload::ToolUseArgsDelta {
+                                run_id: run_id_bg.clone(),
+                                id: c.id.clone(),
+                                fragment,
+                            },
+                        );
+                        let _ = app_handle.emit(
+                            STREAM_EVENT,
+                            StreamPayload::ToolUseDone {
+                                run_id: run_id_bg.clone(),
+                                id: c.id.clone(),
+                            },
+                        );
+                    }
+                    emitted_tool_calls = parsed;
+                }
             }
 
             // No tool calls → terminal turn. Persist + done.
