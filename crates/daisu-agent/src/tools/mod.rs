@@ -9,6 +9,7 @@
 pub mod dispatcher;
 pub mod list_dir;
 pub mod read_file;
+pub mod write_file;
 
 pub mod propose_edit;
 

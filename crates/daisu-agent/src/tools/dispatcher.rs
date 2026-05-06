@@ -15,7 +15,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{registry, ToolDescriptor};
+use super::ToolDescriptor;
 use crate::error::{AgentError, AgentResult};
 use crate::permission::{PermissionGate, PermissionRequest, PermissionTier};
 
@@ -79,7 +79,11 @@ impl ToolRegistry {
 
     #[must_use]
     pub fn descriptors(&self) -> Vec<ToolDescriptor> {
-        registry()
+        // Source from the actually registered tools so we never advertise
+        // a name the dispatcher can't resolve. The descriptor objects come
+        // from each tool's own `descriptor()` impl, which keeps wording
+        // single-sourced even after wave-2 tools graduate from stubs.
+        self.tools.values().map(|t| t.descriptor()).collect()
     }
 
     /// Execute a tool call after consulting the permission gate.
@@ -139,24 +143,11 @@ impl Default for ToolRegistry {
         let mut reg = Self::new();
         reg.register(Arc::new(super::read_file::ReadFile));
         reg.register(Arc::new(super::list_dir::ListDir));
-        // Stubs — descriptors registered, executors return a typed
-        // ToolExecution error until phase 2 wave 2 lands. They MUST
-        // exist so descriptors() and the dispatcher can be exercised
-        // end-to-end without panicking.
-        for stub in [
-            ("grep", PermissionTier::Auto),
-            ("find_files", PermissionTier::Auto),
-            ("git_status", PermissionTier::Auto),
-            ("git_diff", PermissionTier::Auto),
-            ("write_file", PermissionTier::Prompt),
-            ("delete_file", PermissionTier::Prompt),
-            ("run_command", PermissionTier::Sandbox),
-        ] {
-            reg.register(Arc::new(StubTool {
-                name: stub.0,
-                tier: stub.1,
-            }));
-        }
+        reg.register(Arc::new(super::write_file::WriteFile));
+        // Unimplemented tools (grep/git_status/find_files/run_command/...) are
+        // intentionally NOT registered. Advertising them to the model only
+        // teaches it to pick names that fail at dispatch time. Wave 2 will
+        // register real impls; until then the model sees the working subset.
         reg
     }
 }
@@ -169,38 +160,6 @@ fn summarise_call(call: &ToolCall) -> String {
         body
     };
     format!("{}({trimmed})", call.name)
-}
-
-/// Placeholder tool: keeps the descriptor surface complete while the
-/// real implementation is pending. `execute` returns a typed error so
-/// callers see a clean message instead of a panic.
-struct StubTool {
-    name: &'static str,
-    tier: PermissionTier,
-}
-
-#[async_trait]
-impl Tool for StubTool {
-    fn descriptor(&self) -> ToolDescriptor {
-        // Look up the canonical descriptor from `registry()` so
-        // descriptions stay single-sourced.
-        registry()
-            .into_iter()
-            .find(|d| d.name == self.name)
-            .unwrap_or(ToolDescriptor {
-                name: self.name,
-                description: "",
-                tier: self.tier,
-                input_schema: r#"{"type":"object"}"#,
-            })
-    }
-
-    async fn execute(&self, _args: Value, _cwd: &Path) -> AgentResult<Value> {
-        Err(AgentError::ToolExecution(format!(
-            "tool '{}' is not yet implemented (M3 phase 2 wave 2)",
-            self.name
-        )))
-    }
 }
 
 /// Resolve a path argument relative to `cwd` and forbid escaping.

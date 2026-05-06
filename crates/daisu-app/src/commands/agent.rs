@@ -122,8 +122,9 @@ fn extract_fallback_tool_calls(text: &str, registry: &Arc<ToolRegistry>) -> Vec<
 /// same set. A schema parse failure is logged via `eprintln!` rather
 /// than silently degrading; the literal is a compile-time string so
 /// any failure is a programmer error worth surfacing in dev builds.
-fn tool_defs_from_registry(_registry: &ToolRegistry) -> Vec<ToolDef> {
-    daisu_agent::tools::registry()
+fn tool_defs_from_registry(registry: &ToolRegistry) -> Vec<ToolDef> {
+    registry
+        .descriptors()
         .into_iter()
         .map(|d| {
             let input_schema = serde_json::from_str(d.input_schema).unwrap_or_else(|err| {
@@ -898,7 +899,25 @@ pub async fn agent_send_message(
 
     let provider = build_provider(&convo.provider, req.base_url.as_deref()).await?;
     let tools = tool_defs_from_registry(&state.tool_registry);
-    let system_prompt = req.system_prompt.clone();
+    // Inject a default system prompt when the frontend doesn't send one.
+    // Small local models (llama3.2:3b, qwen2.5-coder:1.5b) otherwise call
+    // tools for trivial inputs like "hola" or pass paths like "/" that
+    // escape the workspace. Anchor them to the cwd and tell them tools
+    // are optional.
+    let system_prompt = req.system_prompt.clone().or_else(|| {
+        Some(
+            "You are a coding assistant inside Daisu IDE. Reply in the user's language. \
+             Only call tools when the user explicitly asks to read, list, or write files. \
+             For greetings or general questions, answer with plain text and call no tools.\n\n\
+             Tool guide:\n\
+             - list_dir(path): list directory entries. Use \".\" for the workspace root. \
+             Use this for \"ver/listar/explorar archivos\".\n\
+             - read_file(path): read a single file's text contents. Path must point to a FILE, never a directory.\n\
+             - write_file(path, contents): create or overwrite a file. Requires user approval.\n\n\
+             Path rules: paths are relative to the workspace root (\".\"). Never pass \"/\", \
+             absolute system paths, or paths with \"..\".".to_string()
+        )
+    });
     let temperature = req.temperature;
 
     let app_handle = app.clone();
