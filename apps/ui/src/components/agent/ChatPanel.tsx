@@ -299,9 +299,10 @@ interface ToolBlockViewProps {
 function ToolBlockView({ block, t }: ToolBlockViewProps): JSX.Element {
   const status = block.status;
   const ok = block.result?.ok ?? null;
-  // Auto-expand while running, auto-collapse 400ms after a successful
-  // result. Failures stay expanded so the user can read the error.
-  // User-toggled state sticks for the rest of the session.
+  // Auto-expand while running and while args stream in. Collapse on a
+  // successful result, keep expanded on failure so the user can read the
+  // error. A user toggle takes over from there for the rest of the
+  // session.
   const [userOverride, setUserOverride] = useState<boolean | null>(null);
   const autoExpanded =
     status === "running" || status === "done" || (status === "result" && ok === false);
@@ -310,8 +311,7 @@ function ToolBlockView({ block, t }: ToolBlockViewProps): JSX.Element {
   // Map ToolBlock status → ToolStatusBadge status. Result + ok=true is
   // "done", result + ok=false is "errored", everything else maps 1:1.
   let badgeStatus: import("./ToolStatusBadge").ToolStatus = "running";
-  if (status === "running") badgeStatus = "running";
-  else if (status === "done") badgeStatus = "running"; // args streamed, awaiting dispatch
+  if (status === "running" || status === "done") badgeStatus = "running";
   else if (status === "result" && ok) badgeStatus = "done";
   else if (status === "result" && ok === false) {
     const out = block.result?.output as Record<string, unknown> | undefined;

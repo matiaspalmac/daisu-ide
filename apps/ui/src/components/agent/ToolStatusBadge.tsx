@@ -7,7 +7,7 @@ import {
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 
-export type ToolStatus = "pending" | "running" | "done" | "errored" | "denied";
+export type ToolStatus = "running" | "done" | "errored" | "denied";
 
 interface Props {
   status: ToolStatus;
@@ -16,16 +16,15 @@ interface Props {
 
 /**
  * Status pill for a tool call. Mirrors Cline / Continue conventions:
- * three-dot pulse while pending, spinner while running, green check on
- * success, amber X on error, red prohibit on permission denial. Wraps
- * the icon in a polite aria-live region so screen readers announce
- * state transitions without interrupting other speech.
+ * spinner while running, green check on success, amber X on error, red
+ * prohibit on permission denial. Wraps the icon in a polite aria-live
+ * region so screen readers announce state transitions without
+ * interrupting other speech.
  */
 export function ToolStatusBadge({ status, latencyMs }: Props): JSX.Element {
   const { t } = useTranslation();
   const labelKey = (
     {
-      pending: "chat.toolStatusPending",
       running: "chat.toolStatusRunning",
       done: "chat.toolStatusDone",
       errored: "chat.toolStatusErrored",
@@ -42,13 +41,6 @@ export function ToolStatusBadge({ status, latencyMs }: Props): JSX.Element {
       aria-live="polite"
     >
       <span className="sr-only">{label}</span>
-      {status === "pending" && (
-        <span className="daisu-tool-pulse" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </span>
-      )}
       {status === "running" && (
         <CircleNotch
           size={11}
