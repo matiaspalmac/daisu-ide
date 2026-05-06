@@ -201,6 +201,7 @@
     "stop": "Detener",
     "cancel": "Cancelar",
     "cancelTooltip": "Cancelar (Esc)",
+    "cancelled": "Cancelado",
     "roles": {
       "user": "Tú",
       "assistant": "Agente",

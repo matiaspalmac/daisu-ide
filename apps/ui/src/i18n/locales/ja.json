@@ -201,6 +201,7 @@
     "stop": "停止",
     "cancel": "キャンセル",
     "cancelTooltip": "キャンセル (Esc)",
+    "cancelled": "キャンセル済み",
     "roles": {
       "user": "あなた",
       "assistant": "エージェント",

@@ -93,9 +93,6 @@ function ReadFileResult({ output }: { output: unknown }): JSX.Element {
             : t("chat.collapse", { defaultValue: "Collapse" })}
         </button>
       )}
-      {truncated && o.hint && (
-        <p className="daisu-tool-result-hint">{o.hint}</p>
-      )}
       <p className="daisu-tool-result-rangelabel">
         {t("chat.readFileShowing", {
           defaultValue: "Showing lines {{start}}-{{end}} of {{total}}",
@@ -167,9 +164,6 @@ function ListDirResult({ output }: { output: unknown }): JSX.Element {
           </li>
         ))}
       </ul>
-      {truncated && o.hint && (
-        <p className="daisu-tool-result-hint">{o.hint}</p>
-      )}
     </div>
   );
 }

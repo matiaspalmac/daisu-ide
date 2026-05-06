@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   AGENT_STREAM_EVENT,
+  type ChatMode,
   type ConversationSummary,
   type StoredMessage,
   type StreamPayload,
@@ -14,6 +15,8 @@ import {
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useSettings } from "./settingsStore";
 import i18n from "../i18n";
+
+export type { ChatMode } from "../lib/agent";
 
 export interface ToolBlock {
   /** Provider-issued id used to correlate args + result. */
@@ -45,15 +48,6 @@ export interface ChatMessage {
    *  separate messages with role="tool". */
   toolCalls?: ToolBlock[];
 }
-
-/**
- * Conversation mode the user picks in the composer:
- *  - `auto`: heuristic decides whether to advertise tools (default).
- *  - `chat`: tools never advertised, model answers in plain text.
- *  - `agent`: full tool access, heuristic disabled.
- *  - `plan`: read-only tools only, plan-first system prompt addendum.
- */
-export type ChatMode = "auto" | "chat" | "agent" | "plan";
 
 interface AgentState {
   conversations: ConversationSummary[];
@@ -241,8 +235,9 @@ export const useAgent = create<AgentState>((set, get) => ({
     // Ollama models can keep generating on the server side after the
     // HTTP connection drops). The pending message is marked cancelled
     // here so it's not left dangling if the backend never replies.
+    const cancelled = i18n.t("chat.cancelled");
     const msgs = get().messages.map((m) =>
-      m.pending ? { ...m, pending: false, warning: "Cancelado" } : m,
+      m.pending ? { ...m, pending: false, warning: cancelled } : m,
     );
     set({ messages: msgs, isStreaming: false, runId: null });
     if (!id) return;
@@ -370,8 +365,9 @@ export const useAgent = create<AgentState>((set, get) => ({
         set({ messages: msgs, isStreaming: false, runId: null });
         void get().refreshConversations();
       } else if (payload.type === "cancelled") {
+        const cancelled = i18n.t("chat.cancelled");
         const msgs = state.messages.map((m) =>
-          m.pending ? { ...m, pending: false, warning: "Cancelado" } : m,
+          m.pending ? { ...m, pending: false, warning: cancelled } : m,
         );
         set({ messages: msgs, isStreaming: false, runId: null });
       } else if (payload.type === "error") {
