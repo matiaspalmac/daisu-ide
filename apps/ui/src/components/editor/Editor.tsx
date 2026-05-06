@@ -284,20 +284,27 @@ export function Editor(): JSX.Element {
         scrollbar: {
           // VS Code-style permanent scrollbars. Monaco's default is to
           // fade out when the user clicks elsewhere, which left users
-          // with no overflow indicator.
+          // with no overflow indicator. Sizes match VS Code's
+          // EditorScrollbar defaults (vertical 14 / horizontal 12).
           vertical: "visible",
           horizontal: "visible",
-          verticalScrollbarSize: 12,
+          verticalScrollbarSize: 14,
           horizontalScrollbarSize: 12,
-          verticalSliderSize: 12,
+          verticalSliderSize: 14,
           horizontalSliderSize: 12,
           useShadows: false,
+          scrollByPage: false,
           // Keep Monaco's default (true) — when this is false, hovering
           // the editor without focus lets the wheel event bubble to the
           // nearest scrollable ancestor, so the user has to click into
           // the editor before scrolling works (microsoft/monaco-editor
           // #69 + #4599).
         },
+        // Pin Monaco's wheel defaults so a future version bump can't
+        // silently drift the scroll feel.
+        mouseWheelScrollSensitivity: 1,
+        fastScrollSensitivity: 5,
+        mouseWheelZoom: false,
         overviewRulerBorder: false,
         stickyScroll: { enabled: true },
       }}
