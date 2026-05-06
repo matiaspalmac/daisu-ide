@@ -1,5 +1,5 @@
 [package]
-name = "daisu-lsp"
+name = "daisu-term"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -17,20 +17,15 @@ missing_errors_doc = "allow"
 missing_panics_doc = "allow"
 
 [dependencies]
-lsp-types = "0.97"
-tokio = { workspace = true, features = ["process", "sync", "io-util", "macros", "rt", "time"] }
-tokio-util = { workspace = true, features = ["io"] }
-futures.workspace = true
+portable-pty = "0.8"
+tokio = { workspace = true, features = ["sync", "rt", "macros", "time", "io-util"] }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-slotmap = "1.0"
-arc-swap = "1.7"
 parking_lot = "0.12"
-url = "2"
-toml = "0.8"
-chrono.workspace = true
+uuid = { workspace = true, features = ["v4"] }
 tracing = "0.1"
+dirs = "5"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full", "test-util"] }

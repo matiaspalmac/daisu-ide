@@ -3,6 +3,7 @@ export const ACTION_CATEGORIES = [
   "Tabs",
   "Editor",
   "View",
+  "Terminal",
   "Settings",
   "Workspace",
   "Palette",
@@ -50,6 +51,15 @@ export const ACTIONS: ActionDef[] = [
   { id: "view.toggleAgents", category: "View", label: "Toggle agents panel", defaultBinding: "$mod+j" },
   { id: "view.toggleSearch", category: "View", label: "Toggle search panel", defaultBinding: "$mod+Shift+f" },
   { id: "view.toggleFocusMode", category: "View", label: "Toggle focus mode (静)", defaultBinding: "$mod+\\" },
+  { id: "view.toggleProblems", category: "View", label: "Toggle problems panel", defaultBinding: "$mod+Shift+m" },
+  { id: "view.toggleOutput", category: "View", label: "Toggle output panel", defaultBinding: "$mod+Shift+u" },
+
+  // Terminal (VSCode-parity defaults)
+  { id: "terminal.toggle", category: "Terminal", label: "Toggle terminal", defaultBinding: "$mod+`" },
+  { id: "terminal.new", category: "Terminal", label: "New terminal", defaultBinding: "$mod+Shift+`" },
+  { id: "terminal.killActive", category: "Terminal", label: "Kill active terminal tab", defaultBinding: "" },
+  { id: "terminal.next", category: "Terminal", label: "Focus next terminal tab", defaultBinding: "" },
+  { id: "terminal.prev", category: "Terminal", label: "Focus previous terminal tab", defaultBinding: "" },
 
   // Settings
   { id: "settings.open", category: "Settings", label: "Open settings", defaultBinding: "$mod+," },

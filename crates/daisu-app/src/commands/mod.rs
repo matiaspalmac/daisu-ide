@@ -6,6 +6,7 @@ pub mod lsp;
 pub mod search;
 pub mod session;
 pub mod settings;
+pub mod terminal;
 pub mod themes;
 pub mod webview;
 pub mod workspace;

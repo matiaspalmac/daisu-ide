@@ -6,12 +6,32 @@
 //! consumers as of 2026, and `monaco-languageclient` drags ~10 MB of
 //! `VSCode` runtime into the bundle.
 
-#![allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::must_use_candidate,
+    clippy::doc_markdown,
+    clippy::type_complexity,
+    clippy::match_same_arms,
+    clippy::field_reassign_with_default,
+    clippy::needless_pass_by_value,
+    clippy::single_match_else,
+    clippy::module_name_repetitions,
+    clippy::assigning_clones,
+    clippy::manual_let_else
+)]
 
+pub mod client;
 pub mod config;
+pub mod diagnostics;
 pub mod discovery;
+pub mod dispatcher;
 pub mod framing;
+pub mod handshake;
 pub mod jsonrpc;
+pub mod language;
+pub mod lifecycle;
+pub mod requests;
 pub mod transport;
 pub mod trust;
 
@@ -44,21 +64,25 @@ slotmap::new_key_type! {
     pub struct LspId;
 }
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use lsp_types::Uri;
 use slotmap::SlotMap;
 use tokio::sync::RwLock;
 
+use crate::client::Client;
 use crate::config::{LspConfig, ServerConfig};
+use crate::diagnostics::DiagnosticsCache;
 use crate::discovery::{resolve, Resolution};
+use crate::handshake::file_uri;
+use crate::lifecycle::Lifecycle;
 
-/// Multiplexor: tracks all running LSP server clients keyed by
-/// `(workspace, server_id)`. M4.0 only stores config + resolution
-/// state; M4.1 wires real `Client` instances in.
 #[derive(Default)]
 pub struct LspManager {
     inner: Arc<RwLock<ManagerInner>>,
+    pub diagnostics: Arc<DiagnosticsCache>,
 }
 
 #[derive(Default)]
@@ -66,14 +90,16 @@ struct ManagerInner {
     servers: SlotMap<LspId, ServerSlot>,
     config: LspConfig,
     workspace: Option<PathBuf>,
+    by_server_id: HashMap<String, LspId>,
+    open_docs: HashMap<Uri, Vec<LspId>>,
 }
 
-/// One configured server. M4.0 holds resolution state only; the
-/// `client` field is added in M4.1 once `Client` exists.
-#[derive(Debug)]
 pub struct ServerSlot {
     pub config: ServerConfig,
     pub resolution: Resolution,
+    pub client: Option<Arc<Client>>,
+    pub lifecycle: Option<Arc<Lifecycle>>,
+    pub refcount: usize,
 }
 
 impl LspManager {
@@ -82,9 +108,6 @@ impl LspManager {
         Self::default()
     }
 
-    /// Bind the manager to a workspace and load its config. The
-    /// workspace path **must** already be trusted; callers should
-    /// check `trust::is_trusted` before invoking this.
     pub async fn open_workspace(
         &self,
         workspace: PathBuf,
@@ -94,14 +117,145 @@ impl LspManager {
         let mut inner = self.inner.write().await;
         inner.workspace = Some(workspace);
         inner.servers.clear();
+        inner.by_server_id.clear();
+        inner.open_docs.clear();
         for server in &config.servers {
             let resolution = resolve(server);
-            inner.servers.insert(ServerSlot {
+            let id = inner.servers.insert(ServerSlot {
                 config: server.clone(),
                 resolution,
+                client: None,
+                lifecycle: None,
+                refcount: 0,
             });
+            inner.by_server_id.insert(server.id.clone(), id);
         }
         inner.config = config;
+        Ok(())
+    }
+
+    pub async fn open_document(&self, path: &std::path::Path, text: String) -> LspResult<()> {
+        let language = match crate::language::language_for(path) {
+            Some(l) => l,
+            None => return Ok(()),
+        };
+        let uri = file_uri(path)?;
+        let workspace = {
+            let inner = self.inner.read().await;
+            inner
+                .workspace
+                .clone()
+                .ok_or_else(|| LspError::Rpc("no workspace open".into()))?
+        };
+        let candidates: Vec<LspId> = {
+            let inner = self.inner.read().await;
+            inner
+                .servers
+                .iter()
+                .filter(|(_, s)| s.config.languages.iter().any(|l| l == language))
+                .map(|(id, _)| id)
+                .collect()
+        };
+        for id in candidates {
+            self.ensure_client(id, &workspace).await?;
+            let lifecycle = {
+                let inner = self.inner.read().await;
+                inner.servers.get(id).and_then(|s| s.lifecycle.clone())
+            };
+            if let Some(lc) = lifecycle {
+                lc.did_open(uri.clone(), language.into(), text.clone())?;
+            }
+            let mut inner = self.inner.write().await;
+            if let Some(slot) = inner.servers.get_mut(id) {
+                slot.refcount += 1;
+            }
+            inner.open_docs.entry(uri.clone()).or_default().push(id);
+        }
+        Ok(())
+    }
+
+    pub async fn change_document(&self, path: &std::path::Path, new_text: String) -> LspResult<()> {
+        let uri = file_uri(path)?;
+        let lifecycles: Vec<Arc<Lifecycle>> = {
+            let inner = self.inner.read().await;
+            inner
+                .open_docs
+                .get(&uri)
+                .map(|ids| {
+                    ids.iter()
+                        .filter_map(|id| inner.servers.get(*id).and_then(|s| s.lifecycle.clone()))
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        for lc in lifecycles {
+            lc.did_change(uri.clone(), new_text.clone())?;
+        }
+        Ok(())
+    }
+
+    pub async fn close_document(&self, path: &std::path::Path) -> LspResult<()> {
+        let uri = file_uri(path)?;
+        let ids = {
+            let mut inner = self.inner.write().await;
+            inner.open_docs.remove(&uri).unwrap_or_default()
+        };
+        for id in ids {
+            let lifecycle = {
+                let inner = self.inner.read().await;
+                inner.servers.get(id).and_then(|s| s.lifecycle.clone())
+            };
+            if let Some(lc) = lifecycle {
+                lc.did_close(uri.clone())?;
+            }
+            let mut inner = self.inner.write().await;
+            if let Some(slot) = inner.servers.get_mut(id) {
+                slot.refcount = slot.refcount.saturating_sub(1);
+            }
+        }
+        Ok(())
+    }
+
+    async fn ensure_client(&self, id: LspId, workspace: &std::path::Path) -> LspResult<()> {
+        {
+            let inner = self.inner.read().await;
+            if inner
+                .servers
+                .get(id)
+                .and_then(|s| s.client.as_ref())
+                .is_some()
+            {
+                return Ok(());
+            }
+        }
+        let (config, resolution) = {
+            let inner = self.inner.read().await;
+            let slot = inner
+                .servers
+                .get(id)
+                .ok_or_else(|| LspError::Rpc("ensure_client: slot not found".into()))?;
+            (slot.config.clone(), slot.resolution.clone())
+        };
+        let bin_path = match resolution {
+            Resolution::Found(p) => p,
+            Resolution::Missing => return Ok(()),
+        };
+        let client = Client::spawn(
+            config.id.clone(),
+            bin_path.to_string_lossy().as_ref(),
+            &config.args,
+            workspace,
+            self.diagnostics.clone(),
+        )
+        .await?;
+        let outgoing = client.outgoing.clone();
+        let arc = Arc::new(client);
+        let lifecycle = Arc::new(Lifecycle::new(outgoing));
+        let mut inner = self.inner.write().await;
+        if let Some(slot) = inner.servers.get_mut(id) {
+            slot.client = Some(arc);
+            slot.lifecycle = Some(lifecycle);
+        }
         Ok(())
     }
 
@@ -118,10 +272,23 @@ impl LspManager {
                     Resolution::Found(p) => ResolutionPublic::Found(p.clone()),
                     Resolution::Missing => ResolutionPublic::Missing,
                 },
-                state: ServerState::Idle,
+                state: if slot.client.is_some() {
+                    ServerState::Ready
+                } else {
+                    ServerState::Idle
+                },
                 rss_mb: None,
             })
             .collect()
+    }
+
+    pub async fn client_by_id(&self, server_id: &str) -> Option<Arc<Client>> {
+        let inner = self.inner.read().await;
+        inner
+            .by_server_id
+            .get(server_id)
+            .and_then(|id| inner.servers.get(*id))
+            .and_then(|slot| slot.client.clone())
     }
 }
 

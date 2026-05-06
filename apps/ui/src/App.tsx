@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Group, Panel, Separator, usePanelRef } from "react-resizable-panels";
 import { listen } from "@tauri-apps/api/event";
 import { IconContext } from "@phosphor-icons/react";
@@ -11,6 +11,16 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { EditorArea } from "./components/layout/EditorArea";
 import { RightPanel } from "./components/layout/RightPanel";
 import { StatusBar } from "./components/layout/StatusBar";
+import { useBottomPanel } from "./stores/bottomPanelStore";
+
+// xterm.js + 4 addons live behind BottomPanel (~85 kB gzipped). Lazy-load
+// keeps the main bundle under the size-limit budget; the panel only renders
+// when the user explicitly toggles it (Ctrl+`, Problems/Output, etc.).
+const BottomPanel = lazy(() =>
+  import("./components/bottompanel/BottomPanel").then((m) => ({
+    default: m.BottomPanel,
+  })),
+);
 import { useSearchListeners } from "./hooks/useSearchListeners";
 import { useDiscordRpc } from "./hooks/useDiscordRpc";
 import { ToastViewport } from "./components/ui/Toast";
@@ -49,6 +59,8 @@ export function App(): JSX.Element {
   const sidebarCollapsed = useUI((s) => s.sidebarCollapsed);
   const agentsCollapsed = useUI((s) => s.agentsPanelCollapsed);
   const focusMode = useUI((s) => s.focusMode);
+  const bottomPanelOpen = useBottomPanel((s) => s.open);
+
 
   useEffect(() => {
     document.body.classList.toggle("daisu-focus-mode", focusMode);
@@ -333,7 +345,25 @@ export function App(): JSX.Element {
         {!sidebarOnRight && sidebarPanel}
         {rightPanelOnLeft && rightPanel}
         <Panel id="center" defaultSize="56%" minSize="30%">
-          <EditorArea />
+          {/* The vertical Group + editor Panel are always mounted so that
+              toggling BottomPanel never reparents <EditorArea/>. Reparenting
+              the Monaco editor mid-session disposes its model and crashes
+              syncActiveTab on the next render with `Model is disposed!`. */}
+          <Group orientation="vertical" className="h-full">
+            <Panel id="editor" defaultSize="70%" minSize="20%">
+              <EditorArea />
+            </Panel>
+            {bottomPanelOpen && (
+              <>
+                <Separator className="daisu-resize-handle daisu-resize-handle-horizontal" />
+                <Panel id="bottom" defaultSize="30%" minSize="10%" maxSize="80%">
+                  <Suspense fallback={null}>
+                    <BottomPanel />
+                  </Suspense>
+                </Panel>
+              </>
+            )}
+          </Group>
         </Panel>
         {!rightPanelOnLeft && rightPanel}
         {sidebarOnRight && sidebarPanel}

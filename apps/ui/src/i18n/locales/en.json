@@ -598,6 +598,25 @@
     "searchHeading": "SEARCH",
     "explorerHeading": "EXPLORER"
   },
+  "terminal": {
+    "title": "Terminal",
+    "newTab": "New terminal",
+    "close": "Close terminal",
+    "killTab": "Kill tab",
+    "toggle": "Toggle terminal"
+  },
+  "bottomPanel": {
+    "problems": "Problems",
+    "output": "Output",
+    "debug": "Debug Console",
+    "terminal": "Terminal",
+    "ports": "Ports",
+    "close": "Close panel",
+    "problemsEmpty": "No problems detected.",
+    "outputEmpty": "No output channels yet.",
+    "debugComingSoon": "Debug console — coming soon.",
+    "portsComingSoon": "Port forwarding — coming soon."
+  },
   "lsp": {
     "untrustedChip": "Workspace untrusted",
     "trustButton": "Trust workspace",

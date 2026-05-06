@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use crate::config::ServerConfig;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Resolution {
     /// Found on PATH (or absolute path verified to exist).
     Found(PathBuf),

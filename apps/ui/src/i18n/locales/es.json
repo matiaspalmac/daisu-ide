@@ -598,6 +598,25 @@
     "searchHeading": "BUSCAR",
     "explorerHeading": "EXPLORADOR"
   },
+  "terminal": {
+    "title": "Terminal",
+    "newTab": "Nueva terminal",
+    "close": "Cerrar terminal",
+    "killTab": "Matar pestaña",
+    "toggle": "Alternar terminal"
+  },
+  "bottomPanel": {
+    "problems": "Problemas",
+    "output": "Salida",
+    "debug": "Consola depuración",
+    "terminal": "Terminal",
+    "ports": "Puertos",
+    "close": "Cerrar panel",
+    "problemsEmpty": "Sin problemas detectados.",
+    "outputEmpty": "Sin canales de salida.",
+    "debugComingSoon": "Consola de depuración — próximamente.",
+    "portsComingSoon": "Reenvío de puertos — próximamente."
+  },
   "lsp": {
     "untrustedChip": "Workspace no confiado",
     "trustButton": "Confiar en workspace",
