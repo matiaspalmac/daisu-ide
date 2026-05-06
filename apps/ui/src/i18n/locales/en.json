@@ -613,7 +613,15 @@
     "newTab": "New terminal",
     "close": "Close terminal",
     "killTab": "Kill tab",
-    "toggle": "Toggle terminal"
+    "toggle": "Toggle terminal",
+    "shells": {
+      "newDefault": "Open default shell",
+      "pick": "Select shell",
+      "empty": "No shells detected",
+      "rescan": "Rescan shells",
+      "defaultLabel": "Default shell",
+      "defaultAuto": "Auto (system default)"
+    }
   },
   "bottomPanel": {
     "problems": "Problems",

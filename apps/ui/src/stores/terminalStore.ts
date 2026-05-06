@@ -3,6 +3,7 @@ import { create } from "zustand";
 export interface TerminalTab {
   uiId: string;
   title: string;
+  shellId?: string;
 }
 
 interface TerminalState {
@@ -11,7 +12,7 @@ interface TerminalState {
   activeId: string | null;
   toggle(): void;
   setOpen(open: boolean): void;
-  newTab(): void;
+  newTab(shellId?: string): void;
   closeTab(uiId: string): void;
   setActive(uiId: string): void;
   rename(uiId: string, title: string): void;
@@ -41,10 +42,14 @@ export const useTerminal = create<TerminalState>((set) => ({
   activeId: null,
   toggle: () => set((s) => ({ open: !s.open })),
   setOpen: (open) => set({ open }),
-  newTab: () =>
+  newTab: (shellId) =>
     set((s) => {
       uiIdSeq += 1;
-      const tab: TerminalTab = { uiId: `t${uiIdSeq}`, title: nextTitle(s.tabs) };
+      const tab: TerminalTab = {
+        uiId: `t${uiIdSeq}`,
+        title: nextTitle(s.tabs),
+        ...(shellId ? { shellId } : {}),
+      };
       return {
         open: true,
         tabs: [...s.tabs, tab],

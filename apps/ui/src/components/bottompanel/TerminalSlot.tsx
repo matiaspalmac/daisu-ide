@@ -1,9 +1,11 @@
 import { type JSX } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, X } from "@phosphor-icons/react";
+import { X } from "@phosphor-icons/react";
 import { useWorkspace } from "../../stores/workspaceStore";
 import { useTerminal } from "../../stores/terminalStore";
+import { useSettings } from "../../stores/settingsStore";
 import { TerminalView } from "../terminal/TerminalView";
+import { ShellPicker } from "../terminal/ShellPicker";
 
 export function TerminalSlot(): JSX.Element {
   const { t } = useTranslation();
@@ -17,17 +19,18 @@ export function TerminalSlot(): JSX.Element {
   const closeTab = useTerminal((s) => s.closeTab);
   const setActive = useTerminal((s) => s.setActive);
   const cwd = useWorkspace((s) => s.rootPath ?? "");
+  const defaultShellId = useSettings(
+    (s) => s.settings.editor.terminalDefaultShellId,
+  );
+
+  const handlePick = (shell: { id: string } | null): void => {
+    newTab(shell?.id ?? defaultShellId ?? undefined);
+  };
 
   if (tabs.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-[11px] text-[var(--fg-muted)]">
-        <button
-          type="button"
-          className="px-2 py-1 rounded-[var(--radius-sm)] hover:bg-[var(--bg-elevated)]"
-          onClick={() => newTab()}
-        >
-          + {t("terminal.newTab")}
-        </button>
+        <ShellPicker onPick={handlePick} />
       </div>
     );
   }
@@ -42,20 +45,16 @@ export function TerminalSlot(): JSX.Element {
             style={{ display: tab.uiId === activeId ? "block" : "none" }}
             className="h-full w-full"
           >
-            <TerminalView cwd={cwd} onExit={() => closeTab(tab.uiId)} />
+            <TerminalView
+              cwd={cwd}
+              shellId={tab.shellId}
+              onExit={() => closeTab(tab.uiId)}
+            />
           </div>
         ))}
       </div>
       <div className="w-[140px] flex-shrink-0 border-l border-[var(--border-subtle)] flex flex-col text-[11px] overflow-y-auto">
-        <button
-          type="button"
-          className="h-6 px-2 flex items-center gap-1 text-[var(--fg-muted)] hover:text-[var(--fg-secondary)] hover:bg-[var(--bg-elevated)]"
-          onClick={() => newTab()}
-          title={t("terminal.newTab")}
-          aria-label={t("terminal.newTab")}
-        >
-          <Plus size={11} /> {t("terminal.newTab")}
-        </button>
+        <ShellPicker onPick={handlePick} />
         {tabs.map((tab) => (
           <div
             key={tab.uiId}

@@ -20,6 +20,11 @@ pub struct TermSpawnOpts {
     /// auto-detected from environment.
     #[serde(default)]
     pub shell: Option<String>,
+    /// Optional id from the shell-detection picker. When set, takes
+    /// precedence over `shell` and provides default args (e.g. Git Bash
+    /// gets `--login -i`).
+    #[serde(default)]
+    pub shell_id: Option<String>,
     pub cols: u16,
     pub rows: u16,
 }
@@ -48,6 +53,22 @@ fn default_shell() -> String {
     }
 }
 
+/// Resolve the `(path, args)` to spawn for a `TermSpawnOpts`. Order:
+/// 1. `shell_id` from the detection picker (uses canonical args).
+/// 2. `shell` override (legacy, no args).
+/// 3. `default_shell()` env probe.
+fn resolve_spawn_target(opts: &TermSpawnOpts) -> (String, Vec<String>) {
+    if let Some(id) = opts.shell_id.as_deref() {
+        if let Some(detected) = crate::shells::shell_by_id(id) {
+            return (detected.path, detected.args);
+        }
+    }
+    if let Some(s) = opts.shell.as_ref() {
+        return (s.clone(), vec![]);
+    }
+    (default_shell(), vec![])
+}
+
 /// Resolve the spawn cwd. When the caller passes an empty string, ".",
 /// or a non-existent directory, fall back to the user's home directory —
 /// matches `VSCode`'s behaviour when no workspace folder is open. Avoids
@@ -69,7 +90,7 @@ impl TermManager {
         Self::default()
     }
 
-    pub fn spawn(&self, opts: TermSpawnOpts) -> Result<String, TermError> {
+    pub fn spawn(&self, opts: &TermSpawnOpts) -> Result<String, TermError> {
         let pty_system = native_pty_system();
         let pair = pty_system
             .openpty(PtySize {
@@ -80,13 +101,21 @@ impl TermManager {
             })
             .map_err(|e| TermError::Pty(e.to_string()))?;
 
-        let shell = opts.shell.unwrap_or_else(default_shell);
-        let mut cmd = CommandBuilder::new(shell);
+        let (shell_path, shell_args) = resolve_spawn_target(opts);
+        let mut cmd = CommandBuilder::new(shell_path);
+        for arg in shell_args {
+            cmd.arg(arg);
+        }
         cmd.cwd(resolve_cwd(&opts.cwd));
         let child = pair
             .slave
             .spawn_command(cmd)
             .map_err(|e| TermError::Pty(e.to_string()))?;
+        // Dropping the slave on Windows can race the child process and
+        // leave the writer half in a "broken pipe" state — wezterm#4206.
+        // Only drop on Unix where it's required to avoid keeping a stale
+        // fd reference open.
+        #[cfg(not(windows))]
         drop(pair.slave);
 
         let (tx, _) = broadcast::channel::<Vec<u8>>(1024);
@@ -222,9 +251,10 @@ mod tests {
         let mgr = TermManager::new();
         let tmp = tempfile::tempdir().unwrap();
         let id = mgr
-            .spawn(TermSpawnOpts {
+            .spawn(&TermSpawnOpts {
                 cwd: tmp.path().display().to_string(),
                 shell: None,
+                shell_id: None,
                 cols: 80,
                 rows: 24,
             })

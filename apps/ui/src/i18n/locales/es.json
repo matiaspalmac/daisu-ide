@@ -610,6 +610,14 @@
   },
   "terminal": {
     "title": "Terminal",
+    "shells": {
+      "newDefault": "Abrir terminal por defecto",
+      "pick": "Seleccionar shell",
+      "empty": "No se detectaron shells",
+      "rescan": "Re-escanear shells",
+      "defaultLabel": "Shell por defecto",
+      "defaultAuto": "Auto (sistema)"
+    },
     "newTab": "Nueva terminal",
     "close": "Cerrar terminal",
     "killTab": "Matar pestaña",

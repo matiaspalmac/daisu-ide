@@ -14,6 +14,7 @@
 )]
 
 pub mod session;
+pub mod shells;
 
 use thiserror::Error;
 
@@ -30,3 +31,4 @@ pub enum TermError {
 pub type TermResult<T> = Result<T, TermError>;
 
 pub use session::{TermManager, TermSession, TermSpawnOpts};
+pub use shells::{detect_shells, detect_shells_uncached, shell_by_id, DetectedShell};

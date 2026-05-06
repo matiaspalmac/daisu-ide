@@ -106,6 +106,8 @@ fn main() {
             commands::lsp::lsp_code_action_resolve,
             commands::lsp::lsp_execute_command,
             commands::terminal::terminal_spawn,
+            commands::terminal::terminal_list_shells,
+            commands::terminal::terminal_rescan_shells,
             commands::terminal::terminal_write,
             commands::terminal::terminal_resize,
             commands::terminal::terminal_kill,
