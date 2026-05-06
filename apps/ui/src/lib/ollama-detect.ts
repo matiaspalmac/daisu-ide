@@ -110,3 +110,27 @@ export function pickBestModel(installed: string[], current: string): string {
   if (installed.includes(current)) return current;
   return installed[0]!;
 }
+
+/**
+ * Probe an Ollama server and pick the best installed model. Returns the
+ * picked model and the raw installed list. When the server is unreachable
+ * or returns no models, falls back to `currentModel`. Used by both the
+ * Settings page and the inline header picker so a provider switch always
+ * lands on something Ollama can actually serve — without it the static
+ * `defaultModel` (qwen3-coder) is rarely installed and the first
+ * test-connection 404s.
+ */
+export async function autoPickInstalledOllamaModel(
+  baseUrl: string,
+  currentModel: string,
+): Promise<{ model: string; installed: string[]; reachable: boolean }> {
+  const probe = await probeOllama(baseUrl);
+  if (!probe.reachable || probe.models.length === 0) {
+    return { model: currentModel, installed: probe.models, reachable: probe.reachable };
+  }
+  return {
+    model: pickBestModel(probe.models, currentModel),
+    installed: probe.models,
+    reachable: true,
+  };
+}

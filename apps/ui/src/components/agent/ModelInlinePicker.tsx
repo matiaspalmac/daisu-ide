@@ -9,7 +9,7 @@ import {
   listProviders,
   listProviderModels,
 } from "../../lib/agent";
-import { probeOllama } from "../../lib/ollama-detect";
+import { probeOllama, autoPickInstalledOllamaModel } from "../../lib/ollama-detect";
 import {
   Select,
   SelectContent,
@@ -102,7 +102,19 @@ export function ModelInlinePicker(): JSX.Element {
 
   async function handleProviderChange(id: AgentProviderId): Promise<void> {
     const info = providers.find((p) => p.id === id);
-    const fallback = info?.defaultModel ?? "";
+    let fallback = info?.defaultModel ?? "";
+    // Mirror AiSettings.handleSelect: the static defaultModel is rarely
+    // what the user has installed locally, so probe Ollama and repoint
+    // to the best available tag before saving. Without this the inline
+    // picker reproduces the original 404 the PR was meant to fix.
+    if (id === "ollama") {
+      const picked = await autoPickInstalledOllamaModel(
+        ai.ollamaBaseUrl,
+        fallback,
+      );
+      fallback = picked.model;
+      if (picked.reachable) setInstalledModels(picked.installed);
+    }
     await setSetting("aiProvider", {
       id,
       mode: id === "ollama" || id === "lmstudio" ? "local" : "cloud",
