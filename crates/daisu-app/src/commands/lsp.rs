@@ -10,13 +10,14 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use lsp_types::{
-    CompletionItem, CompletionParams, CompletionResponse, DocumentFormattingParams,
-    DocumentRangeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse, FormattingOptions,
-    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams, Location,
-    PartialResultParams, Position, PrepareRenameResponse, Range, ReferenceContext, ReferenceParams,
-    RenameParams, SignatureHelp, SignatureHelpParams, TextDocumentIdentifier,
-    TextDocumentPositionParams, TextEdit, Uri, WorkDoneProgressParams, WorkspaceEdit,
-    WorkspaceSymbolParams, WorkspaceSymbolResponse,
+    CodeAction, CodeActionContext, CodeActionOrCommand, CodeActionParams, CompletionItem,
+    CompletionParams, CompletionResponse, DocumentFormattingParams, DocumentRangeFormattingParams,
+    DocumentSymbolParams, DocumentSymbolResponse, ExecuteCommandParams, FormattingOptions,
+    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams, InlayHint, InlayHintParams,
+    Location, PartialResultParams, Position, PrepareRenameResponse, Range, ReferenceContext,
+    ReferenceParams, RenameParams, SemanticTokensParams, SemanticTokensResult, SignatureHelp,
+    SignatureHelpParams, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri,
+    WorkDoneProgressParams, WorkspaceEdit, WorkspaceSymbolParams, WorkspaceSymbolResponse,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -540,6 +541,188 @@ pub async fn lsp_range_formatting(
         work_done_progress_params: WorkDoneProgressParams::default(),
     };
     let (res, _) = requests::range_formatting(client, params)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+// === M4.3 advanced commands ===
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InlayHintReq {
+    pub path: String,
+    #[serde(default)]
+    pub server_id: Option<String>,
+    pub start_line: u32,
+    pub start_character: u32,
+    pub end_line: u32,
+    pub end_character: u32,
+}
+
+#[tauri::command]
+pub async fn lsp_inlay_hint(
+    state: State<'_, AppState>,
+    req: InlayHintReq,
+) -> AppResult<Vec<InlayHint>> {
+    let uri = path_to_uri(&req.path)?;
+    let pos_req = PositionReq {
+        path: req.path.clone(),
+        line: 0,
+        character: 0,
+        server_id: req.server_id.clone(),
+    };
+    let client = first_running_client(&state, &pos_req).await?;
+    let params = InlayHintParams {
+        text_document: TextDocumentIdentifier { uri },
+        range: Range {
+            start: Position::new(req.start_line, req.start_character),
+            end: Position::new(req.end_line, req.end_character),
+        },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    };
+    let (res, _) = requests::inlay_hint(client, params)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InlayHintResolveReq {
+    pub server_id: String,
+    pub hint: InlayHint,
+}
+
+#[tauri::command]
+pub async fn lsp_inlay_hint_resolve(
+    state: State<'_, AppState>,
+    req: InlayHintResolveReq,
+) -> AppResult<Option<InlayHint>> {
+    let client = state
+        .lsp_manager
+        .client_by_id(&req.server_id)
+        .await
+        .ok_or_else(|| AppError::Internal(format!("no client for {}", req.server_id)))?;
+    let (res, _) = requests::inlay_hint_resolve(client, req.hint)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[tauri::command]
+pub async fn lsp_semantic_tokens(
+    state: State<'_, AppState>,
+    req: PositionReq,
+) -> AppResult<Option<SemanticTokensResult>> {
+    let uri = path_to_uri(&req.path)?;
+    let client = first_running_client(&state, &req).await?;
+    let params = SemanticTokensParams {
+        text_document: TextDocumentIdentifier { uri },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    };
+    let (res, _) = requests::semantic_tokens_full(client, params)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeActionReq {
+    pub path: String,
+    #[serde(default)]
+    pub server_id: Option<String>,
+    pub start_line: u32,
+    pub start_character: u32,
+    pub end_line: u32,
+    pub end_character: u32,
+    #[serde(default)]
+    pub diagnostics: Vec<lsp_types::Diagnostic>,
+}
+
+#[tauri::command]
+pub async fn lsp_code_action(
+    state: State<'_, AppState>,
+    req: CodeActionReq,
+) -> AppResult<Vec<CodeActionOrCommand>> {
+    let uri = path_to_uri(&req.path)?;
+    let pos_req = PositionReq {
+        path: req.path.clone(),
+        line: 0,
+        character: 0,
+        server_id: req.server_id.clone(),
+    };
+    let client = first_running_client(&state, &pos_req).await?;
+    let params = CodeActionParams {
+        text_document: TextDocumentIdentifier { uri },
+        range: Range {
+            start: Position::new(req.start_line, req.start_character),
+            end: Position::new(req.end_line, req.end_character),
+        },
+        context: CodeActionContext {
+            diagnostics: req.diagnostics,
+            only: None,
+            trigger_kind: None,
+        },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    };
+    let (res, _) = requests::code_action(client, params)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeActionResolveReq {
+    pub server_id: String,
+    pub action: CodeAction,
+}
+
+#[tauri::command]
+pub async fn lsp_code_action_resolve(
+    state: State<'_, AppState>,
+    req: CodeActionResolveReq,
+) -> AppResult<Option<CodeAction>> {
+    let client = state
+        .lsp_manager
+        .client_by_id(&req.server_id)
+        .await
+        .ok_or_else(|| AppError::Internal(format!("no client for {}", req.server_id)))?;
+    let (res, _) = requests::code_action_resolve(client, req.action)
+        .await
+        .map_err(map_lsp)?;
+    Ok(res.0)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExecuteCommandReq {
+    pub server_id: String,
+    pub command: String,
+    #[serde(default)]
+    pub arguments: Vec<Value>,
+}
+
+#[tauri::command]
+pub async fn lsp_execute_command(
+    state: State<'_, AppState>,
+    req: ExecuteCommandReq,
+) -> AppResult<Option<Value>> {
+    let client = state
+        .lsp_manager
+        .client_by_id(&req.server_id)
+        .await
+        .ok_or_else(|| AppError::Internal(format!("no client for {}", req.server_id)))?;
+    let params = ExecuteCommandParams {
+        command: req.command,
+        arguments: req.arguments,
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    };
+    let (res, _) = requests::execute_command(client, params)
         .await
         .map_err(map_lsp)?;
     Ok(res.0)

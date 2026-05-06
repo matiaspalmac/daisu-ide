@@ -3,12 +3,13 @@
 use std::sync::Arc;
 
 use lsp_types::{
-    CompletionItem, CompletionParams, CompletionResponse, DocumentFormattingParams,
-    DocumentRangeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse,
-    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams, Location,
-    PrepareRenameResponse, ReferenceParams, RenameParams, SignatureHelp, SignatureHelpParams,
-    TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
-    WorkspaceSymbolResponse,
+    CodeActionOrCommand, CodeActionParams, CodeActionResponse, CompletionItem, CompletionParams,
+    CompletionResponse, DocumentFormattingParams, DocumentRangeFormattingParams,
+    DocumentSymbolParams, DocumentSymbolResponse, ExecuteCommandParams, GotoDefinitionParams,
+    GotoDefinitionResponse, Hover, HoverParams, InlayHint, InlayHintParams, Location,
+    PrepareRenameResponse, ReferenceParams, RenameParams, SemanticTokensParams,
+    SemanticTokensResult, SignatureHelp, SignatureHelpParams, TextDocumentPositionParams, TextEdit,
+    WorkspaceEdit, WorkspaceSymbolParams, WorkspaceSymbolResponse,
 };
 use serde_json::Value;
 use tokio::sync::mpsc;
@@ -296,6 +297,127 @@ pub async fn range_formatting(
     send_request(
         &client,
         "textDocument/rangeFormatting",
+        serde_json::to_value(params)?,
+    )
+    .await
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct InlayHintsResult(pub Vec<InlayHint>);
+
+impl<'de> serde::Deserialize<'de> for InlayHintsResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let opt = Option::<Vec<InlayHint>>::deserialize(d)?;
+        Ok(Self(opt.unwrap_or_default()))
+    }
+}
+
+pub async fn inlay_hint(
+    client: Arc<Client>,
+    params: InlayHintParams,
+) -> Result<(InlayHintsResult, RequestId), LspError> {
+    send_request(
+        &client,
+        "textDocument/inlayHint",
+        serde_json::to_value(params)?,
+    )
+    .await
+}
+
+/// Wrapper so `inlayHint/resolve` can be sent through `send_request`'s
+/// Default-bound generic. The inner Option is always Some on a successful
+/// resolve (the LSP spec doesn't allow null), so callers `.unwrap()` it.
+#[derive(Default, Debug, Clone)]
+pub struct InlayHintResolveResult(pub Option<InlayHint>);
+
+impl<'de> serde::Deserialize<'de> for InlayHintResolveResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(Self(Option::<InlayHint>::deserialize(d)?))
+    }
+}
+
+pub async fn inlay_hint_resolve(
+    client: Arc<Client>,
+    hint: InlayHint,
+) -> Result<(InlayHintResolveResult, RequestId), LspError> {
+    send_request(&client, "inlayHint/resolve", serde_json::to_value(hint)?).await
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct SemanticTokensResultWrapper(pub Option<SemanticTokensResult>);
+
+impl<'de> serde::Deserialize<'de> for SemanticTokensResultWrapper {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(Self(Option::<SemanticTokensResult>::deserialize(d)?))
+    }
+}
+
+pub async fn semantic_tokens_full(
+    client: Arc<Client>,
+    params: SemanticTokensParams,
+) -> Result<(SemanticTokensResultWrapper, RequestId), LspError> {
+    send_request(
+        &client,
+        "textDocument/semanticTokens/full",
+        serde_json::to_value(params)?,
+    )
+    .await
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct CodeActionsResult(pub Vec<CodeActionOrCommand>);
+
+impl<'de> serde::Deserialize<'de> for CodeActionsResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let opt = Option::<CodeActionResponse>::deserialize(d)?;
+        Ok(Self(opt.unwrap_or_default()))
+    }
+}
+
+pub async fn code_action(
+    client: Arc<Client>,
+    params: CodeActionParams,
+) -> Result<(CodeActionsResult, RequestId), LspError> {
+    send_request(
+        &client,
+        "textDocument/codeAction",
+        serde_json::to_value(params)?,
+    )
+    .await
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct CodeActionResolveResult(pub Option<lsp_types::CodeAction>);
+
+impl<'de> serde::Deserialize<'de> for CodeActionResolveResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(Self(Option::<lsp_types::CodeAction>::deserialize(d)?))
+    }
+}
+
+pub async fn code_action_resolve(
+    client: Arc<Client>,
+    action: lsp_types::CodeAction,
+) -> Result<(CodeActionResolveResult, RequestId), LspError> {
+    send_request(&client, "codeAction/resolve", serde_json::to_value(action)?).await
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct ExecuteCommandResult(pub Option<Value>);
+
+impl<'de> serde::Deserialize<'de> for ExecuteCommandResult {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(Self(Option::<Value>::deserialize(d)?))
+    }
+}
+
+pub async fn execute_command(
+    client: Arc<Client>,
+    params: ExecuteCommandParams,
+) -> Result<(ExecuteCommandResult, RequestId), LspError> {
+    send_request(
+        &client,
+        "workspace/executeCommand",
         serde_json::to_value(params)?,
     )
     .await
