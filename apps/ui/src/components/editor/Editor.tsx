@@ -116,6 +116,44 @@ export function Editor(): JSX.Element {
     setMonacoNamespace(monaco);
     flushPendingTheme();
     syncActiveTab();
+
+    // WebView2 routes WM_MOUSEWHEEL by Win32 focus, not by hover. After
+    // clicking the sidebar/explorer (or any non-Monaco surface), the
+    // wheel events stop reaching Monaco until the user clicks back into
+    // the editor — even though Chromium internally routes wheel by
+    // hit-test. VS Code doesn't hit this because Electron embeds
+    // Chromium directly; WebView2 has its own input-routing layer that
+    // re-introduces the focus dependency.
+    //
+    // Workaround: pull focus to the editor on pointerenter, skipping
+    // when the user is currently typing in an input/textarea/select or
+    // a contenteditable region (chat composer, settings forms…) so we
+    // don't yank focus mid-keystroke. References:
+    //   - github.com/MicrosoftEdge/WebView2Feedback#829
+    //   - github.com/MicrosoftEdge/WebView2Feedback#3769
+    //   - github.com/microsoft/microsoft-ui-xaml#2931
+    const dom = editor.getDomNode();
+    if (dom) {
+      const onEnter = (): void => {
+        const ae = document.activeElement as HTMLElement | null;
+        const tag = ae?.tagName;
+        const editable =
+          ae?.isContentEditable === true ||
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT";
+        if (editable) return;
+        // Avoid stealing focus when the editor itself already owns it —
+        // re-focusing the same editor scrolls the viewport to the cursor,
+        // which is jarring during simple hover.
+        if (dom.contains(ae)) return;
+        editor.focus();
+      };
+      dom.addEventListener("pointerenter", onEnter, { passive: true });
+      editor.onDidDispose(() => {
+        dom.removeEventListener("pointerenter", onEnter);
+      });
+    }
     editor.onKeyDown((e) => {
       const kind = keyKindFromCode(e.code);
       if (kind) keySoundEngine.play(kind, false);
