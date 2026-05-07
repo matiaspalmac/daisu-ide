@@ -305,6 +305,17 @@ export function Editor(): JSX.Element {
         mouseWheelScrollSensitivity: 1,
         fastScrollSensitivity: 5,
         mouseWheelZoom: false,
+        // Drop Monaco's per-file Unicode/ambiguous-character scan. The
+        // feature is meant for prose-style review of source files (warns
+        // about Cyrillic A vs Latin A homoglyphs, RTL trojans, etc.) and
+        // costs both memory (decoder caches) and per-line scan time.
+        // Daisu's audience is regular code editing, not security review
+        // of pasted text.
+        unicodeHighlight: {
+          ambiguousCharacters: false,
+          invisibleCharacters: false,
+          nonBasicASCII: false,
+        },
         overviewRulerBorder: false,
         stickyScroll: { enabled: true },
       }}

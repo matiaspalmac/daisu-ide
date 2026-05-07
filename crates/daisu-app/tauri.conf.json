@@ -21,7 +21,7 @@
         "fullscreen": false,
         "decorations": false,
         "transparent": false,
-        "additionalBrowserArgs": "--disable-features=msEdgeMouseGestureSupported,msEdgeMouseGestureDefaultEnabled --enable-zero-copy --enable-gpu-rasterization"
+        "additionalBrowserArgs": "--disable-features=msEdgeMouseGestureSupported,msEdgeMouseGestureDefaultEnabled,Translate,AutofillServerCommunication,OptimizationHints,MediaRouter,InterestFeedContentSuggestions,CalculateNativeWinOcclusion --enable-zero-copy --enable-gpu-rasterization"
       }
     ],
     "security": {
