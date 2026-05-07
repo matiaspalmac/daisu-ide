@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from "react";
+import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   CheckCircle,
@@ -25,13 +25,24 @@ import {
   indexStatus,
   type IndexStatus,
 } from "../../../lib/agent-index";
-import { probeOllama, pickBestModel } from "../../../lib/ollama-detect";
+import {
+  probeOllama,
+  pickBestModel,
+  autoPickInstalledOllamaModel,
+} from "../../../lib/ollama-detect";
 import {
   listAllowlist,
   clearAllowlist,
   type AllowlistEntry,
 } from "../../../lib/agent-tools";
 import { translateError } from "../../../lib/error-translate";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../ui/select";
 
 interface TestResult {
   ok: boolean;
@@ -62,6 +73,15 @@ export function AiSettings(): JSX.Element {
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
 
+  // Latest configured model is read via a ref so the probe effect doesn't
+  // re-fire every time the user (or another panel) picks a new model. The
+  // probe is only meaningful when provider or base URL changes — re-running
+  // it on every model edit hits /api/tags on every keystroke.
+  const modelRef = useRef(ai.model);
+  useEffect(() => {
+    modelRef.current = ai.model;
+  }, [ai.model]);
+
   useEffect(() => {
     if (ai.id !== "ollama") {
       setInstalledModels([]);
@@ -71,11 +91,25 @@ export function AiSettings(): JSX.Element {
     void probeOllama(ai.ollamaBaseUrl).then((p) => {
       if (cancelled) return;
       setInstalledModels(p.models);
+      // If the configured model isn't installed locally, repoint to the
+      // best available one. Without this the test-connection POST hits
+      // /api/chat with a model Ollama returns 404 for.
+      const currentModel = modelRef.current;
+      if (
+        p.reachable &&
+        p.models.length > 0 &&
+        !p.models.includes(currentModel)
+      ) {
+        const best = pickBestModel(p.models, currentModel);
+        if (best && best !== currentModel) {
+          void setSetting("aiProvider", { model: best });
+        }
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [ai.id, ai.ollamaBaseUrl]);
+  }, [ai.id, ai.ollamaBaseUrl, setSetting]);
 
   async function handleDetect(): Promise<void> {
     setDetecting(true);
@@ -153,7 +187,7 @@ export function AiSettings(): JSX.Element {
     }
   }
 
-  async function fetchModels(): Promise<void> {
+  const fetchModels = useCallback(async (): Promise<void> => {
     // Pin the provider+url at call time. If the user toggles provider
     // or edits a base URL while the request is in flight, the late
     // result no longer matches `ai.*` and we discard it instead of
@@ -187,7 +221,7 @@ export function AiSettings(): JSX.Element {
     } finally {
       setLoadingModels(false);
     }
-  }
+  }, [ai.id, ai.ollamaBaseUrl, ai.lmstudioBaseUrl]);
 
   // Local-provider URL changes invalidate the previously fetched
   // catalog — that list belongs to the old endpoint.
@@ -196,6 +230,17 @@ export function AiSettings(): JSX.Element {
     setModelsError(null);
   }, [ai.ollamaBaseUrl, ai.lmstudioBaseUrl]);
 
+  // Auto-populate the catalog dropdown so users don't have to hit
+  // "Fetch models" before they can pick one. Skip cloud providers when
+  // no key is configured (the request would fail with a 401).
+  useEffect(() => {
+    if (loading) return;
+    const info = providers.find((p) => p.id === ai.id);
+    if (!info?.implemented) return;
+    if (info.requiresKey && !info.hasKey) return;
+    void fetchModels();
+  }, [ai.id, loading, providers, fetchModels]);
+
   const current = providers.find((p) => p.id === ai.id);
 
   async function handleSelect(id: AgentProviderId): Promise<void> {
@@ -203,7 +248,15 @@ export function AiSettings(): JSX.Element {
     // Use the backend's authoritative defaultModel so this stays in
     // sync with whatever the Rust trait says. Empty string means
     // "no static default" (LM Studio); user picks from the live list.
-    const fallback = providers.find((p) => p.id === id)?.defaultModel ?? "";
+    let fallback = providers.find((p) => p.id === id)?.defaultModel ?? "";
+    if (id === "ollama") {
+      const picked = await autoPickInstalledOllamaModel(
+        ai.ollamaBaseUrl,
+        fallback,
+      );
+      fallback = picked.model;
+      if (picked.reachable) setInstalledModels(picked.installed);
+    }
     await setSetting("aiProvider", {
       id,
       mode: id === "ollama" || id === "lmstudio" ? "local" : "cloud",
@@ -351,13 +404,23 @@ export function AiSettings(): JSX.Element {
             {t("ai.modelLabel")}
           </label>
           <p className="daisu-field-desc">
-            <Trans i18nKey="ai.modelHint" components={{ code: <code /> }} />
+            <Trans
+              i18nKey="ai.modelHint"
+              components={{ code: <code />, em: <em /> }}
+            />
           </p>
         </div>
+        <div className="flex flex-col gap-2 min-w-[260px] max-w-[360px] flex-1">
+        <ModelDropdown
+          providerId={ai.id}
+          model={ai.model}
+          providerModels={providerModels}
+          installedModels={installedModels}
+          onChange={(v) => void setSetting("aiProvider", { model: v })}
+        />
         <input
           id="ai-model"
           type="text"
-          list="provider-models"
           className="daisu-input daisu-input-mono"
           value={ai.model}
           onChange={(e) =>
@@ -366,20 +429,7 @@ export function AiSettings(): JSX.Element {
           spellCheck={false}
           autoComplete="off"
         />
-        {(providerModels.length > 0 || installedModels.length > 0) && (
-          <datalist id="provider-models">
-            {providerModels.map((m) => (
-              <option
-                key={m.id}
-                value={m.id}
-                label={m.displayName ?? undefined}
-              />
-            ))}
-            {ai.id === "ollama" &&
-              providerModels.length === 0 &&
-              installedModels.map((m) => <option key={m} value={m} />)}
-          </datalist>
-        )}
+        </div>
       </div>
       <div className="daisu-field-row">
         <button
@@ -684,5 +734,58 @@ function PermissionsSection(): JSX.Element {
         </div>
       )}
     </>
+  );
+}
+
+interface ModelDropdownProps {
+  providerId: AgentProviderId;
+  model: string;
+  providerModels: ModelInfo[];
+  installedModels: string[];
+  onChange: (model: string) => void;
+}
+
+/**
+ * Dropdown that merges the live catalog (cloud) with installed tags
+ * (Ollama) into a single deduped option set. A native `<datalist>`
+ * filters by current input value in WebView2, so a real Radix Select is
+ * used for a guaranteed-clickable dropdown — the text input next to it
+ * keeps the door open for custom model ids that aren't listed.
+ */
+function ModelDropdown({
+  providerId,
+  model,
+  providerModels,
+  installedModels,
+  onChange,
+}: ModelDropdownProps): JSX.Element | null {
+  const { t } = useTranslation();
+  const choices = new Map<string, string>();
+  for (const m of providerModels) {
+    choices.set(m.id, m.displayName ?? m.id);
+  }
+  if (providerId === "ollama") {
+    for (const m of installedModels) {
+      if (!choices.has(m)) choices.set(m, m);
+    }
+  }
+  const items = Array.from(choices.entries());
+  if (items.length === 0) return null;
+  // Radix Select rejects empty-string values; omit `value` when the
+  // configured model is blank so the trigger renders the placeholder.
+  const selectProps = model.length > 0 ? { value: model } : {};
+  return (
+    <Select {...selectProps} onValueChange={onChange}>
+      <SelectTrigger aria-label={t("ai.selectModel")}>
+        <SelectValue placeholder={t("ai.modelChoosePlaceholder")} />
+      </SelectTrigger>
+      <SelectContent>
+        {items.map(([id, label]) => (
+          <SelectItem key={id} value={id}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

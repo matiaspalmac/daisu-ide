@@ -1,5 +1,8 @@
 //! Persistent memory store backed by per-workspace SQLite.
 
+pub mod tokens;
+pub mod window;
+
 use std::path::Path;
 use std::sync::Mutex;
 

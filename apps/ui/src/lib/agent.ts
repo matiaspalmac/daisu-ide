@@ -158,6 +158,15 @@ export function deleteConversation(
   });
 }
 
+/**
+ * Conversation mode the user picks in the composer:
+ *  - `auto`: heuristic decides whether to advertise tools (default).
+ *  - `chat`: tools never advertised, model answers in plain text.
+ *  - `agent`: full tool access, heuristic disabled.
+ *  - `plan`: read-only tools only, plan-first system prompt addendum.
+ */
+export type ChatMode = "auto" | "chat" | "agent" | "plan";
+
 export interface SendMessageOptions {
   workspacePath: string;
   conversationId: string;
@@ -165,6 +174,8 @@ export interface SendMessageOptions {
   systemPrompt?: string;
   baseUrl?: string;
   temperature?: number;
+  /** Conversation mode: auto (default heuristic) | chat | agent | plan. */
+  chatMode?: ChatMode;
 }
 
 export function sendMessage(opts: SendMessageOptions): Promise<string> {
@@ -180,6 +191,7 @@ export function cancelRun(runId: string): Promise<boolean> {
 export type StreamPayload =
   | { type: "started"; runId: string; conversationId: string }
   | { type: "delta"; runId: string; text: string }
+  | { type: "replaceText"; runId: string; text: string }
   | { type: "warning"; runId: string; message: string }
   | { type: "toolUseStart"; runId: string; id: string; name: string }
   | { type: "toolUseArgsDelta"; runId: string; id: string; fragment: string }

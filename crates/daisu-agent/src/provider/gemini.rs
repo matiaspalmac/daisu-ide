@@ -378,6 +378,8 @@ impl LlmProvider for GeminiProvider {
         let usage = env.usage.map(|u| TokenUsage {
             input_tokens: u.prompt_token_count,
             output_tokens: u.candidates_token_count,
+            cache_read_tokens: 0,
+            cache_creation_tokens: 0,
         });
         Ok(CompletionResponse {
             content,
@@ -477,6 +479,8 @@ impl LlmProvider for GeminiProvider {
                             usage = Some(TokenUsage {
                                 input_tokens: u.prompt_token_count,
                                 output_tokens: u.candidates_token_count,
+                                cache_read_tokens: 0,
+                                cache_creation_tokens: 0,
                             });
                         }
                     }

@@ -60,9 +60,14 @@ export const DAISU_NOCTURNE: editor.IStandaloneThemeData = {
     "editorGutter.background": "#0E0E13",
     "editorOverviewRuler.border": "#00000000",
     "scrollbar.shadow": "#00000000",
-    "scrollbarSlider.background": "#E8E4DA0A",
-    "scrollbarSlider.hoverBackground": "#E8E4DA14",
-    "scrollbarSlider.activeBackground": "#D4A57433",
+    // Slider alphas were ~10x dimmer than VS Code's defaults
+    // (0.039 / 0.078 / 0.2 vs 0.4 / 0.7 / 0.4), which made the
+    // permanent scrollbar functionally invisible against the dark
+    // canvas. Bumped to match VS Code's perceptual weight while
+    // keeping the kintsugi-gold tint on the active slider.
+    "scrollbarSlider.background": "#E8E4DA40",
+    "scrollbarSlider.hoverBackground": "#E8E4DA80",
+    "scrollbarSlider.activeBackground": "#D4A57499",
     "minimap.background": "#0E0E13",
   },
 };

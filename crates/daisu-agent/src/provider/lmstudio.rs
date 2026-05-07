@@ -361,6 +361,8 @@ impl LlmProvider for LmStudioProvider {
             usage: env.usage.map(|u| TokenUsage {
                 input_tokens: u.prompt_tokens,
                 output_tokens: u.completion_tokens,
+                cache_read_tokens: 0,
+                cache_creation_tokens: 0,
             }),
             tool_calls,
         })
@@ -481,6 +483,8 @@ impl LlmProvider for LmStudioProvider {
                             usage = Some(TokenUsage {
                                 input_tokens: u.prompt_tokens,
                                 output_tokens: u.completion_tokens,
+                                cache_read_tokens: 0,
+                                cache_creation_tokens: 0,
                             });
                         }
                     }

@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type JSX, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type JSX,
+  type FormEvent,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChatCircle,
@@ -13,8 +20,18 @@ import {
   CheckCircle,
   XCircle,
 } from "@phosphor-icons/react";
-import { useAgent, type ChatMessage, type ToolBlock } from "../../stores/agentStore";
+import {
+  useAgent,
+  type ChatMessage,
+  type ToolBlock,
+  type ChatMode,
+} from "../../stores/agentStore";
 import { useWorkspace } from "../../stores/workspaceStore";
+import { PermissionInline } from "./PermissionModal";
+import { ModelInlinePicker } from "./ModelInlinePicker";
+import { ToolStatusBadge } from "./ToolStatusBadge";
+import { StreamingJson } from "./StreamingJson";
+import { ToolResultRenderer } from "./ToolResultRenderer";
 
 export function ChatPanel(): JSX.Element {
   const { t } = useTranslation();
@@ -31,6 +48,8 @@ export function ChatPanel(): JSX.Element {
   const sendMessage = useAgent((s) => s.sendMessage);
   const cancel = useAgent((s) => s.cancel);
   const attach = useAgent((s) => s.attachListener);
+  const chatMode = useAgent((s) => s.chatMode);
+  const setChatMode = useAgent((s) => s.setChatMode);
 
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -72,6 +91,7 @@ export function ChatPanel(): JSX.Element {
           <span className="daisu-glyph" aria-hidden="true">話</span>
           <span>{t("chat.title")}</span>
         </div>
+        <ModelInlinePicker />
         <button
           type="button"
           className="daisu-icon-btn"
@@ -115,7 +135,14 @@ export function ChatPanel(): JSX.Element {
         </div>
       )}
 
-      <div ref={scrollRef} className="daisu-agent-messages">
+      <div
+        ref={scrollRef}
+        className="daisu-agent-messages"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        aria-label={t("chat.panelAria")}
+      >
         {messages.length === 0 && (
           <p className="daisu-agent-empty-hint">
             {t("chat.emptyConversation")}
@@ -132,7 +159,23 @@ export function ChatPanel(): JSX.Element {
         )}
       </div>
 
+      <PermissionInline />
+
       <form className="daisu-agent-composer" onSubmit={handleSubmit}>
+        <div
+          className="daisu-agent-mode-row"
+          role="radiogroup"
+          aria-label={t("chat.modePickerLabel")}
+        >
+          {(["auto", "chat", "agent", "plan"] as const).map((m) => (
+            <ModeButton
+              key={m}
+              mode={m}
+              active={chatMode === m}
+              onPick={setChatMode}
+            />
+          ))}
+        </div>
         <label className="sr-only" htmlFor="agent-composer-input">
           {t("chat.messageLabel")}
         </label>
@@ -178,6 +221,44 @@ export function ChatPanel(): JSX.Element {
   );
 }
 
+interface ModeButtonProps {
+  mode: ChatMode;
+  active: boolean;
+  onPick: (m: ChatMode) => void;
+}
+
+// Static key map keeps i18next's typed key union happy. Using a template
+// literal would force `t()` into the dynamic-string overload that
+// CustomTypeOptions disables.
+const MODE_LABEL_KEYS = {
+  auto: "chat.modeAuto",
+  chat: "chat.modeChat",
+  agent: "chat.modeAgent",
+  plan: "chat.modePlan",
+} as const;
+const MODE_TIP_KEYS = {
+  auto: "chat.modeAutoTip",
+  chat: "chat.modeChatTip",
+  agent: "chat.modeAgentTip",
+  plan: "chat.modePlanTip",
+} as const;
+
+function ModeButton({ mode, active, onPick }: ModeButtonProps): JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      className={`daisu-agent-mode${active ? " is-active" : ""}`}
+      title={t(MODE_TIP_KEYS[mode])}
+      onClick={() => onPick(mode)}
+    >
+      {t(MODE_LABEL_KEYS[mode])}
+    </button>
+  );
+}
+
 interface MessageViewProps {
   message: ChatMessage;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -216,56 +297,87 @@ interface ToolBlockViewProps {
 }
 
 function ToolBlockView({ block, t }: ToolBlockViewProps): JSX.Element {
-  const [expanded, setExpanded] = useState(false);
   const status = block.status;
   const ok = block.result?.ok ?? null;
+  // Auto-expand while running and while args stream in. Collapse on a
+  // successful result, keep expanded on failure so the user can read the
+  // error. A user toggle takes over from there for the rest of the
+  // session.
+  const [userOverride, setUserOverride] = useState<boolean | null>(null);
+  const autoExpanded =
+    status === "running" || status === "done" || (status === "result" && ok === false);
+  const expanded = userOverride ?? autoExpanded;
+
+  // Map ToolBlock status → ToolStatusBadge status. Result + ok=true is
+  // "done", result + ok=false is "errored", everything else maps 1:1.
+  let badgeStatus: import("./ToolStatusBadge").ToolStatus = "running";
+  if (status === "running" || status === "done") badgeStatus = "running";
+  else if (status === "result" && ok) badgeStatus = "done";
+  else if (status === "result" && ok === false) {
+    const out = block.result?.output as Record<string, unknown> | undefined;
+    badgeStatus = out && typeof out.denied === "string" ? "denied" : "errored";
+  }
+  const latencyMs =
+    block.completedAt && block.startedAt
+      ? block.completedAt - block.startedAt
+      : undefined;
+
   const Icon = expanded ? CaretDown : CaretRight;
+  const summary = useMemo(() => oneLineSummary(block), [block]);
+
   return (
     <div
       className={`daisu-agent-toolcall is-${status}${
         ok === false ? " is-failed" : ""
-      }`}
+      }${expanded ? " is-expanded" : ""}`}
     >
       <button
         type="button"
         className="daisu-agent-toolcall-head"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => setUserOverride(!expanded)}
         aria-expanded={expanded}
       >
         <Icon size={11} />
         <Wrench size={12} />
         <span className="daisu-agent-toolcall-name">{block.name}</span>
-        {status === "running" && (
-          <span className="daisu-agent-toolcall-state">
-            {t("chat.toolRunning", { defaultValue: "calling…" })}
-          </span>
+        {summary && (
+          <span className="daisu-agent-toolcall-summary">{summary}</span>
         )}
-        {status === "done" && (
-          <span className="daisu-agent-toolcall-state">
-            {t("chat.toolPending", { defaultValue: "awaiting result" })}
-          </span>
-        )}
-        {status === "result" && ok && (
-          <CheckCircle size={11} weight="fill" className="text-success" />
-        )}
-        {status === "result" && ok === false && (
-          <XCircle size={11} weight="fill" className="text-warn" />
-        )}
+        <ToolStatusBadge
+          status={badgeStatus}
+          {...(latencyMs != null ? { latencyMs } : {})}
+        />
       </button>
       {expanded && (
         <div className="daisu-agent-toolcall-body">
-          <pre className="daisu-agent-toolcall-args">
-            {block.argsJson || "{}"}
-          </pre>
+          <StreamingJson raw={block.argsJson} done={status !== "running"} />
           {block.result && (
-            <pre className="daisu-agent-toolcall-result">
-              {typeof block.result.output === "string"
-                ? block.result.output
-                : JSON.stringify(block.result.output, null, 2)}
-            </pre>
+            <ToolResultRenderer
+              name={block.name}
+              output={block.result.output}
+              ok={block.result.ok}
+            />
           )}
         </div>
       )}
     </div>
   );
+}
+
+/**
+ * Build a one-line summary like `src/main.rs` (read_file) or `.` (list_dir)
+ * from the partial argsJson buffer. Best-effort — returns empty string
+ * when args haven't streamed enough to be useful.
+ */
+function oneLineSummary(block: ToolBlock): string {
+  if (!block.argsJson) return "";
+  try {
+    const args = JSON.parse(block.argsJson) as Record<string, unknown>;
+    if (typeof args.path === "string") return args.path;
+    if (typeof args.pattern === "string") return args.pattern;
+    if (typeof args.command === "string") return args.command;
+  } catch {
+    // Mid-stream JSON, ignore.
+  }
+  return "";
 }

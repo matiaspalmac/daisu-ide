@@ -116,6 +116,44 @@ export function Editor(): JSX.Element {
     setMonacoNamespace(monaco);
     flushPendingTheme();
     syncActiveTab();
+
+    // WebView2 routes WM_MOUSEWHEEL by Win32 focus, not by hover. After
+    // clicking the sidebar/explorer (or any non-Monaco surface), the
+    // wheel events stop reaching Monaco until the user clicks back into
+    // the editor — even though Chromium internally routes wheel by
+    // hit-test. VS Code doesn't hit this because Electron embeds
+    // Chromium directly; WebView2 has its own input-routing layer that
+    // re-introduces the focus dependency.
+    //
+    // Workaround: pull focus to the editor on pointerenter, skipping
+    // when the user is currently typing in an input/textarea/select or
+    // a contenteditable region (chat composer, settings forms…) so we
+    // don't yank focus mid-keystroke. References:
+    //   - github.com/MicrosoftEdge/WebView2Feedback#829
+    //   - github.com/MicrosoftEdge/WebView2Feedback#3769
+    //   - github.com/microsoft/microsoft-ui-xaml#2931
+    const dom = editor.getDomNode();
+    if (dom) {
+      const onEnter = (): void => {
+        const ae = document.activeElement as HTMLElement | null;
+        const tag = ae?.tagName;
+        const editable =
+          ae?.isContentEditable === true ||
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT";
+        if (editable) return;
+        // Avoid stealing focus when the editor itself already owns it —
+        // re-focusing the same editor scrolls the viewport to the cursor,
+        // which is jarring during simple hover.
+        if (dom.contains(ae)) return;
+        editor.focus();
+      };
+      dom.addEventListener("pointerenter", onEnter, { passive: true });
+      editor.onDidDispose(() => {
+        dom.removeEventListener("pointerenter", onEnter);
+      });
+    }
     editor.onKeyDown((e) => {
       const kind = keyKindFromCode(e.code);
       if (kind) keySoundEngine.play(kind, false);
@@ -195,6 +233,18 @@ export function Editor(): JSX.Element {
 
   useEffect(() => {
     syncActiveTab();
+    // Monaco's automaticLayout doesn't always recover when the editor
+    // host transitions from hidden (Home tab active) back to visible —
+    // the canvas can stay black until something else nudges layout.
+    // Force a relayout in the next frame whenever the active tab
+    // changes back to a real file so the viewport repaints cleanly.
+    if (activeTabId) {
+      const raf = requestAnimationFrame(() => {
+        editorRef.current?.layout();
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTabId]);
 
@@ -222,7 +272,11 @@ export function Editor(): JSX.Element {
         scrollBeyondLastLine: false,
         wordWrap: "off",
         renderLineHighlight: "all",
-        bracketPairColorization: { enabled: true },
+        // Off matches the standalone Monaco default. The bracket-pair tree
+        // grows per-model and is purely cosmetic — disabling it shaved a
+        // couple MB across an open workspace without changing how LSP
+        // diagnostics or syntax highlighting render.
+        bracketPairColorization: { enabled: false },
         guides: {
           indentation: true,
           highlightActiveIndentation: true,
@@ -232,9 +286,39 @@ export function Editor(): JSX.Element {
         roundedSelection: false,
         renderWhitespace: "selection",
         scrollbar: {
-          verticalScrollbarSize: 10,
-          horizontalScrollbarSize: 10,
+          // VS Code-style permanent scrollbars. Monaco's default is to
+          // fade out when the user clicks elsewhere, which left users
+          // with no overflow indicator. Sizes match VS Code's
+          // EditorScrollbar defaults (vertical 14 / horizontal 12).
+          vertical: "visible",
+          horizontal: "visible",
+          verticalScrollbarSize: 14,
+          horizontalScrollbarSize: 12,
+          verticalSliderSize: 14,
+          horizontalSliderSize: 12,
           useShadows: false,
+          scrollByPage: false,
+          // Keep Monaco's default (true) — when this is false, hovering
+          // the editor without focus lets the wheel event bubble to the
+          // nearest scrollable ancestor, so the user has to click into
+          // the editor before scrolling works (microsoft/monaco-editor
+          // #69 + #4599).
+        },
+        // Pin Monaco's wheel defaults so a future version bump can't
+        // silently drift the scroll feel.
+        mouseWheelScrollSensitivity: 1,
+        fastScrollSensitivity: 5,
+        mouseWheelZoom: false,
+        // Drop Monaco's per-file Unicode/ambiguous-character scan. The
+        // feature is meant for prose-style review of source files (warns
+        // about Cyrillic A vs Latin A homoglyphs, RTL trojans, etc.) and
+        // costs both memory (decoder caches) and per-line scan time.
+        // Daisu's audience is regular code editing, not security review
+        // of pasted text.
+        unicodeHighlight: {
+          ambiguousCharacters: false,
+          invisibleCharacters: false,
+          nonBasicASCII: false,
         },
         overviewRulerBorder: false,
         stickyScroll: { enabled: true },

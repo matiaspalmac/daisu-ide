@@ -46,3 +46,6 @@ tree-sitter-python.workspace = true
 tree-sitter-go.workspace = true
 sha1.workspace = true
 ignore = "0.4"
+jsonschema = { version = "0.30", default-features = false }
+tiktoken-rs = "0.11"
+once_cell = "1"

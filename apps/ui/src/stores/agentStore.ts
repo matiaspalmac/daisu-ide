@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   AGENT_STREAM_EVENT,
+  type ChatMode,
   type ConversationSummary,
   type StoredMessage,
   type StreamPayload,
@@ -15,6 +16,8 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useSettings } from "./settingsStore";
 import i18n from "../i18n";
 
+export type { ChatMode } from "../lib/agent";
+
 export interface ToolBlock {
   /** Provider-issued id used to correlate args + result. */
   id: string;
@@ -26,6 +29,12 @@ export interface ToolBlock {
     ok: boolean;
     output: unknown;
   };
+  /** Wall-clock millis when ToolUseStart fired. */
+  startedAt?: number;
+  /** Wall-clock millis when args streaming finished (ToolUseDone). */
+  argsAt?: number;
+  /** Wall-clock millis when ToolResult arrived. */
+  completedAt?: number;
 }
 
 export interface ChatMessage {
@@ -48,6 +57,7 @@ interface AgentState {
   runId: string | null;
   error: string | null;
   workspacePath: string | null;
+  chatMode: ChatMode;
 
   setWorkspace: (path: string | null) => Promise<void>;
   refreshConversations: () => Promise<void>;
@@ -57,9 +67,23 @@ interface AgentState {
   sendMessage: (text: string) => Promise<void>;
   cancel: () => Promise<void>;
   attachListener: () => Promise<UnlistenFn>;
+  setChatMode: (mode: ChatMode) => void;
 }
 
 let listenerRef: Promise<UnlistenFn> | null = null;
+
+const CHAT_MODE_STORAGE_KEY = "daisu:chat-mode";
+function loadStoredChatMode(): ChatMode {
+  try {
+    const v = localStorage.getItem(CHAT_MODE_STORAGE_KEY);
+    if (v === "chat" || v === "agent" || v === "plan" || v === "auto") {
+      return v;
+    }
+  } catch {
+    /* localStorage may be unavailable in tests */
+  }
+  return "auto";
+}
 
 export const useAgent = create<AgentState>((set, get) => ({
   conversations: [],
@@ -69,6 +93,16 @@ export const useAgent = create<AgentState>((set, get) => ({
   runId: null,
   error: null,
   workspacePath: null,
+  chatMode: loadStoredChatMode(),
+
+  setChatMode: (mode) => {
+    set({ chatMode: mode });
+    try {
+      localStorage.setItem(CHAT_MODE_STORAGE_KEY, mode);
+    } catch {
+      /* noop */
+    }
+  },
 
   setWorkspace: async (path) => {
     set({
@@ -181,6 +215,7 @@ export const useAgent = create<AgentState>((set, get) => ({
             ? { baseUrl: ai.lmstudioBaseUrl }
             : {}),
         temperature: ai.temperature,
+        chatMode: get().chatMode,
       });
       set({ runId });
     } catch (e) {
@@ -195,8 +230,22 @@ export const useAgent = create<AgentState>((set, get) => ({
 
   cancel: async () => {
     const id = get().runId;
+    // Free the UI immediately so the user gets out of the streaming
+    // state even if the backend Cancelled event takes a while (slow
+    // Ollama models can keep generating on the server side after the
+    // HTTP connection drops). The pending message is marked cancelled
+    // here so it's not left dangling if the backend never replies.
+    const cancelled = i18n.t("chat.cancelled");
+    const msgs = get().messages.map((m) =>
+      m.pending ? { ...m, pending: false, warning: cancelled } : m,
+    );
+    set({ messages: msgs, isStreaming: false, runId: null });
     if (!id) return;
-    await cancelRun(id);
+    try {
+      await cancelRun(id);
+    } catch {
+      /* best-effort: backend may have already finished */
+    }
   },
 
   attachListener: async () => {
@@ -224,6 +273,15 @@ export const useAgent = create<AgentState>((set, get) => ({
           };
           set({ messages: msgs });
         }
+      } else if (payload.type === "replaceText") {
+        // Backend stripped a tool-call JSON payload out of the streamed
+        // text. Replace the pending message body wholesale.
+        const msgs = state.messages.slice();
+        const idx = msgs.findIndex((m) => m.pending);
+        if (idx >= 0 && msgs[idx]) {
+          msgs[idx] = { ...msgs[idx], content: payload.text };
+          set({ messages: msgs });
+        }
       } else if (payload.type === "warning") {
         const msgs = state.messages.slice();
         const idx = msgs.findIndex((m) => m.pending);
@@ -241,6 +299,7 @@ export const useAgent = create<AgentState>((set, get) => ({
             name: payload.name,
             argsJson: "",
             status: "running",
+            startedAt: Date.now(),
           };
           msgs[idx] = {
             ...msgs[idx],
@@ -265,7 +324,9 @@ export const useAgent = create<AgentState>((set, get) => ({
         const idx = msgs.findIndex((m) => m.pending);
         if (idx >= 0 && msgs[idx]?.toolCalls) {
           const calls = msgs[idx].toolCalls!.map((c) =>
-            c.id === payload.id ? { ...c, status: "done" as const } : c,
+            c.id === payload.id
+              ? { ...c, status: "done" as const, argsAt: Date.now() }
+              : c,
           );
           msgs[idx] = { ...msgs[idx], toolCalls: calls };
           set({ messages: msgs });
@@ -285,6 +346,7 @@ export const useAgent = create<AgentState>((set, get) => ({
               ...c,
               status: "result" as const,
               result: { ok: payload.ok, output: payload.output },
+              completedAt: Date.now(),
             };
           });
           return changed ? { ...m, toolCalls: next } : m;
@@ -303,8 +365,9 @@ export const useAgent = create<AgentState>((set, get) => ({
         set({ messages: msgs, isStreaming: false, runId: null });
         void get().refreshConversations();
       } else if (payload.type === "cancelled") {
+        const cancelled = i18n.t("chat.cancelled");
         const msgs = state.messages.map((m) =>
-          m.pending ? { ...m, pending: false, warning: "Cancelado" } : m,
+          m.pending ? { ...m, pending: false, warning: cancelled } : m,
         );
         set({ messages: msgs, isStreaming: false, runId: null });
       } else if (payload.type === "error") {

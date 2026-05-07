@@ -36,7 +36,10 @@ export function TerminalView({ cwd, shellId, onReady, onExit }: Props): JSX.Elem
       fontSize: 13,
       cursorBlink: true,
       allowTransparency: false,
-      scrollback: 5000,
+      // Each scrollback line keeps a parsed cell buffer in memory; 5000 was
+      // ~3 MB per terminal, 2000 covers the realistic re-read window for
+      // a CI build / test run without holding stale output forever.
+      scrollback: 2000,
       macOptionIsMeta: true,
       // Required for Unicode11Addon (sets `term.unicode.activeVersion`).
       allowProposedApi: true,
