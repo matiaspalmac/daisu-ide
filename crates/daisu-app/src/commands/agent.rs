@@ -538,21 +538,21 @@ fn extract_fallback_tool_calls(text: &str, registry: &Arc<ToolRegistry>) -> Fall
 /// surrounding prose often has dangling empties; this keeps the chat
 /// transcript readable.
 fn collapse_blank_runs(s: &str) -> String {
+    // Drop blank lines entirely so the prose around a consumed tool-call
+    // block reads as one paragraph instead of inheriting the vertical
+    // gap that the fenced JSON used to occupy. Non-blank lines join with
+    // a single newline.
     let mut out = String::with_capacity(s.len());
-    let mut blank_streak = 0u32;
     for line in s.lines() {
         if line.trim().is_empty() {
-            blank_streak += 1;
-            if blank_streak <= 1 {
-                out.push('\n');
-            }
-        } else {
-            blank_streak = 0;
-            out.push_str(line);
+            continue;
+        }
+        if !out.is_empty() {
             out.push('\n');
         }
+        out.push_str(line);
     }
-    out.trim_end().to_string()
+    out
 }
 
 /// Walk a byte slice starting at an opening `{` and return the index of
