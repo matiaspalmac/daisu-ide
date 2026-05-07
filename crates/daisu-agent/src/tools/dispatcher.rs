@@ -295,6 +295,11 @@ pub(crate) fn resolve_within(cwd: &Path, raw: &str) -> AgentResult<PathBuf> {
 /// reserved DOS device names (CON, PRN, AUX, NUL, COM1-9, LPT1-9 — opening
 /// any of these on Windows opens a device, not a file). Returns Some(reason)
 /// when the path should be rejected.
+const RESERVED_DOS_NAMES: &[&str] = &[
+    "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
+    "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+];
+
 fn reject_windows_path_traps(raw: &str) -> Option<&'static str> {
     let lower = raw.to_ascii_lowercase();
     if lower.starts_with(r"\\?\") || lower.starts_with(r"\\.\") {
@@ -303,15 +308,14 @@ fn reject_windows_path_traps(raw: &str) -> Option<&'static str> {
     if lower.starts_with(r"\\") {
         return Some("UNC path not allowed");
     }
-    const RESERVED: &[&str] = &[
-        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
-        "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
-    ];
     let stem = std::path::Path::new(&lower)
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("");
-    if RESERVED.iter().any(|r| stem.eq_ignore_ascii_case(r)) {
+    if RESERVED_DOS_NAMES
+        .iter()
+        .any(|r| stem.eq_ignore_ascii_case(r))
+    {
         return Some("reserved Windows device name");
     }
     None
@@ -321,6 +325,7 @@ fn reject_windows_path_traps(raw: &str) -> Option<&'static str> {
 /// - workspace-absolute paths (`C:\Proyectos\foo\src\main.rs` when
 ///   workspace = `C:\Proyectos\foo`) → `src\main.rs`.
 /// - forward slashes on Windows → backslashes.
+///
 /// Anything that doesn't match either case passes through unchanged.
 fn coerce_to_relative(cwd: &Path, raw: &str) -> String {
     let normalised_seps = if cfg!(windows) {

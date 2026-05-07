@@ -24,6 +24,6 @@ async fn manager_loads_default_config_and_reports_statuses() {
     // is one of the expected two.
     assert!(matches!(
         ra.resolution,
-        ResolutionPublic::Found(_) | ResolutionPublic::Missing
+        ResolutionPublic::Found { .. } | ResolutionPublic::Missing
     ));
 }

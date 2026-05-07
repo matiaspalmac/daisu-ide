@@ -36,6 +36,14 @@ pub fn context_window_for(model: &str) -> u32 {
 /// model context, while preserving the first `KEEP_FIRST` messages and
 /// tool_use/tool_result pairing. Mutates in place.
 pub fn slide(msgs: &mut Vec<Message>, max_context: u32) {
+    // u32 → f32 narrows precision past 2^24 but max_context tops out at
+    // ~10^6 in practice (1M-token frontier models), well inside f32's
+    // exact-integer range.
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
     let target = ((max_context as f32) * TARGET_RATIO) as u32;
 
     // Hard floor: never compress past KEEP_FIRST + the most recent few

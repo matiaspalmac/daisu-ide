@@ -6,12 +6,13 @@
 //! about. The provider's official `count_tokens` endpoints add 100-300ms
 //! per call and are reserved for offline cost reports.
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use tiktoken_rs::{o200k_base, CoreBPE};
 
 use crate::provider::Message;
 
-static BPE: Lazy<CoreBPE> = Lazy::new(|| o200k_base().expect("o200k_base tokenizer initialises"));
+static BPE: LazyLock<CoreBPE> =
+    LazyLock::new(|| o200k_base().expect("o200k_base tokenizer initialises"));
 
 /// Token count for a free-form string.
 #[must_use]

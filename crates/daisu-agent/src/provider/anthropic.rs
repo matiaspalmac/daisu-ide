@@ -166,7 +166,9 @@ impl AnthropicProvider {
         // Cheap proxy: char count / 4 for a BPE estimate. We'd rather
         // skip a marginal cache than hit the API rejection path.
         let estimate_tokens = |v: &Value| -> u32 {
-            (serde_json::to_string(v).map(|s| s.len()).unwrap_or(0) / 4) as u32
+            #[allow(clippy::cast_possible_truncation)]
+            let bytes = serde_json::to_string(v).map_or(0, |s| s.len());
+            (bytes / 4) as u32
         };
         let stable_payload_tokens = estimate_tokens(&body["system"])
             + estimate_tokens(body.get("tools").unwrap_or(&Value::Null));
@@ -319,6 +321,11 @@ enum ContentBlock {
 /// Cache fields land here too — Anthropic returns them on every response
 /// once any block carries `cache_control`. Both default to 0 when caching
 /// is off so reading a cache-less response stays cheap.
+///
+/// Field names mirror Anthropic's wire format (`input_tokens`,
+/// `cache_read_input_tokens`, …) — renaming them would break serde
+/// deserialization, so the shared `_tokens` postfix is intentional.
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Deserialize, Default, Clone, Copy)]
 struct EnvelopeUsage {
     #[serde(default)]
@@ -626,25 +633,22 @@ impl LlmProvider for AnthropicProvider {
                             } else {
                                 match serde_json::from_str::<Value>(&p.args_json) {
                                     Ok(v) => v,
-                                    Err(_) => match repair_truncated_json(&p.args_json) {
-                                        Some(v) => {
-                                            yield StreamEvent::Warning {
-                                                message: format!(
-                                                    "tool args for '{}' were truncated; repaired",
-                                                    p.name
-                                                ),
-                                            };
-                                            v
-                                        }
-                                        None => {
-                                            yield StreamEvent::Warning {
-                                                message: format!(
-                                                    "tool args for '{}' malformed; falling back to {{}}",
-                                                    p.name
-                                                ),
-                                            };
-                                            json!({})
-                                        }
+                                    Err(_) => if let Some(v) = repair_truncated_json(&p.args_json) {
+                                        yield StreamEvent::Warning {
+                                            message: format!(
+                                                "tool args for '{}' were truncated; repaired",
+                                                p.name
+                                            ),
+                                        };
+                                        v
+                                    } else {
+                                        yield StreamEvent::Warning {
+                                            message: format!(
+                                                "tool args for '{}' malformed; falling back to {{}}",
+                                                p.name
+                                            ),
+                                        };
+                                        json!({})
                                     },
                                 }
                             };

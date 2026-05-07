@@ -54,7 +54,7 @@ fn map_agent(e: daisu_agent::AgentError) -> AppError {
     AppError::Internal(format!("agent: {e}"))
 }
 
-/// Long-form default system prompt for cloud providers (Anthropic, OpenAI,
+/// Long-form default system prompt for cloud providers (Anthropic, `OpenAI`,
 /// Gemini). Drawn from the May 2026 prompt research pass — fuses
 /// Cursor's "only call tools when necessary" line, Lovable's "default to
 /// discussion mode" pattern, and Cline's positive/negative few-shot
@@ -163,7 +163,7 @@ Examples:\n\
 /// drops the call. Conversion rules:
 /// - strip namespace prefixes separated by `.` or `::`,
 /// - kebab `-` and whitespace become `_`,
-/// - camelCase / PascalCase split on uppercase boundaries,
+/// - `camelCase` / `PascalCase` split on uppercase boundaries,
 /// - lowercased throughout.
 fn normalize_tool_name(raw: &str) -> String {
     let mut s = raw.trim();
@@ -207,7 +207,8 @@ fn normalize_tool_name(raw: &str) -> String {
 ///    / Aider / 20+ others)
 /// 3. `CLAUDE.md` (Anthropic Claude Code convention)
 /// 4. `.cursorrules` (legacy single-file Cursor)
-/// Returns the trimmed file contents or None when none of these exist.
+///
+/// Returns the trimmed file contents or `None` when none of these exist.
 /// Capped at 32 KiB to keep the prompt tail manageable.
 fn load_workspace_rules(workspace: &std::path::Path) -> Option<String> {
     const MAX_BYTES: u64 = 32 * 1024;
@@ -296,11 +297,9 @@ fn dedupe_file_reads(messages: &mut [Message]) {
         return;
     }
     for (assistant_idx, tool_id, replacement) in redactions {
-        for j in (assistant_idx + 1)..messages.len() {
-            if matches!(messages[j].role, Role::Tool)
-                && messages[j].tool_call_id.as_deref() == Some(&tool_id)
-            {
-                messages[j].content = replacement.clone();
+        for m in messages.iter_mut().skip(assistant_idx + 1) {
+            if matches!(m.role, Role::Tool) && m.tool_call_id.as_deref() == Some(&tool_id) {
+                m.content.clone_from(&replacement);
                 break;
             }
         }
@@ -357,20 +356,20 @@ fn repair_hint_for(name: &str, args: &serde_json::Value, err: &str) -> String {
 /// tools to the model so small local models (llama3.2:3b, qwen-coder:7b)
 /// don't reflexively call `list_dir(".")` for greetings. Action verbs
 /// in any of EN/ES/PT keep tools enabled.
+// Action verbs that imply tool use. Match as whole words/prefixes so
+// "lista" catches "listame", "listar", "list".
+const ACTION_PREFIXES: &[&str] = &[
+    "lee ", "leer", "lis", "list", "ver ", "muestr", "abre ", "abrir", "open ", "read ", "show ",
+    "find ", "busca", "search", "grep", "escrib", "write ", "crea ", "create", "borra", "delet",
+    "remove", "edita", "edit ", "modif", "run ", "ejecut", "git ", "diff", "estado", "status",
+    "analiz", "analyse", "analyze", "revis", "explica", "explain", "checa", "check ",
+];
+
 fn is_conversational_opener(text: &str) -> bool {
     let lower = text.trim().to_lowercase();
     if lower.is_empty() {
         return false;
     }
-    // Action verbs that imply tool use. Match as whole words/prefixes so
-    // "lista" catches "listame", "listar", "list".
-    const ACTION_PREFIXES: &[&str] = &[
-        "lee ", "leer", "lis", "list", "ver ", "muestr", "abre ", "abrir", "open ", "read ",
-        "show ", "find ", "busca", "search", "grep", "escrib", "write ", "crea ", "create",
-        "borra", "delet", "remove", "edita", "edit ", "modif", "run ", "ejecut", "git ", "diff",
-        "estado", "status", "analiz", "analyse", "analyze", "revis", "explica", "explain", "checa",
-        "check ",
-    ];
     for kw in ACTION_PREFIXES {
         if lower.contains(kw) {
             return false;
@@ -479,8 +478,7 @@ fn extract_fallback_tool_calls(text: &str, registry: &Arc<ToolRegistry>) -> Fall
         let body_end = text[body_start..]
             .find("<|eom_id|>")
             .or_else(|| text[body_start..].find("<|eot_id|>"))
-            .map(|n| body_start + n)
-            .unwrap_or(text.len());
+            .map_or(text.len(), |n| body_start + n);
         if push_call(&mut out, &text[body_start..body_end]) {
             consumed.push((rel, body_end));
         }
@@ -527,7 +525,7 @@ fn extract_fallback_tool_calls(text: &str, registry: &Arc<ToolRegistry>) -> Fall
     if cursor < text.len() {
         cleaned.push_str(&text[cursor..]);
     }
-    let cleaned_text = collapse_blank_runs(cleaned.trim()).to_string();
+    let cleaned_text = collapse_blank_runs(cleaned.trim());
 
     FallbackParse {
         calls: out,
@@ -1635,11 +1633,12 @@ when the request is ambiguous.",
         // lock-step with persistence so we never re-deserialise the same
         // SQLite rows on a multi-step tool chase. ~50ms × MAX_ITER saved
         // on the hot path.
-        let mut messages: Vec<Message> = match {
+        let history_load = {
             let store_c = store.clone();
             let cid = convo_id.clone();
             tokio::task::spawn_blocking(move || store_c.get_messages(&cid)).await
-        } {
+        };
+        let mut messages: Vec<Message> = match history_load {
             Ok(Ok(h)) => h
                 .into_iter()
                 .filter(|m| m.role != "system")
@@ -1674,7 +1673,7 @@ when the request is ambiguous.",
                 max_tokens: 4096,
                 temperature,
                 tools: tools.clone(),
-                tool_choice: tool_choice.clone(),
+                tool_choice,
             };
 
             let mut stream = provider.stream(completion);
