@@ -11,7 +11,7 @@ license = "LicenseRef-PolyForm-Noncommercial-1.0.0"
 repository = "https://github.com/matiaspalmac/daisu-ide"
 
 [workspace.dependencies]
-tauri = { version = "2.1", features = [] }
+tauri = { version = "2.11", features = [] }
 tauri-build = { version = "2.0", features = [] }
 tauri-plugin-dialog = "2.7"
 tauri-plugin-fs = "2.0"
