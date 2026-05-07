@@ -26,13 +26,35 @@ import { useDiscordRpc } from "./hooks/useDiscordRpc";
 import { useAutoUpdate } from "./hooks/useAutoUpdate";
 import { ToastViewport } from "./components/ui/Toast";
 import { CloseConfirmModal } from "./components/tabs/CloseConfirmModal";
-import { SettingsModal } from "./components/settings/SettingsModal";
-import { CommandPalette } from "./components/palette/CommandPalette";
-import { SymbolSearchPalette } from "./components/agent/SymbolSearchPalette";
-import { LspWorkspaceSymbolPalette } from "./components/palette/LspWorkspaceSymbolPalette";
-import { FileSymbolPalette } from "./components/palette/FileSymbolPalette";
-import { PermissionModal } from "./components/agent/PermissionModal";
-import { InlineEditOverlay } from "./components/agent/InlineEditOverlay";
+
+// Heavy overlays / modals that aren't on the first-paint path. Each
+// pulls in Radix Dialog/Popover, Phosphor icon subsets, fuzzysort,
+// or LSP/agent state that the user may never touch in a session.
+// Code-splitting them shrinks the initial JS chunk and the runtime
+// memory footprint of the welcome screen.
+const SettingsModal = lazy(() =>
+  import("./components/settings/SettingsModal").then((m) => ({ default: m.SettingsModal })),
+);
+const CommandPalette = lazy(() =>
+  import("./components/palette/CommandPalette").then((m) => ({ default: m.CommandPalette })),
+);
+const SymbolSearchPalette = lazy(() =>
+  import("./components/agent/SymbolSearchPalette").then((m) => ({ default: m.SymbolSearchPalette })),
+);
+const LspWorkspaceSymbolPalette = lazy(() =>
+  import("./components/palette/LspWorkspaceSymbolPalette").then((m) => ({
+    default: m.LspWorkspaceSymbolPalette,
+  })),
+);
+const FileSymbolPalette = lazy(() =>
+  import("./components/palette/FileSymbolPalette").then((m) => ({ default: m.FileSymbolPalette })),
+);
+const PermissionModal = lazy(() =>
+  import("./components/agent/PermissionModal").then((m) => ({ default: m.PermissionModal })),
+);
+const InlineEditOverlay = lazy(() =>
+  import("./components/agent/InlineEditOverlay").then((m) => ({ default: m.InlineEditOverlay })),
+);
 import { useUI } from "./stores/uiStore";
 import { useSettings } from "./stores/settingsStore";
 import { useWorkspace } from "./stores/workspaceStore";
@@ -397,13 +419,15 @@ export function App(): JSX.Element {
       {design.statusBarVisible && !focusMode && <StatusBar />}
       <ToastViewport />
       <CloseConfirmModalConnected />
-      <SettingsModal />
-      <CommandPalette />
-      <SymbolSearchPalette />
-      <LspWorkspaceSymbolPalette />
-      <FileSymbolPalette />
-      <PermissionModal />
-      <InlineEditOverlay />
+      <Suspense fallback={null}>
+        <SettingsModal />
+        <CommandPalette />
+        <SymbolSearchPalette />
+        <LspWorkspaceSymbolPalette />
+        <FileSymbolPalette />
+        <PermissionModal />
+        <InlineEditOverlay />
+      </Suspense>
       <ResizeHandles />
     </main>
     </IconContext.Provider>

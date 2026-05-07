@@ -40,13 +40,17 @@ export function useDiscordRpc(): void {
   const pendingTimerRef = useRef<number | null>(null);
   const connectedRef = useRef<boolean>(false);
 
-  // Connect / reconnect when enabled flag or appId changes. Defer the first
-  // attempt by 1.5s so the app paints, the editor mounts, and the user is
-  // interactive before any potentially slow IPC handshake runs.
+  // Connect / reconnect when enabled flag or appId changes. Hold off on
+  // the IPC handshake until the browser reports idle so the app's first
+  // paint, Monaco mount and LSP attach don't fight Discord's socket
+  // setup for the main thread. requestIdleCallback is universally
+  // available in WebView2 (Chromium-based); fall back to a 5s timeout
+  // for the SSR/test environments where the API is missing.
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
     let delayHandle: number | null = null;
+    let idleHandle: number | null = null;
     if (!enabled || !appId) {
       void discordDisconnectCmd().catch(() => undefined);
       connectedRef.current = false;
@@ -54,7 +58,7 @@ export function useDiscordRpc(): void {
         cancelled = true;
       };
     }
-    delayHandle = window.setTimeout(() => {
+    const connect = (): void => {
       if (cancelled) return;
       void discordConnectCmd(appId)
         .then(() => {
@@ -64,13 +68,21 @@ export function useDiscordRpc(): void {
           }
         })
         .catch(() => {
-          // Discord not running or socket unavailable — silently skip.
           connectedRef.current = false;
         });
-    }, 1500);
+    };
+    const ric = window.requestIdleCallback;
+    if (typeof ric === "function") {
+      idleHandle = ric(connect, { timeout: 8000 });
+    } else {
+      delayHandle = window.setTimeout(connect, 5000);
+    }
     return () => {
       cancelled = true;
       if (delayHandle !== null) window.clearTimeout(delayHandle);
+      if (idleHandle !== null && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+      }
     };
   }, [enabled, appId]);
 

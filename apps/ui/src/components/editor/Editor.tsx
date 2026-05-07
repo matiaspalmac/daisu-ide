@@ -272,7 +272,11 @@ export function Editor(): JSX.Element {
         scrollBeyondLastLine: false,
         wordWrap: "off",
         renderLineHighlight: "all",
-        bracketPairColorization: { enabled: true },
+        // Off matches the standalone Monaco default. The bracket-pair tree
+        // grows per-model and is purely cosmetic — disabling it shaved a
+        // couple MB across an open workspace without changing how LSP
+        // diagnostics or syntax highlighting render.
+        bracketPairColorization: { enabled: false },
         guides: {
           indentation: true,
           highlightActiveIndentation: true,
