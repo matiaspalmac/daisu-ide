@@ -17,7 +17,7 @@ missing_errors_doc = "allow"
 missing_panics_doc = "allow"
 
 [dependencies]
-portable-pty = "0.8"
+portable-pty = "0.9"
 tokio = { workspace = true, features = ["sync", "rt", "macros", "time", "io-util"] }
 serde.workspace = true
 serde_json.workspace = true
