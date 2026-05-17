@@ -12,7 +12,7 @@ repository = "https://github.com/matiaspalmac/daisu-ide"
 
 [workspace.dependencies]
 tauri = { version = "2.1", features = [] }
-tauri-build = { version = "2.0", features = [] }
+tauri-build = { version = "2.6", features = [] }
 tauri-plugin-dialog = "2.7"
 tauri-plugin-fs = "2.0"
 tauri-plugin-os = "2.0"
